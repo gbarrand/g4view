@@ -1,0 +1,56 @@
+1.4.0 :
+ - first version on github. Update to use inlib/exlib of May 2018.
+
+1.2 :
+ - inlib/ttf/plots_viewer, popup.
+ - exas : have a_gv.stop_event_anim() at begin of method and a
+          inlib::sg::todel to stop event timer if deleting the scene.
+ - exas : A01 : use the inlib::sg::todel logic to delete A01 object.
+ - Android : Main_java : corrections to handle ACTION_SCREEN_ON.
+ - mgr/build.
+ - dir iPhone -> iOS.
+
+ - rm iscenario_opener.
+ - Wt.
+ - Linux : wall : fix steering.
+ - g4view.license : pmx -> g4view.
+ - exlib/sg/polyhedron : revisit vbo handling.
+
+ - EXLIB_OPENER_HAS_XXX to EXLIB_HAS_XXX.
+ - use iopeners for .gdml, .mac, .cmnd.
+ - exlib/hep/polyhedron : use memcpy to copy G4Facet.
+ - to wall : send bsg buffers.
+ - to wall : correct mem leak in exlib/sg/sf_polyhedron
+ - Cocoa : menubar/Quit -> clear tmp.
+
+ - for iOS : change the unfolding of res zip file so that they go in
+   the tmp dir. The AppleStore does not want more than 6 Mbytes of
+   data in the doc dir coming from the app.
+ - scene popup : center.
+ - h_zz_4mu.cmnd, h_gamma_gamma.cmnd : switch off dumps.
+ - files : .cmnd : it sets geant4::primary_generator.
+ - pythia8 : correct ParticleData::nextId(). See //G.Barrand comment.
+   Seen when porting to WIN32.
+
+1.1 : 
+ - examples/H_ZZ_4mu, H_gamma_gamma.
+ - iOS, Android : export -> mail.
+ - files : be able to navigate in directories.
+ - camenu : have a panel at left with erase and 2D/3D buttons.
+ - scenarios :
+    <primaries>
+      <particle name="gamma" color="white" show_name="true" text_scale="5"/>
+    </primaries>
+ - scenarios :
+    <trajectories>
+      <particle name="mu-" color="white" show_name="true" text_scale="5"/>
+    </trajectories>
+ - pythia8.
+ - exlib/geant4/base_gdml.
+ - vbo.
+ - examples/calorimeter : axis.
+ - shoot particle type at random.
+ - wall : fix the transfert of the particle name in the scene.
+
+1.0 :
+ - birth.
