@@ -9,9 +9,10 @@
     
  (here UNIX is for Linux, macOS, Windows-10/cygwin)
 
-  If the GNU parallel application is known from your prompt, C and C++ file compilations
- are distributed on your cores. This feature had been tested only on macOS for the moment
- with a MacPorts installation of the parallel program. Since good part of the code of our
+  If the GNU parallel application is known from your prompt, you can use the "-parallel"
+ option so that C and C++ file compilations are distributed on your cores. This feature
+ had been tested with success on macOS with a MacPorts installation of the GNU parallel program
+ and on centos7 by using the GNU distribution. Since good part of the code of our
  apps is pure header, it will not boost the "main" part of them, but it clearly boosts the
  build of the ourex externals, in particular if using some ourex/geant4<versio> one.
 
