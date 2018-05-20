@@ -2,7 +2,7 @@
   To build :
     UNIX> cd <app>/mgr
     UNIX> ./build  # Cocoa version on macOS, X11 on Linux, win32 on a Windows-10/cygwin.
- ( UNIX> ./build -v)
+  ( UNIX> ./build -v)
    macOS> ./build -x11 -bin_x11  # to build the X11 version.
     UNIX> ./build -offscreen -bin_offscreen
     UNIX> ./build -webgl -bin_webgl  # to display within a web browser.
