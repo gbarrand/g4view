@@ -1,0 +1,625 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_geant4_A01
+#define exlib_geant4_A01
+
+// From G4/A01.
+
+#include <G4RunManager.hh>
+#include <G4PVPlacement.hh>
+#include <G4PVReplica.hh>
+#include <G4GeometryManager.hh>
+#include <G4MagneticField.hh>
+#include <G4FieldManager.hh>
+#include <G4LogicalVolume.hh>
+
+#include <G4NistManager.hh>
+#include <G4Box.hh>
+#include <G4Tubs.hh>
+#include <G4UserLimits.hh>
+#include <G4PVParameterised.hh>
+
+#include "utils"
+#include "histo_mgr"
+
+#include "primary_generator"
+
+#include <inlib/S_STRING>
+#include <inlib/sg/alert>
+#include <inlib/histo/h1d>
+#include <inlib/histo/c2d>
+
+#ifdef INLIB_MEM
+#include <inlib/mem>
+#endif
+
+namespace exlib {
+namespace geant4 {
+
+class A01 {
+public:
+  INLIB_SCLASS(exlib::geant4::A01)
+public:
+  A01(inlib::sg::alert& a_gv):m_field_mgr(0),m_sa(0){
+#ifdef INLIB_MEM
+    inlib::mem::increment(s_class().c_str());
+#endif
+    if(!construct(a_gv)) {} //throw
+  }
+  virtual ~A01(){
+    delete m_field_mgr; //it will be also deregistered.
+#ifdef INLIB_MEM
+    inlib::mem::decrement(s_class().c_str());
+#endif
+  }
+protected:
+  A01(const A01&):m_field_mgr(0),m_sa(0){}
+  A01& operator=(const A01&){return *this;}
+public:
+  class stepping_action;
+  stepping_action* get_stepping_action() const {return m_sa;}
+
+protected:
+  // elements :
+  INLIB_CLASS_STRING(nitrogen)
+  INLIB_CLASS_STRING(oxigen)
+  INLIB_CLASS_STRING(hydrogen)
+  INLIB_CLASS_STRING(carbon)
+  INLIB_CLASS_STRING(iodine)
+  INLIB_CLASS_STRING(cesium)
+
+  // materials :
+  INLIB_CLASS_STRING(vacuum)
+  INLIB_CLASS_STRING(argon)
+  INLIB_CLASS_STRING(lead)
+  INLIB_CLASS_STRING(air)
+  INLIB_CLASS_STRING(scintillator)
+  INLIB_CLASS_STRING(csi)
+
+  // geom :  
+  INLIB_CLASS_STRING(world)
+    INLIB_CLASS_STRING(magnetic)
+
+    INLIB_CLASS_STRING(first_arm)
+      INLIB_CLASS_STRING(hodoscope1)
+      INLIB_CLASS_STRING(chamber1)
+        INLIB_CLASS_STRING(wire_plane1)
+
+    INLIB_CLASS_STRING(second_arm)
+      INLIB_CLASS_STRING(hodoscope2)
+      INLIB_CLASS_STRING(chamber2)
+        INLIB_CLASS_STRING(wire_plane2)
+      INLIB_CLASS_STRING(em_calo)
+        INLIB_CLASS_STRING(cell)
+      INLIB_CLASS_STRING(had_cal)
+        INLIB_CLASS_STRING(had_cal_column)
+          INLIB_CLASS_STRING(had_cal_cell)
+            INLIB_CLASS_STRING(had_cal_layer)
+              INLIB_CLASS_STRING(had_cal_scinti)
+
+  static void construct_materials() {
+    //clear_materials();
+
+    double a,z,density;
+
+    if(!G4Material::GetMaterial(s_vacuum(),false)) {
+      new G4Material(s_vacuum(),
+                     z=1,a=1.01*CLHEP::g/CLHEP::mole,density=CLHEP::universe_mean_density,
+                     kStateGas,2.73*CLHEP::kelvin,3.e-18*CLHEP::hep_pascal);
+    }
+
+    if(!G4Material::GetMaterial(s_argon(),false)) {
+      new G4Material(s_argon(),
+                     z=18,a=39.95*CLHEP::g/CLHEP::mole,density=1.782*CLHEP::mg/CLHEP::cm3);
+    }
+
+    if(!G4Material::GetMaterial(s_lead(),false)) {
+      new G4Material(s_lead(),
+                     z=82,a=207.19*CLHEP::g/CLHEP::mole,density=11.35*CLHEP::g/CLHEP::cm3);
+    }
+
+
+    if(!G4Material::GetMaterial(s_air(),false)) {
+      G4Element* nitrogen = new G4Element(s_nitrogen(),"N",z=7,a=14.01*CLHEP::g/CLHEP::mole);
+      G4Element* oxygen = new G4Element(s_oxigen(),"O",z=8,a=16.00*CLHEP::g/CLHEP::mole);
+
+      G4Material* mat = new G4Material(s_air(),density=1.29*CLHEP::mg/CLHEP::cm3,2);
+      mat->AddElement(nitrogen,0.7);
+      mat->AddElement(oxygen,0.3);
+    }
+
+    if(!G4Material::GetMaterial(s_scintillator(),false)) {
+      G4Element* hydrogen = new G4Element(s_hydrogen(),"H",z=1,a=1.01*CLHEP::g/CLHEP::mole);
+      G4Element* carbon = new G4Element(s_carbon(),"C",z=6,a=12.01*CLHEP::g/CLHEP::mole);
+
+      G4Material* mat = new G4Material(s_scintillator(),density=1.032*CLHEP::g/CLHEP::cm3,2);
+      mat->AddElement(carbon,9);
+      mat->AddElement(hydrogen,10);
+    }
+
+    if(!G4Material::GetMaterial(s_csi(),false)) {
+      G4Element* iodine = new G4Element(s_iodine(),"I",z=53,a=126.9*CLHEP::g/CLHEP::mole);
+      G4Element* cesium = new G4Element(s_cesium(),"Cs",z=55,a=132.9*CLHEP::g/CLHEP::mole);
+
+      G4Material* mat = new G4Material(s_csi(),density=4.51*CLHEP::g/CLHEP::cm3,2);
+      mat->AddElement(iodine,0.5);
+      mat->AddElement(cesium,0.5);
+    }
+  }
+
+protected:
+  bool construct(inlib::sg::alert& a_gv) {
+
+    double armAngle = 30*CLHEP::deg;
+
+    G4RunManager* rmgr = G4RunManager::GetRunManager();
+    if(!rmgr) {
+      a_gv.warn("No G4 run manager.");
+      return false;
+    }
+
+    construct_materials();
+
+    G4GeometryManager::GetInstance()->OpenGeometry();
+    clean_geom_stores();
+    //G4FieldManagerStore::Clean();
+
+    G4Material* air = G4Material::GetMaterial(s_air());
+
+    G4VSolid* worldSolid = new G4Box(s_world(),10.*CLHEP::m,3.*CLHEP::m,10.*CLHEP::m);
+    G4LogicalVolume* worldLogical = new G4LogicalVolume(worldSolid,air,s_world());
+    G4VPhysicalVolume* worldPhysical = new G4PVPlacement(0,G4ThreeVector(),worldLogical,s_world(),0,0,0);
+  
+    // Tube with Local Magnetic field
+    G4Material* vacuum = G4Material::GetMaterial(s_vacuum());
+
+    m_field_mgr = new field_mgr(); //owned by G4.
+     
+    G4VSolid* magneticSolid = new G4Tubs(s_magnetic(),0.,1.*CLHEP::m,1.*CLHEP::m,0.,360.*CLHEP::deg);
+    
+    G4LogicalVolume* magneticLogical
+      //= new G4LogicalVolume(magneticSolid,vacuum,s_magnetic(),fieldMgr);
+      = new G4LogicalVolume(magneticSolid,vacuum,s_magnetic(),m_field_mgr);
+   
+    // placement of Tube 
+   
+    G4RotationMatrix* fieldRot = new G4RotationMatrix();
+    fieldRot->rotateX(90.*CLHEP::deg);
+    new G4PVPlacement(fieldRot,G4ThreeVector(),magneticLogical,s_magnetic(),worldLogical,0,0);
+  
+    // set "user limits" for drawing smooth curve
+    G4UserLimits* userLimits = new G4UserLimits(5.0*CLHEP::cm);
+    magneticLogical->SetUserLimits(userLimits);
+  
+    // first arm
+    G4VSolid* firstArmSolid = new G4Box(s_first_arm(),1.5*CLHEP::m,1.*CLHEP::m,3.*CLHEP::m);
+    G4LogicalVolume* firstArmLogical = new G4LogicalVolume(firstArmSolid,air,s_first_arm());
+    new G4PVPlacement(0,G4ThreeVector(0.,0.,-5.*CLHEP::m),firstArmLogical,s_first_arm(),worldLogical,0,0);
+  
+    // second arm
+    G4RotationMatrix* armRotation = new G4RotationMatrix();
+    armRotation->rotateY(armAngle);
+
+    G4VSolid* secondArmSolid = new G4Box(s_second_arm(),2.*CLHEP::m,2.*CLHEP::m,3.5*CLHEP::m);
+    G4LogicalVolume* secondArmLogical = new G4LogicalVolume(secondArmSolid,air,s_second_arm());
+    G4double x = -5.*CLHEP::m * std::sin(armAngle);
+    G4double z = 5.*CLHEP::m * std::cos(armAngle);
+    //G4VPhysicalVolume* secondArmPhys =
+    new G4PVPlacement(armRotation,G4ThreeVector(x,0.,z),secondArmLogical,s_second_arm(),worldLogical,0,0);
+  
+    // hodoscopes in first arm
+    G4Material* scintillator = G4Material::GetMaterial(s_scintillator());
+
+    G4VSolid* hodoscope1Solid = new G4Box(s_hodoscope1(),5.*CLHEP::cm,20.*CLHEP::cm,0.5*CLHEP::cm);
+    G4LogicalVolume* hodoscope1Logical = new G4LogicalVolume(hodoscope1Solid,scintillator,s_hodoscope1());
+    for(int i1=0;i1<15;i1++) {
+      G4double x1 = (i1-7)*10.*CLHEP::cm;
+      new G4PVPlacement(0,G4ThreeVector(x1,0.,-1.5*CLHEP::m),hodoscope1Logical,s_hodoscope1(),firstArmLogical,0,i1);
+    }
+  
+    G4Material* argonGas = G4Material::GetMaterial(s_argon());
+
+    // drift chambers in first arm
+    G4VSolid* chamber1Solid = new G4Box(s_chamber1(),1.*CLHEP::m,30.*CLHEP::cm,1.*CLHEP::cm);
+    G4LogicalVolume* chamber1Logical = new G4LogicalVolume(chamber1Solid,argonGas,s_chamber1());
+    for(int j1=0;j1<5;j1++) {
+      G4double z1 = (j1-2)*0.5*CLHEP::m;
+      new G4PVPlacement(0,G4ThreeVector(0.,0.,z1),chamber1Logical,s_chamber1(),firstArmLogical,0,j1);
+    }
+  
+    // "virtual" wire plane
+    G4VSolid* wirePlane1Solid = new G4Box(s_wire_plane1(),1.*CLHEP::m,30.*CLHEP::cm,0.1*CLHEP::mm);
+    G4LogicalVolume* wirePlane1Logical = new G4LogicalVolume(wirePlane1Solid,argonGas,s_wire_plane1());
+    G4VPhysicalVolume* wire_plane1_pv =
+      new G4PVPlacement(0,G4ThreeVector(0.,0.,0.),wirePlane1Logical,s_wire_plane1(),chamber1Logical,0,0);
+  
+    // hodoscopes in second arm
+    G4VSolid* hodoscope2Solid = new G4Box(s_hodoscope2(),5.*CLHEP::cm,20.*CLHEP::cm,0.5*CLHEP::cm);
+    G4LogicalVolume* hodoscope2Logical = new G4LogicalVolume(hodoscope2Solid,scintillator,s_hodoscope2());
+    for(int i2=0;i2<25;i2++) {
+      G4double x2 = (i2-12)*10.*CLHEP::cm;
+      new G4PVPlacement(0,G4ThreeVector(x2,0.,0.),hodoscope2Logical,s_hodoscope2(),secondArmLogical,0,i2);
+    }
+  
+    // drift chambers in second arm
+    G4VSolid* chamber2Solid = new G4Box(s_chamber2(),1.5*CLHEP::m,30.*CLHEP::cm,1.*CLHEP::cm);
+    G4LogicalVolume* chamber2Logical = new G4LogicalVolume(chamber2Solid,argonGas,s_chamber2());
+    for(int j2=0;j2<5;j2++) {
+      G4double z2 = (j2-2)*0.5*CLHEP::m - 1.5*CLHEP::m;
+      new G4PVPlacement(0,G4ThreeVector(0.,0.,z2),chamber2Logical,s_chamber2(),secondArmLogical,0,j2);
+    }
+  
+    // "virtual" wire plane
+    G4VSolid* wirePlane2Solid = new G4Box(s_wire_plane2(),1.5*CLHEP::m,30.*CLHEP::cm,0.1*CLHEP::mm);
+    G4LogicalVolume* wirePlane2Logical = new G4LogicalVolume(wirePlane2Solid,argonGas,s_wire_plane2());
+    new G4PVPlacement(0,G4ThreeVector(0.,0.,0.),wirePlane2Logical,s_wire_plane2(),chamber2Logical,0,0);
+  
+    // CsI calorimeter
+    G4Material* CsI = G4Material::GetMaterial(s_csi());
+
+    G4VSolid* EMcalorimeterSolid = new G4Box(s_em_calo(),1.5*CLHEP::m,30.*CLHEP::cm,15.*CLHEP::cm);
+    G4LogicalVolume* EMcalorimeterLogical = new G4LogicalVolume(EMcalorimeterSolid,air,s_em_calo());
+    new G4PVPlacement(0,G4ThreeVector(0.,0.,2.*CLHEP::m),EMcalorimeterLogical,s_em_calo(),secondArmLogical,0,0);
+  
+    // EMcalorimeter cells
+    G4VSolid* cellSolid = new G4Box(s_cell(),7.5*CLHEP::cm,7.5*CLHEP::cm,15.*CLHEP::cm);
+    G4LogicalVolume* cellLogical = new G4LogicalVolume(cellSolid,CsI,s_cell());
+    G4VPhysicalVolume* em_cell_pv =
+      new G4PVParameterised(s_cell(),cellLogical,EMcalorimeterLogical,kXAxis,80,new cell_param());
+  
+    // hadron calorimeter
+    G4Material* lead = G4Material::GetMaterial(s_lead());
+
+    G4VSolid* HadCalorimeterSolid = new G4Box(s_had_cal(),1.5*CLHEP::m,30.*CLHEP::cm,50.*CLHEP::cm);
+    G4LogicalVolume* HadCalorimeterLogical = new G4LogicalVolume(HadCalorimeterSolid,air,s_had_cal());
+    new G4PVPlacement(0,G4ThreeVector(0.,0.,3.*CLHEP::m),HadCalorimeterLogical,s_had_cal(),secondArmLogical,0,0);
+  
+    // hadron calorimeter column
+    G4VSolid* HadCalColumnSolid = new G4Box(s_had_cal_column(),15.*CLHEP::cm,30.*CLHEP::cm,50.*CLHEP::cm);
+    G4LogicalVolume* HadCalColumnLogical = new G4LogicalVolume(HadCalColumnSolid,air,s_had_cal_column());
+    new G4PVReplica(s_had_cal_column(),HadCalColumnLogical,HadCalorimeterLogical,kXAxis,10,30.*CLHEP::cm);
+  
+    // hadron calorimeter cell
+    G4VSolid* HadCalCellSolid = new G4Box(s_had_cal_cell(),15.*CLHEP::cm,15.*CLHEP::cm,50.*CLHEP::cm);
+    G4LogicalVolume* HadCalCellLogical = new G4LogicalVolume(HadCalCellSolid,air,s_had_cal_cell());
+    new G4PVReplica(s_had_cal_cell(),HadCalCellLogical,HadCalColumnLogical,kYAxis,2,30.*CLHEP::cm);
+  
+    // hadron calorimeter layers
+    G4VSolid* HadCalLayerSolid = new G4Box(s_had_cal_layer(),15.*CLHEP::cm,15.*CLHEP::cm,2.5*CLHEP::cm);
+    G4LogicalVolume* HadCalLayerLogical = new G4LogicalVolume(HadCalLayerSolid,lead,s_had_cal_layer());
+    G4VPhysicalVolume* had_cell_pv =
+      new G4PVReplica(s_had_cal_layer(),HadCalLayerLogical,HadCalCellLogical,kZAxis,20,5.*CLHEP::cm);
+  
+    // scintillator plates
+    G4VSolid* HadCalScintiSolid = new G4Box(s_had_cal_scinti(),15.*CLHEP::cm,15.*CLHEP::cm,0.5*CLHEP::cm);
+    G4LogicalVolume* HadCalScintiLogical = new G4LogicalVolume(HadCalScintiSolid,scintillator,s_had_cal_scinti());
+    new G4PVPlacement(0,G4ThreeVector(0.,0.,2.*CLHEP::cm),HadCalScintiLogical,s_had_cal_scinti(),HadCalLayerLogical,0,0);
+
+    /////////////////////////////////////////////
+    /// visualization attributes ////////////////
+    /////////////////////////////////////////////
+  
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(1.0,1.0,1.0));
+    atb->SetVisibility(false);
+    worldLogical->SetVisAttributes(atb);}
+  
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.9,0.9,0.9));
+    magneticLogical->SetVisAttributes(atb);}
+  
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(1.0,1.0,1.0));
+    atb->SetVisibility(false);
+    firstArmLogical->SetVisAttributes(atb);}
+
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(1.0,1.0,1.0));
+    atb->SetVisibility(false);
+    secondArmLogical->SetVisAttributes(atb);}
+  
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.8888,0.0,0.0));
+    hodoscope1Logical->SetVisAttributes(atb);}
+
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.8888,0.0,0.0));
+    hodoscope2Logical->SetVisAttributes(atb);}
+  
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.0,1.0,0.0));
+    chamber1Logical->SetVisAttributes(atb);}
+
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.0,1.0,0.0));
+    chamber2Logical->SetVisAttributes(atb);}
+  
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.0,0.8888,0.0));
+    atb->SetVisibility(false);
+    wirePlane1Logical->SetVisAttributes(atb);}
+
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.0,0.8888,0.0));
+    atb->SetVisibility(false);
+    wirePlane2Logical->SetVisAttributes(atb);}
+  
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.8888,0.8888,0.0));
+    atb->SetVisibility(false);
+    EMcalorimeterLogical->SetVisAttributes(atb);}
+  
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.9,0.9,0.0));
+    cellLogical->SetVisAttributes(atb);}
+  
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.0, 0.0, 0.9));
+    HadCalorimeterLogical->SetVisAttributes(atb);}
+
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.0, 0.0, 0.9));
+    atb->SetVisibility(false);
+    HadCalColumnLogical->SetVisAttributes(atb);}
+
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.0, 0.0, 0.9));
+    atb->SetVisibility(false);
+    HadCalCellLogical->SetVisAttributes(atb);}
+
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.0, 0.0, 0.9));
+    atb->SetVisibility(false);
+    HadCalLayerLogical->SetVisAttributes(atb);}
+
+   {G4VisAttributes* atb = new G4VisAttributes(G4Colour(0.0, 0.0, 0.9));
+    atb->SetVisibility(false);
+    HadCalScintiLogical->SetVisAttributes(atb);}
+
+    //////////////////////////////////////////////////////
+    rmgr->DefineWorldVolume(worldPhysical);
+  
+    //////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////
+    //WARNING : a "new G4ParticleGun" adds gun commands
+    //          in the G4UImanager singleton, then we have first
+    //          to delete the existing gun to remove existing
+    //          gun commands.
+   {const G4VUserPrimaryGeneratorAction* old = rmgr->GetUserPrimaryGeneratorAction();
+    delete const_cast<G4VUserPrimaryGeneratorAction*>(old);
+    primary_generator* gen = new primary_generator(a_gv.out_stream());
+    gen->set_particle(s_e_plus());
+    gen->set_position(0,0,-8*CLHEP::m);
+    gen->set_momentum_direction(inlib::vec3d(0,0,1));
+    gen->set_sigma_momentum(50*CLHEP::MeV);
+    gen->set_sigma_angle(2*CLHEP::deg);
+    rmgr->SetUserAction(gen);}
+
+    //////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////
+    delete rmgr->GetUserSteppingAction();
+    m_sa = new stepping_action(wire_plane1_pv,em_cell_pv,had_cell_pv);
+    rmgr->SetUserAction(m_sa); //give ownership to rmgr.
+
+    return true;
+  }  
+
+/*
+  void set_angle(G4double val) {
+    if(!secondArmPhys) {
+      G4cerr << "Detector has not yet been constructed." << G4endl;
+      return;
+    }
+
+    armAngle = val;
+    *armRotation = G4RotationMatrix();  // make it unit vector
+    armRotation->rotateY(armAngle);
+    G4double x = -5.*CLHEP::m * std::sin(armAngle);
+    G4double z = 5.*CLHEP::m * std::cos(armAngle);
+    secondArmPhys->SetTranslation(G4ThreeVector(x,0.,z));
+
+    // tell G4RunManager that we change the geometry
+    G4RunManager::GetRunManager()->GeometryHasBeenModified();
+
+  }
+*/
+
+protected:
+  class mag_field : public G4MagneticField {
+#ifdef INLIB_MEM
+    static const std::string& s_class() {
+      static const std::string s_v("exlib::geant4::A01::mag_field");
+      return s_v;
+    }
+#endif
+  public:
+    virtual void GetFieldValue(const G4double [4],double* a_field) const {
+      a_field[0] = 0;
+      a_field[2] = 0;
+      a_field[1] = m_By;
+    }
+  public:
+    mag_field(){
+#ifdef INLIB_MEM
+      inlib::mem::increment(s_class().c_str());
+#endif
+      m_By = 1.0*CLHEP::tesla;
+    }
+    virtual ~mag_field(){
+#ifdef INLIB_MEM
+      inlib::mem::decrement(s_class().c_str());
+#endif
+    }
+  protected:
+    mag_field(const mag_field& a_from)
+    :G4MagneticField(a_from)
+    ,m_By(a_from.m_By)
+    {}
+    mag_field& operator=(const mag_field&){return *this;}
+  public:
+    void set_field(double a_val) {m_By = a_val;}
+    double get_field() const {return m_By;}
+  protected:
+    G4double m_By;
+  };
+
+  class cell_param : public G4VPVParameterisation {
+#ifdef INLIB_MEM
+    static const std::string& s_class() {
+      static const std::string s_v("exlib::geant4::A01::cell_param");
+      return s_v;
+    }
+#endif
+  public:
+    virtual void ComputeTransformation(const G4int a_copyNo,
+                                       G4VPhysicalVolume* a_pv) const {
+      a_pv->SetTranslation
+        (G4ThreeVector(m_xCell[a_copyNo],m_yCell[a_copyNo],0));
+    }
+
+  public:
+    cell_param(){
+#ifdef INLIB_MEM
+      inlib::mem::increment(s_class().c_str());
+#endif
+      for(int copyNo=0;copyNo<80;copyNo++){
+        int column = copyNo / 4;
+        int row = copyNo % 4;
+        m_xCell[copyNo] = (column-9)*15.*CLHEP::cm - 7.5*CLHEP::cm;
+        m_yCell[copyNo] = (row-1)*15*CLHEP::cm - 7.5*CLHEP::cm;
+      }
+    }
+    virtual ~cell_param(){
+#ifdef INLIB_MEM
+      inlib::mem::decrement(s_class().c_str());
+#endif
+    }
+  protected:
+    cell_param(const cell_param& a_from)
+    :G4VPVParameterisation(a_from)
+    {}
+    cell_param& operator=(const cell_param&){return *this;}
+  protected:
+    G4double m_xCell[80];
+    G4double m_yCell[80];
+  };
+
+  class field_mgr : public G4FieldManager {
+#ifdef INLIB_MEM
+    static const std::string& s_class() {
+      static const std::string s_v("exlib::geant4::A01::field_mgr");
+      return s_v;
+    }
+#endif
+  public:
+    field_mgr(){
+#ifdef INLIB_MEM
+      inlib::mem::increment(s_class().c_str());
+#endif
+      SetDetectorField(&m_field);
+      CreateChordFinder(&m_field);
+    }
+    virtual ~field_mgr(){
+#ifdef INLIB_MEM
+      inlib::mem::decrement(s_class().c_str());
+#endif
+    }
+  protected:
+    field_mgr(const field_mgr&):G4FieldManager(){}
+    field_mgr& operator=(const field_mgr&){return *this;}
+  protected:
+    mag_field m_field;
+  };
+
+public:
+  class stepping_action
+  :public G4UserSteppingAction
+  ,public virtual histo_mgr {
+#ifdef INLIB_MEM
+    static const std::string& s_class() {
+      static const std::string s_v("exlib::geant4::A01::stepping_action");
+      return s_v;
+    }
+#endif
+  public:
+    virtual void UserSteppingAction(const G4Step* a_step) {
+
+      G4StepPoint* point = a_step->GetPreStepPoint();
+      G4VPhysicalVolume* pv = point->GetTouchableHandle()->GetVolume();
+      if(pv==m_pv_wire_plane1) {
+        // same as A01DriftChamber::ProcessHits.
+
+        G4double charge = a_step->GetTrack()->GetDefinition()->GetPDGCharge();
+        if(charge) return;
+
+        G4TouchableHistory* touchable = (G4TouchableHistory*)(point->GetTouchable());
+        G4VPhysicalVolume* pvm = touchable->GetVolume(1); // mother
+        G4int copy_no = pvm->GetCopyNo();
+        G4ThreeVector world_pos = point->GetPosition();
+        G4ThreeVector local_pos = touchable->GetHistory()->GetTopTransform().TransformPoint(world_pos);
+
+        //point->GetGlobalTime();
+
+        if(copy_no==1) m_dc1XY.fill(local_pos.x(),local_pos.y());
+
+      } else if(pv==m_pv_ecal_cell) {
+        G4double edep = a_step->GetTotalEnergyDeposit();
+        if(edep==0) return;
+        m_ecal_edep.fill(edep);
+
+        m_ecal_hcal_edep.fill(0,edep);
+
+      } else if(pv==m_pv_hcal_cell) {
+        G4double edep = a_step->GetTotalEnergyDeposit();
+        if(edep==0) return;
+
+        m_ecal_hcal_edep.fill(1,edep);
+      }
+
+    }
+  public:
+    virtual void reset_histos() {
+      m_dc1XY.reset();
+      m_ecal_edep.reset();
+      m_ecal_hcal_edep.reset();
+    }
+  public:
+    stepping_action(G4VPhysicalVolume* a_pv_wire_plane1,
+                    G4VPhysicalVolume* a_pv_ecal_cell,
+                    G4VPhysicalVolume* a_pv_hcal_cell)
+    :m_pv_wire_plane1(a_pv_wire_plane1)
+    ,m_pv_ecal_cell(a_pv_ecal_cell)
+    ,m_pv_hcal_cell(a_pv_hcal_cell)
+    ,m_dc1XY("Drift Chamber 1 X vs Y",10000)
+    ,m_ecal_edep("Edep in ecal",100,0,3*CLHEP::MeV)    
+    ,m_ecal_hcal_edep("Edep in calos",2,0,2)    
+    {
+#ifdef INLIB_MEM
+      inlib::mem::increment(s_class().c_str());
+#endif
+    }
+    virtual ~stepping_action(){
+#ifdef INLIB_MEM
+      inlib::mem::decrement(s_class().c_str());
+#endif
+    }
+  protected:
+    stepping_action(const stepping_action& a_from)
+    :histo_mgr(a_from)
+    ,G4UserSteppingAction(a_from)
+    ,m_pv_wire_plane1(a_from.m_pv_wire_plane1)
+    ,m_pv_ecal_cell(a_from.m_pv_ecal_cell)
+    ,m_pv_hcal_cell(a_from.m_pv_hcal_cell)
+    ,m_dc1XY(a_from.m_dc1XY)
+    ,m_ecal_edep(a_from.m_ecal_edep)
+    ,m_ecal_hcal_edep(a_from.m_ecal_hcal_edep)
+    {}
+    stepping_action& operator=(const stepping_action&){return *this;}
+  public:
+    inlib::histo::c2d& dc1XY() {return m_dc1XY;}    
+    inlib::histo::h1d& ecal_edep() {return m_ecal_edep;}    
+    inlib::histo::h1d& ecal_hcal_edep() {return m_ecal_hcal_edep;}    
+  protected:
+    G4VPhysicalVolume* m_pv_wire_plane1;
+    G4VPhysicalVolume* m_pv_ecal_cell;
+    G4VPhysicalVolume* m_pv_hcal_cell;
+    inlib::histo::c2d m_dc1XY;
+    inlib::histo::h1d m_ecal_edep;
+    inlib::histo::h1d m_ecal_hcal_edep;
+  };
+
+protected:
+  G4FieldManager* m_field_mgr;
+  stepping_action* m_sa; //not owner
+};
+
+}}
+
+//exlib_build_use geant4 inlib
+
+#endif
