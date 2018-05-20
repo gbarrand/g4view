@@ -1,0 +1,13 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file g4view.license for terms.
+
+#ifndef g4view_g4view_version
+#define g4view_g4view_version
+
+#define G4VIEW_MAJOR_VERSION 1
+#define G4VIEW_MINOR_VERSION 4
+#define G4VIEW_PATCH_VERSION 0
+#define G4VIEW_VERSION "1.4.0"
+#define G4VIEW_VERSION_VRP "v1r4p0"
+
+#endif

@@ -1,0 +1,289 @@
+<scenarios>
+
+  <scenario name="lhcbvelo">
+
+    <file>lhcbvelo.gdml</file>
+
+    <background>black</background>
+
+    <camera>
+      <class>ortho</class>
+      <height>2000</height>
+
+      <znear>200</znear>
+      <zfar>20000</zfar>
+      <focal>2000</focal>
+      <dx>20</dx>
+      <da>0.017</da> <!--one degree -->
+      <ds>0.99</ds>
+
+<!--
+      <position>0 0 2000</position>
+-->
+      <position>0 2000 0</position>
+      <orientation>1 0 0 -1.570796</orientation>
+    </camera>
+  
+    <volume>
+      <min_depth>2</min_depth>
+      <max_depth>4</max_depth>
+      <colormap>
+        <color>yellow</color>
+        <color>cyan</color>
+        <color>magenta</color>
+        <color>yellow</color>
+      </colormap>
+    </volume>
+
+<!--
+    <volume>
+      <name>*UStation*PV</name>
+      <min_depth>0</min_depth>
+      <max_depth>1</max_depth>
+      <color>yellow</color>
+    </volume>
+
+    <volume>
+      <name>*DStation*PV</name>
+      <min_depth>0</min_depth>
+      <max_depth>1</max_depth>
+      <color>red</color>
+    </volume>
+
+    <volume>
+      <name>*StreamSection*PV</name>
+      <min_depth>0</min_depth>
+      <max_depth>1</max_depth>
+      <color>green</color>
+    </volume>
+
+    <volume>
+      <name>*RDetector*PV</name>
+      <min_depth>0</min_depth>
+      <max_depth>1</max_depth>
+      <color>yellow</color>
+    </volume>
+    <volume>
+      <name>*PhiDetector*PV</name>
+      <min_depth>0</min_depth>
+      <max_depth>1</max_depth>
+      <color>green</color>
+    </volume>
+    <volume>
+      <name>*Fanout*PV</name>
+      <min_depth>0</min_depth>
+      <max_depth>1</max_depth>
+      <color>red</color>
+    </volume>
+-->
+
+    <!-- G4 units : MeV, mm, radian -->
+    <gun>
+      <particle>e-</particle>
+      <momentum>1000</momentum>
+      <pos_x>0</pos_x>
+      <pos_y>0</pos_y>
+      <pos_z>-1000</pos_z>
+      <dir_x>0</dir_x>
+      <dir_y>0</dir_y>
+      <dir_z>1</dir_z>
+      <sigma_momentum>0</sigma_momentum>
+      <sigma_angle>0.034</sigma_angle> <!-- 1 degree = 0.017 -->
+    </gun>
+
+    <trajectories>
+      <particle name="e-" color="yellow"/>
+      <particle name="e+" color="yellow"/>
+      <particle name="gamma" color="blue"/>
+      <particle name="default" color="red"/>
+    </trajectories>
+
+  </scenario>
+
+  <scenario name="lhcbhcal">
+
+    <file>lhcbhcal.gdml</file>
+
+    <background>black</background>
+
+    <camera>
+      <class>ortho</class>
+      <height>20000</height>
+
+      <znear>2000</znear>
+      <zfar>200000</zfar>
+      <focal>20000</focal>
+      <dx>20</dx>
+      <da>0.017</da> <!--one degree -->
+      <ds>0.99</ds>
+
+      <position>0 0 20000</position>
+    </camera>
+  
+    <volume>
+      <min_depth>2</min_depth>
+      <max_depth>4</max_depth>
+      <colormap>
+        <color>yellow</color>
+        <color>cyan</color>
+        <color>magenta</color>
+        <color>yellow</color>
+      </colormap>
+    </volume>
+
+    <gun>
+      <particle>pi0</particle>
+<!--  <particle>proton</particle> -->
+      <momentum>1000</momentum>
+      <pos_x>0</pos_x>
+      <pos_y>0</pos_y>
+      <pos_z>-1000</pos_z>
+      <dir_x>0</dir_x>
+      <dir_y>0</dir_y>
+      <dir_z>1</dir_z>
+      <sigma_momentum>0</sigma_momentum>
+      <sigma_angle>0.17</sigma_angle> <!-- 1 degree = 0.017 -->
+    </gun>
+
+    <trajectories>
+      <particle name="e-" color="yellow"/>
+      <particle name="e+" color="yellow"/>
+      <particle name="gamma" color="blue"/>
+      <particle name="default" color="red"/>
+    </trajectories>
+
+  </scenario>
+
+  <scenario name="H_ZZ_4mu">
+
+    <file>barrel.gdml</file>
+
+    <background>black</background>
+
+    <camera>
+      <class>ortho</class>
+      <height>10000</height>
+
+      <znear>100</znear>
+      <zfar>100000</zfar>
+      <focal>10000</focal>
+      <dx>10</dx>
+      <da>0.017</da> <!--one degree -->
+      <ds>0.99</ds>
+
+      <position>0 0 10000</position>
+<!--
+      <position>-10000 0 0</position>
+      <orientation>0 1 0 -1.570796</orientation>
+-->
+    </camera>
+  
+<!--
+    <volume>
+      <min_depth>1</min_depth>
+      <max_depth>2</max_depth>
+      <colormap>
+        <color>yellow</color>
+        <color>cyan</color>
+        <color>magenta</color>
+        <color>yellow</color>
+      </colormap>
+    </volume>
+-->
+
+    <volume>
+      <name>p_barrel</name>
+      <min_depth>0</min_depth>
+      <max_depth>1</max_depth>
+      <color>green</color>
+    </volume>
+
+    <volume>
+      <name>p_*_endcap</name>
+      <min_depth>0</min_depth>
+      <max_depth>1</max_depth>
+<!--
+      <solid_depth>0</solid_depth>
+-->
+      <color>yellow</color>
+    </volume>
+
+    <gun>
+      <particle>pythia8</particle>
+      <file>h_zz_4mu.cmnd</file>
+      <select_particle>((id==13)||(id==-13))&amp;&amp;(final==true)&amp;&amp;(pT&gt;10)&amp;&amp;(fabs(eta)&lt;2.5)</select_particle>
+      <accept_event>number_selected&gt;=4</accept_event>
+      <primary_particle>((id==13)||(id==-13))&amp;&amp;(final==true)</primary_particle>
+      <pos_x>0</pos_x>
+      <pos_y>0</pos_y>
+      <pos_z>0</pos_z>
+    </gun>
+
+    <trajectories>
+      <particle name="mu-" color="white" show_name="true" text_scale="5"/>
+      <particle name="mu+" color="white" show_name="true" text_scale="5"/>
+      <particle name="e-" color="yellow"/>
+      <particle name="e+" color="yellow"/>
+      <particle name="gamma" color="blue"/>
+      <particle name="default" color="red"/>
+    </trajectories>
+
+  </scenario>
+
+  <scenario name="H_gamma_gamma">
+
+    <file>barrel.gdml</file>
+
+    <background>black</background>
+
+    <camera>
+      <class>ortho</class>
+      <height>10000</height>
+
+      <znear>100</znear>
+      <zfar>100000</zfar>
+      <focal>10000</focal>
+      <dx>10</dx>
+      <da>0.017</da> <!--one degree -->
+      <ds>0.99</ds>
+
+      <position>0 0 10000</position>
+    </camera>
+  
+    <volume>
+      <name>p_barrel</name>
+      <min_depth>0</min_depth>
+      <max_depth>1</max_depth>
+      <color>green</color>
+    </volume>
+
+    <volume>
+      <name>p_*_endcap</name>
+      <min_depth>0</min_depth>
+      <max_depth>1</max_depth>
+      <color>yellow</color>
+    </volume>
+
+    <gun>
+      <particle>pythia8</particle>
+      <file>h_gamma_gamma.cmnd</file>
+      <select_particle>(id==22)&amp;&amp;(final==true)&amp;&amp;(pT&gt;10)&amp;&amp;(fabs(eta)&lt;2.5)</select_particle>
+      <accept_event>number_selected==2</accept_event>
+      <primary_particle>(id==22)&amp;&amp;(final==true)&amp;&amp;(pT&gt;10)&amp;&amp;(fabs(eta)&lt;2.5)</primary_particle>
+      <pos_x>0</pos_x>
+      <pos_y>0</pos_y>
+      <pos_z>0</pos_z>
+    </gun>
+
+    <trajectories>
+      <particle name="gamma" color="blue"/>
+      <particle name="default" color="red"/>
+    </trajectories>
+
+    <primaries>
+      <particle name="gamma" color="white" show_name="true" text_scale="5"/>
+    </primaries>
+
+  </scenario>
+
+</scenarios>
