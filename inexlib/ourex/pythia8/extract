@@ -1,0 +1,49 @@
+#!/bin/sh -f
+
+#set -x
+
+#p8_home=/usr/local/pythia/8.165/build/pythia8165
+p8_home=../../ourex_zips/pythia8170
+# think to change PYTHIA_VERSION in the below.
+
+p8_src="${p8_home}/src"
+p8_inc="${p8_home}/include"
+p8_xmldoc="${p8_home}/xmldoc"
+
+#//////////////////////////////////////////////
+#/// copy includes ////////////////////////////
+#//////////////////////////////////////////////
+if [ ! -d ${p8_inc} ] ; then
+  echo "directory ${p8_inc} not found."
+  exit
+fi
+
+/bin/mkdir -p ./include/pythia
+
+find ${p8_inc} -name '*.h' -exec /bin/cp {} ./include/pythia/. \;
+
+/bin/mkdir -p ./xmldoc
+
+find ${p8_xmldoc} -name '*.*' -exec /bin/cp -f {} ./xmldoc/. \;
+
+find ./modified -name '*.h' -exec /bin/cp {} ./include/pythia/. \;
+
+#//////////////////////////////////////////////
+#/// copy source files ////////////////////////
+#//////////////////////////////////////////////
+
+
+find ${p8_src} -name '*.cc' -exec /bin/cp {} ./source/. \;
+
+find ./modified -name '*.cc' -exec /bin/cp {} ./source/. \;
+
+/bin/cp ./modified/g_barrand_cephes ./source/.
+/bin/cp ./modified/FragmentationFlavZpT.h ./include/pythia/FragmentationFlavZpT.h
+/bin/cp ./modified/SusyLesHouches.h ./include/pythia/SusyLesHouches.h
+
+/bin/cp ./modified/PythiaStdlib.h ./include/pythia/.
+/bin/cp ./modified/Analysis.h ./include/pythia/.
+/bin/cp ./modified/Basics.h ./include/pythia/.
+
+/bin/cp ./modified/SusyLesHouches.cc ./source/.
+

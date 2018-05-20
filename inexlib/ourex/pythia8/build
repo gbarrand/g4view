@@ -1,0 +1,34 @@
+#!/bin/sh -f
+
+bush_home=../../../bush
+
+. ${bush_home}/args
+. ${bush_home}/ourex_header
+
+#//////////////////////////////////////////////
+#/// compile //////////////////////////////////
+#//////////////////////////////////////////////
+if [ ${build_compile} = "yes" ] ; then
+
+#cppflags="${cppflags} ${G4_cppflags}"
+
+cppflags="${cppflags} -I./include/pythia"
+
+/bin/rm -f tmp_0
+find ./source -name "*.cc" -print > tmp_0
+for file in $(cat tmp_0) ; do ccfiles="${ccfiles} ${file}";done
+/bin/rm -f tmp_0
+
+. ${bush_home}/compile
+
+fi # end build_compile
+
+if [ ${build_visual} = "yes" ] ; then
+  # because we can't put in the lib LHAPDFDummy.cc and that symbols are
+  # lacking, we can't build the dll.
+  build_shlib=no
+fi
+ 
+if [ ${build_archive} = "yes" ] ; then . ${bush_home}/archive; fi
+
+. ${bush_home}/clean
