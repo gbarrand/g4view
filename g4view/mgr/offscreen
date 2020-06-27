@@ -1,8 +1,0 @@
-exec_menu_item examples
-exec_menu_item calorimeter
-push_home
-#start run
-exec_menu_item beam on
-exec_menu_item Ok
-do_paint
-do_png
