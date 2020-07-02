@@ -16,4 +16,7 @@ Module.app_source_insh       = Module.cwrap('app_source_insh','void',['string'])
 Module.app_upload_rgbas      = Module.cwrap('app_upload_rgbas','void',['number','number']);
 Module.app_delete_buffer     = Module.cwrap('app_delete_buffer','void',['number']);
 
+Module.app_map_warn          = Module.cwrap('app_map_warn','void',['string','number']);
+Module.app_pop_list          = Module.cwrap('app_pop_list','void',['void']);
+
 Module.app_doc_files_to_ui   = Module.cwrap('app_doc_files_to_ui','void',['void']);

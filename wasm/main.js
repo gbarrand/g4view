@@ -138,7 +138,7 @@ function upload_file(a_file_name,a_data,a_warn) {
   const data_ptr = Module._malloc(num_bytes);
   const data_on_heap = new Int8Array(Module.HEAP8.buffer, data_ptr, num_bytes);
   data_on_heap.set(a_data);
-  Module.app_upload_file(a_file_name,data_on_heap.byteOffset,a_data.length,a_warn);
+  Module.app_upload_file(a_file_name,data_on_heap.byteOffset,num_bytes,a_warn);
   Module._free(data_ptr);
   //console.log('[Copy to Heap (Cwrap)] Time to load: ' + (new Date() - start_time));
 }
@@ -149,7 +149,7 @@ function upload_buffer(a_data,a_sargs) {
   const data_ptr = Module._malloc(num_bytes);
   const data_on_heap = new Int8Array(Module.HEAP8.buffer, data_ptr, num_bytes);
   data_on_heap.set(a_data);
-  Module.app_upload_buffer(data_on_heap.byteOffset,a_data.length,a_sargs);
+  Module.app_upload_buffer(data_on_heap.byteOffset,num_bytes,a_sargs);
   Module._free(data_ptr);
   //console.log('[Copy to Heap (Cwrap)] Time to load: ' + (new Date() - start_time));
 }
@@ -163,7 +163,7 @@ function handle_drop(a_event) {
 function download_app_doc_file(a_file_name) {
   if(a_file_name.length==0) return;
   var length = Module.app_get_doc_file_size(a_file_name);
-  if(length==0) {alert('File not found.');return;}
+  if(length==(-1)) {alert('File not found.');return;}
   var buffer = Module.app_get_doc_file(a_file_name);
   const array = new Int8Array(Module.HEAP8.buffer,buffer,length);
   download(array,a_file_name,'example/binary');
@@ -209,4 +209,3 @@ function run_time_init(a_canvas) {
   }}
     
 }
-
