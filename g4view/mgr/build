@@ -17,14 +17,29 @@ if [ ${build_sdk_android} = "yes" ] ; then
 fi
 
 if [ ${build_visual} = "yes" ] ; then
-  cppflags="${cppflags} -bigobj"
   cppflags="${cppflags} -DNOMINMAX" #disconnect the cpp macros min,max in windows.h
 fi
 
 cppflags="${cppflags} -DEXLIB_HAS_PYTHIA8"
 
-cppfiles="${cppfiles} ${exlib_home}/exlib/yacc/cexpr_lexer.cpp"
-cppfiles="${cppfiles} ${exlib_home}/exlib/yacc/cexpr_eval.cpp"
+cppfiles="${cppfiles} ${inlib_home}/inlib/yacc/cexpr_lexer.cpp"
+cppfiles="${cppfiles} ${inlib_home}/inlib/yacc/cexpr_eval.cpp"
+
+#//////////////////////////////////////////////////////
+#//////////////////////////////////////////////////////
+#//////////////////////////////////////////////////////
+if [ ${build_x11} = yes ] ; then
+  cppflags="${cppflags} -DEXLIB_APP_HAS_TERM -DEXLIB_APP_TERM_INSH"
+  use_Getline=yes
+fi
+if [ ${build_sdk_mac} = yes ] ; then
+  cppflags="${cppflags} -DEXLIB_APP_HAS_TERM -DEXLIB_APP_TERM_INSH"
+  use_Getline=yes
+fi
+if [ ${build_visual} = yes ] ; then
+  cppflags="${cppflags} -DEXLIB_APP_HAS_TERM -DEXLIB_APP_TERM_INSH"
+  use_Getline=yes
+fi
 
 #//////////////////////////////////////////////////////
 #//////////////////////////////////////////////////////
@@ -35,6 +50,7 @@ use_pythia8=yes
 use_zip=yes
 use_csz=yes
 
+. ${bush_home}/use/Getline
 . ${bush_home}/use/csz
 . ${bush_home}/use/zip
 
