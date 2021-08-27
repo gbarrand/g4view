@@ -1,3 +1,7 @@
+2.0.0:
+- fully insh scripted, including the GUI central panel.
+- wasm: have a terminal mode. Use 'Show terminal' in the main GUI panel to activate it.
+
 1.4.0 :
  - first version on github. Update to use inlib/exlib of May 2018.
 
