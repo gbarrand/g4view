@@ -4,130 +4,38 @@
 #ifndef g4view_g4view_main
 #define g4view_g4view_main
 
-#include <string>
-
-namespace g4view {
-
-class context {
-public:
-  context(const std::string&) {}
-  virtual ~context() {}
-protected:
-  context(const context&){}
-  context& operator=(const context&){return *this;}
-};
-
-}
-
 #include "version"
 
-//////////////////////////////////////////////////////
-//////////////////////////////////////////////////////
-//////////////////////////////////////////////////////
-#include <inlib/ftp/cbk>
-#include <inlib/cbk/files>
+#ifdef _WIN32
+#include <windows.h>
+#undef ABSOLUTE
+#undef RELATIVE
+#endif
 
-#include <exlib/png>
-#include <exlib/jpeg>
-#include <exlib/scenarios_opener>
+#include "insh"
 
-//////////////////////////////////////////////////////
-/// Geant4 ///////////////////////////////////////////
-//////////////////////////////////////////////////////
 #include <exlib/geant4/output>
-#include <exlib/geant4/exas>
-#include <exlib/geant4/primary_generator>
 #include <exlib/geant4/opener>
+#include <exlib/geant4/physics_list>
+#include <exlib/uzres>
 
-#include "physics_list"
+#include <exlib/insh/app>
+#include <exlib/insh/g4>
+#include <exlib/insh/g4exas>
+
+#include <inlib/insh/ishell_args_class_cmd>
 
 #include <G4VUserDetectorConstruction.hh>
 
-#include <G4Tubs.hh>
-#include <G4LogicalVolume.hh>
-#include <G4PVPlacement.hh>
-#include <G4Version.hh>
-//#include <G4LossTableManager.hh>
-//#include <G4HadronicProcessStore.hh>
-
-#ifdef EXLIB_HAS_PYTHIA8
-#include <pythia/pythia_version.h>
-#endif
-
-//////////////////////////////////////////////////////
-//////////////////////////////////////////////////////
-//////////////////////////////////////////////////////
-#include <exlib/uzres>
+#define UNFOLD_RES_FILE(a__zip,a__env,a__tmp_prefix,a__dir) \
+  if(!exlib::unfold(a_out,a_doc_dir,a_res_dir,a_tmp_dir,m_tmp_dirs,a__zip,exlib::geant4::s_##a__env(),a__tmp_prefix,a__dir)) return;
 
 #define CHECK_ENV(a__name) \
   if(!inlib::is_env(#a__name)) {\
-    a_out << "pre_main : env variable " << #a__name << " not defined." << std::endl;\
+    a_out << "g4view::main: env variable " << #a__name << " not defined." << std::endl;\
     return;\
   }
   
-#define UNFOLD_RES_FILE(a__zip,a__env,a__tmp_prefix,a__dir) \
-  if(!exlib::unfold(a_out,a_data_dir,a_res_dir,a_tmp_dir,m_tmps,a__zip,exlib::geant4::s_##a__env(),a__tmp_prefix,a__dir)) return;
-
-
-namespace g4view {
-
-INLIB_GLOBAL_STRING(g4view_)
-
-class pre_main : public exlib::geant4::output {
-  typedef exlib::geant4::output parent;
-public:
-  pre_main(std::ostream& a_out,
-           const std::string& a_data_dir,
-           const std::string& a_res_dir,
-           const std::string& a_tmp_dir)
-  :parent(a_out)
-  ,m_is_valid(false)
-  {
-    ///////////////////////////////////////////////////
-    /// unfold geant4 data files : ////////////////////
-    ///////////////////////////////////////////////////
-#if defined(G4VERSION_NUMBER) && G4VERSION_NUMBER>=1030
-    UNFOLD_RES_FILE("g4ndl_4_5.zip",G4NEUTRONHPDATA,s_g4view_(),"G4NDL4.5");
-    UNFOLD_RES_FILE("g4emlow_6_50.zip",G4LEDATA,s_g4view_(),"G4EMLOW6.50");
-    UNFOLD_RES_FILE("photonevaporation_4_3_2.zip",G4LEVELGAMMADATA,s_g4view_(),"PhotonEvaporation4.3.2");
-    UNFOLD_RES_FILE("g4ensdfstate_2_1.zip",G4ENSDFSTATEDATA,s_g4view_(),"G4ENSDFSTATE2.1");
-    UNFOLD_RES_FILE("g4saiddata_1_1.zip",G4SAIDXSDATA,s_g4view_(),"G4SAIDDATA1.1");
-    CHECK_ENV(G4NEUTRONHPDATA)
-    CHECK_ENV(G4LEDATA)
-    CHECK_ENV(G4LEVELGAMMADATA)
-    CHECK_ENV(G4ENSDFSTATEDATA)
-    CHECK_ENV(G4SAIDXSDATA)
-#else
-  //UNFOLD_RES_FILE("g4emlow_6_23.zip",G4LEDATA,s_g4view_(),"G4EMLOW6.23");
-    UNFOLD_RES_FILE("g4emlow_6_50.zip",G4LEDATA,s_g4view_(),"G4EMLOW6.50");
-    CHECK_ENV(G4LEDATA)
-#endif
-
-#ifdef EXLIB_HAS_PYTHIA8
-   {std::string svers(PYTHIA_VERSION); //should be guessed from Pythia itself.
-    std::string file = "pythia_"+svers+"_xmldoc.zip";
-    std::string sdir = "pythia_"+svers+inlib::sep()+"xmldoc";
-    UNFOLD_RES_FILE(file,PYTHIA8DATA,s_g4view_(),sdir);}
-    CHECK_ENV(PYTHIA8DATA)
-#endif
-    // disconnect Geant4 output :
-    parent::disable_geant4_output();
-    m_is_valid = true;
-  }
-  virtual ~pre_main(){}
-protected:
-  pre_main(const pre_main& a_from):parent(a_from),m_is_valid(false){}
-  pre_main& operator=(pre_main&){return*this;}
-protected:
-  bool m_is_valid;
-  std::vector<std::string> m_tmps;
-};
-
-}
-
-#undef CHECK_ENV
-#undef UNFOLD_RES_FILE
-
 //////////////////////////////////////////////////////
 //////////////////////////////////////////////////////
 //////////////////////////////////////////////////////
@@ -162,234 +70,153 @@ public:
   detector& operator=(const detector&){return *this;}
 };
 
-class main
-:public pre_main //WARNING : must be before exlib::geant4::run_manager.
-,public exlib::geant4::run_manager
-,public exlib::geant4::viewer
-{
-  typedef pre_main parent_pre_main;
-  typedef exlib::geant4::run_manager parent_run_manager;
+class main: public exlib::geant4::output, public exlib::geant4::viewer {
+  typedef exlib::geant4::output parent_output;
   typedef exlib::geant4::viewer parent_viewer;
-public:  
-  INLIB_SCLASS(g4view::main)
-  virtual void* cast(const std::string& a_class) const {
-    if(void* p = inlib::cmp_cast<main>(this,a_class)) return p;
-    //if(void* p = inlib::cmp_cast<parent_run_manager>(this,a_class)) return p;
-    return parent_viewer::cast(a_class);
+//public:  
+//  INLIB_SCLASS(g4view::main)
+//  virtual void* cast(const std::string& a_class) const {
+//    if(void* p = inlib::cmp_cast<main>(this,a_class)) return p;
+//    return parent_viewer::cast(a_class);
+//  }
+public:
+  static const std::string& s_version() {
+    static const std::string s_v(G4VIEW_VERSION);
+    return s_v;
   }
-private:
+  static const std::string& s_args_help() {
+    static const std::string s_v;
+    return s_v;
+  }
+protected:  
   INLIB_CLASS_STRING(g4view_)
-  INLIB_CLASS_STRING(geant4_geo_scenarios)
-protected:
-  virtual inlib::sg::node* create_main_menu() {
-    inlib::sg::list* list = parent_viewer::create_home_menu();
-
-    inlib::sg::add_image_item_before
-      (*this,*list,s_geom(),inlib::sg::s_files(),"files.jpg",inlib::cbk::action_files,inlib::sg::pos_data(false,0,0));
-    if(has_open_panel()) {
-      inlib::sg::add_image_item_before
-        (*this,*list,s_geom(),"open...","files.jpg",inlib::sg::action_open_open_panel,inlib::sg::pos_data(false,0,0));
-    }
-
-    if(m_ftps.size()) {
-      inlib::sg::add_image_item_before
-        (*this,*list,s_geom(),"ftp","location_ftp.jpg",inlib::ftp::action_ftp,inlib::ftp::pos_data(m_ftps,false,0,0));
-    }
-
-    inlib::sg::add_image_item_after(*this,*list,s_geom(),"examples","package_edutainment.jpg",
-                                    exlib::geant4::exa_head,inlib::sg::pos_data(false,0,0));
-
-    inlib::sg::add_image_item_before(*this,*list,s_clear_event(),"set gun","gun.jpg",
-                                     action_set_gun,inlib::sg::pos_data(false,0,0));
-    inlib::sg::add_image_item_before(*this,*list,s_clear_event(),"set material","edit_geom.jpg",
-                                     action_lv_list,inlib::sg::pos_data(false,0,0));
-
-  //inlib::sg::add_white_item(*this,*list,s_geom(),action_geo);
-    inlib::sg::add_image_item_before(*this,*list,s_clear_event(),"geom tree","white.jpg",
-                                     action_geo,inlib::sg::pos_data(false,0,0));
-
-    list->remove_item(s_create_histos());
-
-   {std::vector<std::string> about;
-    about.push_back("App : g4view");
-    about.push_back("Version : "+std::string(G4VIEW_VERSION));
-    about.push_back("Author : Guy Barrand");
-    std::string stmp;
-    if(!inlib::num2s(G4VERSION_NUMBER,stmp)){}
-    about.push_back("on Geant4 : "+stmp);
-#ifdef EXLIB_HAS_PYTHIA8
-    about.push_back("on Pythia : "+std::string(PYTHIA_VERSION));
-#endif    
-    inlib::sg::add_image_item_after(*this,*list,s_utils(),s_about(),"icon.jpg",inlib::sg::action_about,about);}
-
-/*
-    list_add_before(*list,"params","plot","histo.jpg",
-      new exlib::cbk::regions(*this,0,exlib::cbk::regions::action_get_plots()));
-*/
-
-    return list;
-  }
-
-  virtual void reset_histos() {
-    const G4UserSteppingAction* sa = m_run_manager.GetUserSteppingAction();
-    if(!sa) return;
-    exlib::geant4::histo_mgr* hmgr = dynamic_cast<exlib::geant4::histo_mgr*>(const_cast<G4UserSteppingAction*>(sa));
-    if(!hmgr) return;
-    hmgr->reset_histos();
-    inlib::sg::plots& plots = get_plots();
-    plots.touch_plotters();
+protected: //insh  
+  EXLIB_INSH_APP_HEADER(main)
+  static void insh_app_version(inlib::ishell& a_insh,const std::vector<std::string>&) {
+    a_insh.out(G4VIEW_VERSION);
   }
 public:
   main(std::ostream& a_out,
        inlib::sg::render_manager& a_gl_mgr,
        const inlib::sg::base_freetype& a_ttf,
        const inlib::sg::selection& a_selection,
-       const std::string& a_data_dir,
+       const std::string& a_doc_dir,
        const std::string& a_res_dir,
        const std::string& a_out_dir,
        const std::string& a_tmp_dir,
-       bool /*a_verbose*/,
-       unsigned int)
-  :parent_pre_main(a_out,a_data_dir,a_res_dir,a_tmp_dir)
-  ,parent_run_manager()
-  ,parent_viewer(parent_run_manager::get_me(),"g4view",G4VIEW_VERSION,a_out,a_gl_mgr,a_ttf,a_selection,a_data_dir,a_res_dir)
+       bool a_verbose,
+       unsigned int a_mem_limit)
+  :parent_output(a_out,false)
+  ,parent_viewer("g4view",G4VIEW_VERSION,
+		 a_out,a_gl_mgr,a_ttf,a_selection,
+		 a_doc_dir,a_res_dir,a_out_dir,a_tmp_dir,a_verbose,a_mem_limit)
+  ,m_run_manager(0)
   {
-    if(!m_is_valid) return;
-    m_tmp_dirs = m_tmps;
+    //////////////////////////////////////
+    /// insh: ////////////////////////////
+    //////////////////////////////////////
+    insh_app_add_cmds();
+    EXLIB_INSH_G4_ADDS(parent_viewer::m_main_insh,*this)
     
-    m_opener.add_ext(".scenarios");
+    INLIB_INSH_ADD_ISHELL_ARGS_GEANT4_OUTPUT_CMD(insh(),*this,g4_output,
+      exlib::insh_g4_output,
+"g4_output: g4_output enable/disable\n\
+  Enable, disable Geant4 output.\n\
+  Example:\n\
+    g4_output enable\n\
+    g4_apply_command '/control/verbose 2'\n\
+    g4_apply_command '/run/verbose 2'\n\
+    g4_beam_on\n\
+    g4_output disable\n\
+    g4_beam_on\n\
+")
+
+    EXLIB_INSH_G4EXAS_ADDS(parent_viewer::m_main_insh,*this)
+
+    INLIB_INSH_ADD_ISHELL_ARGS_CMD(insh(),app_version,
+      insh_app_version,
+      "app_version: app_version\n  Print the application version.\n")
+      
+    INLIB_INSH_ADD_ISHELL_ARGS_CMD(insh(),app_primary_generator_set,
+      insh_app_primary_generator_set,
+"app_primary_generator_set: app_primary_generator_set\n\
+")
+
+    INLIB_INSH_ADD_ISHELL_ARGS_CMD(insh(),app_primary_generator_get,
+      insh_app_primary_generator_get,
+"app_primary_generator_get: app_primary_generator_get\n\
+")
+    //////////////////////////////////////
+    //////////////////////////////////////
+    //////////////////////////////////////
+      
     m_opener.add_ext(".gdml");
+    m_opener.add_opener(inlib::file::s_format_gdml(),new exlib::geant4::opener());
     m_opener.add_ext(".mac");
-
-    m_opener.add_opener(inlib::file::s_format_scenarios(),new exlib::scenarios_opener(m_opener.openers()));
-
-    m_opener.add_opener(inlib::file::s_format_gdml(),new exlib::geant4::opener(*this));
     m_opener.add_opener(inlib::file::s_format_mac(),new exlib::geant4::mac_opener());
-
-#ifdef EXLIB_HAS_PYTHIA8
-    m_opener.add_ext(".cmnd");
-    m_opener.add_opener(inlib::file::s_format_cmnd(),new exlib::geant4::cmnd_opener(*this));
-#endif
-
-    m_image_readers.add_reader(inlib::file::s_format_jpeg(),new exlib::jpeg::reader());
-    m_image_readers.add_reader(inlib::file::s_format_png(),new exlib::png::reader());
-
-    m_out_dir = a_out_dir;
-    m_tmp_dir = a_tmp_dir;
-
-   {std::string spwd;
-    if(!inlib::dir::pwd(spwd)) {
-      a_out << "g4view::main::main : can't get pwd." << std::endl;
-    } else {
-      //m_out << "pwd : " << spwd << std::endl;
-    }
-    m_pwd = spwd;}
-
-/*
-    if(inlib::device::is_iOS()){
-      std::vector<std::string> dirs;
-      if(inlib::dir::dirs(a_tmp_dir,dirs,false)){
-        std::vector<std::string>::const_iterator it;
-        for(it=dirs.begin();it!=dirs.end();++it) {
-          if((*it).substr(0,s_g4view_().size())==s_g4view_()) {
-            if(!inlib::dir::rmdir(a_tmp_dir+inlib::sep()+(*it))){}
-          }
-        }
-      }
-    }
-*/
-
-    ///////////////////////////////////////////////////
-    ///////////////////////////////////////////////////
-    ///////////////////////////////////////////////////
-
-    m_params.m_scene_screen_color = inlib::colorf_white();
-
-   {inlib::xml::styles::style_t sty;
-    sty.push_back(inlib::xml::styles::style_item_t(s_color(),inlib::s_red()));
-    styles().add_style(exlib::geant4::s_trajectory()+inlib::res_sep()+s_default(),sty);}
-
-   {inlib::sg::ortho* camera = new inlib::sg::ortho();
-    camera->height = 40;
-    float z = 100;
-    camera->znear = 0.01f*z;
-    camera->zfar = 100*z;
-    camera->position = inlib::vec3f(0,0,z);
-    camera->focal = z;
-    camera->dx = z*0.003f;
-    camera->da = camera->da.value()/2;
-
-    replace_camera(camera);} //it takes ownership of camera.
-
-    //evd_layout().set_rotate(1,0,0,inlib::fhalf_pi());
-    //evd_layout().mul_scale(0.7f);
-    //evd_get_plots();
 
     //////////////////////////////////////
     /// Geant4 : /////////////////////////
     //////////////////////////////////////
-/*
-    G4RunManager* rmgr = G4RunManager::GetRunManager();
-    if(rmgr) { // may happen in WebGL server case.
-      a_out << "g4view::main::main : WARNING : G4RunManager::GetRunManager() !=0." << std::endl;
-      if(!dynamic_cast<exlib::geant4::run_manager*>(rmgr)) {
-        a_out << "g4view::main::main : and it is not a exlib::geant4::run_manager." << std::endl;
-      }
-      m_runManager = rmgr;
-      m_delete_runManager = false;
-    } else {
-    */
-/*
-      G4UImanager* ui = G4UImanager::GetUIpointer();
-      if(!ui) {
-        // In G4-9.x, in the G4UImanager singleton management, there is the "fUImanagerHasBeenKilled" logic that
-        // refrains to recreate a G4UImanager throught the GetUIpointer() global method. Then attempting to
-        // create again a G4RunManager will crash at internal command creations.
-        a_out << "g4view::main::main : WARNING : can't create G4UImanager(). We can't continue." << std::endl;
-        m_runManager = 0;
-        m_delete_runManager = false;
-        return;
-      }
-*/
+#if defined(G4VERSION_NUMBER) && G4VERSION_NUMBER>=1030
+    UNFOLD_RES_FILE("g4ndl_4_5.zip",G4NEUTRONHPDATA,s_g4view_(),"G4NDL4.5");
+    UNFOLD_RES_FILE("g4emlow_6_50.zip",G4LEDATA,s_g4view_(),"G4EMLOW6.50");
+    UNFOLD_RES_FILE("photonevaporation_4_3_2.zip",G4LEVELGAMMADATA,s_g4view_(),"PhotonEvaporation4.3.2");
+    UNFOLD_RES_FILE("g4ensdfstate_2_1.zip",G4ENSDFSTATEDATA,s_g4view_(),"G4ENSDFSTATE2.1");
+    UNFOLD_RES_FILE("g4saiddata_1_1.zip",G4SAIDXSDATA,s_g4view_(),"G4SAIDDATA1.1");
+    CHECK_ENV(G4NEUTRONHPDATA)
+    CHECK_ENV(G4LEDATA)
+    CHECK_ENV(G4LEVELGAMMADATA)
+    CHECK_ENV(G4ENSDFSTATEDATA)
+    CHECK_ENV(G4SAIDXSDATA)
+#else
+  //UNFOLD_RES_FILE("g4emlow_6_23.zip",G4LEDATA,s_g4view_(),"G4EMLOW6.23");
+    UNFOLD_RES_FILE("g4emlow_6_50.zip",G4LEDATA,s_g4view_(),"G4EMLOW6.50");
+    CHECK_ENV(G4LEDATA)
+#endif
 
-    //a_out << "g4view::main::main : create a exlib::geant4::run_manager." << std::endl;
-    //G4LossTableManager::Instance()->SetVerbose(-1);
-    //G4HadronicProcessStore::Instance()->SetVerbose(-1);
+#ifdef EXLIB_HAS_PYTHIA8
+   {std::string svers(PYTHIA_VERSION); //should be guessed from Pythia itself.
+    std::string file = "pythia_"+svers+"_xmldoc.zip";
+    std::string sdir = "pythia_"+svers+inlib::sep()+"xmldoc";
+    UNFOLD_RES_FILE(file,PYTHIA8DATA,s_g4view_(),sdir);}
+    CHECK_ENV(PYTHIA8DATA)
+#endif
+
+    m_run_manager = new G4RunManager;
 
     // mandatory user initialization classes :
-    parent_run_manager::SetUserInitialization(new detector());
-    parent_run_manager::SetUserInitialization(new physics_list());
+    m_run_manager->SetUserInitialization(new detector());
+    m_run_manager->SetUserInitialization(new exlib::geant4::physics_list());
 
     // mandatory user action class :
-   {exlib::geant4::primary_generator* gen = new exlib::geant4::primary_generator(a_out);
+   {primary_generator* gen = new primary_generator(a_out);
     gen->set_sigma_angle(90*CLHEP::degree);
-    parent_run_manager::SetUserAction(gen);}
+    m_run_manager->SetUserAction(gen);}
 
-    parent_run_manager::Initialize(); // initialize Geant4 kernel
+    m_run_manager->Initialize(); // initialize Geant4 kernel
 
   }
   virtual ~main() {
-//    if(m_delete_runManager) {
-      // exlib::geant4::event_timer::stop() uses m_runManager. As it is called in exlib::geant4::viewer::~viewer, we have
-      // to stop timers before deleting m_runManager.
-      //parent_viewer::stop_event_anim();
-      G4GeometryManager::GetInstance()->OpenGeometry();
-      exlib::geant4::clean_geom_stores();
-//    }
+    G4GeometryManager::GetInstance()->OpenGeometry();
+    exlib::geant4::clean_geom_stores();
+    delete m_run_manager;
     clear_tmp();
   }
 protected:
   main(const main& a_from)
-  :parent_pre_main(a_from)
-  ,parent_run_manager()
+  :parent_output(a_from.out(),true)
   ,parent_viewer(a_from)
+  ,m_run_manager(0)
   {}
 private:
-  main& operator=(const main& a_from){
-    m_opener = a_from.m_opener;
-    return *this;
-  }
+  main& operator=(const main&) {return *this;}
+protected:  
+  G4RunManager* m_run_manager;
 };
+
+#undef CHECK_ENV
+#undef UNFOLD_RES_FILE
 
 }
 
