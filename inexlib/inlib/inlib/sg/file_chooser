@@ -6,7 +6,7 @@
 
 #include "base_fch"
 
-#include "../dirmanip"
+#include "../dirmanip" //windows.h
 
 namespace inlib {
 namespace sg {
@@ -27,7 +27,7 @@ public:
     _dirs.push_back(a_path);
     std::vector<std::string> _exts;
     _exts.push_back(a_ext);
-    return inlib::get_files(a_out,_dirs,_exts,a_paths);
+    return inlib::get_files_with_exts(a_out,_dirs,_exts,a_paths);
   }
 public:
   file_chooser(const base_freetype& a_ttf)

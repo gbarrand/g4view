@@ -99,7 +99,7 @@ public:
   bool add_at_top(const std::string& a_label,
                   bcbk* a_cbk,  //we take ownerhsip
                   bool a_dir = false) {
-    if(items.empty()) {delete a_cbk;return false;}	       
+    if(items.empty()) {delete a_cbk;return false;}
     items.insert(items.values().begin(),list_item(a_label,a_cbk,a_dir));
     return true;
   }
@@ -108,7 +108,7 @@ public:
                   const img_byte& a_img,
                   bcbk* a_cbk,  //we take ownerhsip
                   bool a_dir = false) {
-    if(items.empty()) {delete a_cbk;return false;}	       
+    if(items.empty()) {delete a_cbk;return false;}
     items.insert(items.values().begin(),list_item(a_label,a_img,a_cbk,a_dir));
     return true;
   }
@@ -126,7 +126,7 @@ public:
       }
     }
     delete a_cbk;
-    return false;    
+    return false;
   }
 
   bool add_before(const std::string& a_item,
@@ -143,7 +143,7 @@ public:
       }
     }
     delete a_cbk;
-    return false;    
+    return false;
   }
 
   bool add_after(const std::string& a_item,
@@ -159,7 +159,7 @@ public:
       }
     }
     delete a_cbk;
-    return false;    
+    return false;
   }
 
   bool add_after(const std::string& a_item,
@@ -176,7 +176,7 @@ public:
       }
     }
     delete a_cbk;
-    return false;    
+    return false;
   }
 
   bool add_callback(const std::string& a_item,
@@ -192,7 +192,7 @@ public:
       }
     }
     delete a_cbk;
-    return false;    
+    return false;
   }
 
   bool remove_item(const std::string& a_item) {
@@ -204,7 +204,7 @@ public:
         return true;
       }
     }
-    return false;    
+    return false;
   }
 
   bool has_item(const std::string& a_label) const {
@@ -213,7 +213,7 @@ public:
     inlib_vforcit(list_item,items.values(),it) {
       if((*it).strings()==ss) return true;
     }
-    return false;    
+    return false;
   }
 
   const list_item* find_item(const std::string& a_label) const {
@@ -288,6 +288,8 @@ protected:
         b->back_area::color = dir_color;
       }
 
+    //m_texts.add(new noderef(*b));
+      
       return b;
 
     } else {
@@ -312,17 +314,17 @@ protected:
       b->hmargin_factor = text_hmargin_factor;
 
       b->back_area::corner_radius = corner_radius;
-    
+
       b->width = witem();
       b->height = hitem();
-    
+
       b->copy_cbks(item.cbks());
 
       if(item.is_dir()) {
         b->back_area::color = dir_color;
       }
 
-      m_texts.add(new noderef(*b));
+    //m_texts.add(new noderef(*b));
 
       return b;
 
@@ -342,19 +344,19 @@ protected:
     b->arm_color = arm_color;
     b->wmargin_factor = text_wmargin_factor;
     b->hmargin_factor = text_hmargin_factor;
-    
+
     b->back_area::corner_radius = corner_radius;
 
     b->width = witem();
     b->height = hitem()*0.95f;
-    
+
     b->hjust = center;
 
     b->copy_cbks(m_cancel_cbks);
 
     return b;
   }
-  
+
   virtual node* create_label() const {
     float wtext = witem();
     float htext = hitem();
@@ -380,10 +382,10 @@ protected:
     return b;
   }
   virtual void enforce_common_text_height(std::ostream& a_out) {
-    sg::enforce_common_text_height(a_out,m_texts);
+    sg::enforce_common_text_height(a_out,parent::m_sep);
   }
 protected:
-  const base_freetype& m_ttf;    
+  const base_freetype& m_ttf;
 };
 
 }}

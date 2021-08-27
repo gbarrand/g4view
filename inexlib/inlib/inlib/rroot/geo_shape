@@ -37,10 +37,17 @@ public: //iro
     if(!a_buffer.read(fShapeBits)) return false;
 
     if(!a_buffer.check_byte_count(s,c,"TGeoShape")) return false;
+/*
+    a_buffer.out() << "debug : geo_shape::stream :"
+                   << " class " << sout(s_cls())
+                   << " name " << sout(m_name)
+                   << " title " << sout(m_title)
+                   << std::endl;
+*/
     return true;
   }
 public:
-  virtual void dump(std::ostream&) const {}
+  virtual void dump(std::ostream&,const std::string& a_indent = std::string()) const {}
 public:
   static cid id_class() {return geo_shape_cid();}
   virtual void* cast(cid a_class) const {
@@ -58,7 +65,7 @@ public:
 #ifdef INLIB_MEM
     mem::decrement(s_class().c_str());
 #endif
-  }	
+  }
 public:
   geo_shape(const geo_shape& a_from)
   :iro(a_from)
@@ -88,7 +95,7 @@ template <class T>
 inline T* cast_shape(geo_shape& a_shape) {
   return id_cast<geo_shape,T>(a_shape);
 }
-  
+
 }}
 
 #endif

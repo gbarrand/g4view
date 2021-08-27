@@ -48,7 +48,7 @@ public:
       INLIB_ARG_FIELD_DESC(text_wmargin_factor),
       INLIB_ARG_FIELD_DESC(text_hmargin_factor),
       INLIB_ARG_FIELD_DESC(show_cancel),
-      
+
       INLIB_ARG_FIELD_DESC_OPTS_BEG(font,8)
         font_hershey().c_str(),
         font_arial_ttf().c_str(),
@@ -59,7 +59,7 @@ public:
         font_helvetica_ttf().c_str(),
         font_times_roman_ttf().c_str()
       INLIB_ARG_FIELD_DESC_OPTS_END,
-      
+
       INLIB_ARG_FIELD_DESC_ENUMS_BEG(font_modeling,3)
         INLIB_ARG_ENUM(font_outline),
         INLIB_ARG_ENUM(font_filled),
@@ -100,12 +100,12 @@ public:
     if(a_action.done()) return;
   }
   virtual void search(search_action& a_action) {
-    parent::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg(a_action.out());
       reset_touched();
     }
+    parent::search(a_action);
+    if(a_action.done()) return;
     if(a_action.do_path()) a_action.path_push(this);
     m_sep.search(a_action);
     if(a_action.done()) return;
@@ -211,7 +211,7 @@ protected:
     typedef bcbk parent;
   public:
     virtual return_action action() {
-      std::string _s = m_colors.value.value(); 
+      std::string _s = m_colors.value.value();
       if(m_action==s_C()) {
         _s.clear();
       } else {
@@ -259,12 +259,12 @@ protected:
 
     unsigned int index = 0;
     unsigned int number = (unsigned int)def_cmap.size();
-  
+
     unsigned int rows = 6;
     unsigned int cols = 11;
     for(unsigned int row=0;row<rows;row++) {
       for(unsigned int col=0;col<cols;col++) {
-        if(index>=number) break;  
+        if(index>=number) break;
 
         style_colormap::const_iterator it = def_cmap.find(index);
         if(it==def_cmap.end()) {

@@ -99,7 +99,7 @@ public:
   }
 public:
   void initialize(std::ostream& a_out) {
-    clear();   
+    clear();
     label.value().clear();
 
    {const std::vector<std::string>& vs = dirs.values();
@@ -175,9 +175,8 @@ public:
           cbk_->m_ext = vs[0];
           m_this.add(vs[0],cbk_);
         }}
-    
-        m_this.m_stack.push_back
-          (stack_item(m_this.label.value(),m_this.items));
+
+        m_this.m_stack.push_back(stack_item(m_this.label.value(),m_this.items));
 
         return return_to_render;
 
@@ -188,7 +187,7 @@ public:
 
         std::vector<std::string> paths;
         if(!m_this.get_files(m_out,m_path,m_ext,paths)){}
-  
+
        {inlib_vforcit(std::string,paths,it) {
           if(m_ext=="*") {
             _cbk* cbk_ = new _cbk(m_this,m_out,action_choose_fmt());
@@ -250,7 +249,7 @@ public:
     virtual bcbk* copy() const {return new _cbk(*this);}
   public:
     _cbk(base_fch& a_this,std::ostream& a_out,unsigned int a_action)
-    :acbk(a_action)    
+    :acbk(a_action)
     ,m_this(a_this)
     ,m_out(a_out)
     {}
@@ -283,8 +282,8 @@ public:
 protected:
   cbks m_cbks;
   typedef mf_list_item mf_t;
-  typedef std::pair<std::string,mf_t> stack_item;  
-  std::vector<stack_item> m_stack;  
+  typedef std::pair<std::string,mf_t> stack_item;
+  std::vector<stack_item> m_stack;
 };
 
 }}

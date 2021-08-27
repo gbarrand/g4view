@@ -6,6 +6,8 @@
 
 #include "../sg/node"
 #include "../sg/rgba"
+#include "../sg/draw_style"
+#include "../sg/shade_model"
 
 namespace inlib {
 namespace cbk {
@@ -15,6 +17,8 @@ public:
   popup_data(sg::node& a_node,int a_ex,int a_ey)
   :m_node(a_node),m_ex(a_ex),m_ey(a_ey)
   ,m_rgba(0)
+  ,m_draw_style(0)
+  ,m_shade_model(0)
   ,m_z(0),m_w(0)
   ,m_what(0)
   {}
@@ -25,6 +29,8 @@ public:
   ,m_ex(a_from.m_ex),m_ey(a_from.m_ey)
   ,m_field_desc(a_from.m_field_desc)
   ,m_rgba(a_from.m_rgba)
+  ,m_draw_style(a_from.m_draw_style)
+  ,m_shade_model(a_from.m_shade_model)
   ,m_state(a_from.m_state)
   ,m_z(a_from.m_z)
   ,m_w(a_from.m_w)
@@ -37,6 +43,8 @@ public:
     m_ey = a_from.m_ey;
     m_field_desc = a_from.m_field_desc;
     m_rgba = a_from.m_rgba;
+    m_draw_style = a_from.m_draw_style;
+    m_shade_model = a_from.m_shade_model;
     m_state = a_from.m_state;
     m_z = a_from.m_z;
     m_w = a_from.m_w;
@@ -49,8 +57,9 @@ public:
   int m_ex;
   int m_ey;
   sg::field_desc m_field_desc;
-  // color :
   sg::rgba* m_rgba;
+  sg::draw_style* m_draw_style;
+  sg::shade_model* m_shade_model;
   // center :
   sg::state m_state;
   float m_z;

@@ -52,18 +52,18 @@ public:
       INLIB_ARG_FIELD_DESC(text_wmargin_factor),
       INLIB_ARG_FIELD_DESC(text_hmargin_factor),
       INLIB_ARG_FIELD_DESC(value),
-      
+
       INLIB_ARG_FIELD_DESC_ENUMS_BEG(kind,3)
         INLIB_ARG_ENUM(keyboard_QWERTY),
         INLIB_ARG_ENUM(keyboard_iPhone),
         INLIB_ARG_ENUM(keyboard_variable)
       INLIB_ARG_FIELD_DESC_ENUMS_END,
-      
+
       INLIB_ARG_FIELD_DESC(shift),
       INLIB_ARG_FIELD_DESC(other),
       INLIB_ARG_FIELD_DESC(other2),
       INLIB_ARG_FIELD_DESC(show_cancel),
-      
+
       INLIB_ARG_FIELD_DESC_OPTS_BEG(font,8)
         font_hershey().c_str(),
         font_arial_ttf().c_str(),
@@ -74,7 +74,7 @@ public:
         font_helvetica_ttf().c_str(),
         font_times_roman_ttf().c_str()
       INLIB_ARG_FIELD_DESC_OPTS_END,
-      
+
       INLIB_ARG_FIELD_DESC_ENUMS_BEG(font_modeling,3)
         INLIB_ARG_ENUM(font_outline),
         INLIB_ARG_ENUM(font_filled),
@@ -119,12 +119,12 @@ public:
     if(a_action.done()) return;
   }
   virtual void search(search_action& a_action) {
-    parent::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg();
       reset_touched();
     }
+    parent::search(a_action);
+    if(a_action.done()) return;
     if(a_action.do_path()) a_action.path_push(this);
     m_sep.search(a_action);
     if(a_action.done()) return;
@@ -257,7 +257,7 @@ protected:
     typedef bcbk parent;
   public:
     virtual return_action action() {
-      if(m_action==s_kind()) {        
+      if(m_action==s_kind()) {
         if(m_keyboard.kind==keyboard_QWERTY) {
           m_keyboard.kind = keyboard_iPhone;
         } else if(m_keyboard.kind==keyboard_iPhone) {
@@ -267,19 +267,19 @@ protected:
         }
         return return_to_render;
       }
-      if(m_action==keyboard::s_shift()) {        
+      if(m_action==keyboard::s_shift()) {
         m_keyboard.shift = !m_keyboard.shift;
         return return_to_render;
       }
-      if(m_action==keyboard::s_other()) {        
+      if(m_action==keyboard::s_other()) {
         m_keyboard.other = !m_keyboard.other;
         return return_to_render;
       }
-      if(m_action==keyboard::s_other2()) {        
+      if(m_action==keyboard::s_other2()) {
         m_keyboard.other2 = !m_keyboard.other2;
         return return_to_render;
       }
-      std::string _s = m_keyboard.value.value(); 
+      std::string _s = m_keyboard.value.value();
       if(m_action==keyboard::s_clear()) {
         _s.clear();
       } else if(m_action==keyboard::s_del()) {
@@ -342,7 +342,7 @@ protected:
       //     A S D F G H J K L ; '
       // Shft Z X C V B N M ! ? / Shft
       // Clear Kind __Space__       Ok
-      //Shift : 
+      //Shift :
       // ~ ! @ # $ % ^ & * ( ) _ +
       //    q w e r t y u i o p { } |
       //     a s d f g h j k l : "
@@ -430,7 +430,7 @@ protected:
       //  q w e r t y u i o p Del
       //   a s d f g h j k l
       // Sh z x c v b n m ! ? Sh
-      // _123_  __Space__ _123_ 
+      // _123_  __Space__ _123_
       // Clear Kind           Ok
       //_123_ :
       //  1 2 3 4 5 6 7 8 9 0 Del
@@ -495,7 +495,7 @@ protected:
       //   a s d f g h j k l
       // Sh z x c v b n m _   Shft
       // Clear Kind __Space__   Ok
-      //Shift : 
+      //Shift :
       // 1 2 3 4 5 6 7 8 9 0 Del
       //  Q W E R T Y U I O P
       //   A S D F G H J K L
@@ -569,7 +569,7 @@ protected:
                                                     unsigned int a_row,
                                                     unsigned int a_col) {
     separator* sep = new separator;
-    
+
     float wbutton = width/15;
     float hbutton = hitem();
 
@@ -597,7 +597,7 @@ protected:
     b->height = hbutton;
 
     b->set_label(shift.value()?a_shift:a_label);
-    
+
     b->add_callback(new button_cbk(*this,shift.value()?a_shift:a_label));
 
 
@@ -610,7 +610,7 @@ protected:
 
     float wbutton = 2*width/15;
     float hbutton = hitem();
- 
+
     unsigned int row = 0;
 
     float xx = width*0.5f-wbutton*0.5f;
@@ -876,7 +876,7 @@ protected:
                                                     unsigned int a_row,
                                                     unsigned int a_col) {
     separator* sep = new separator;
-    
+
     float wbutton = width/11;
     float hbutton = hitem();
 
@@ -909,17 +909,17 @@ protected:
         s = a_other2;
       } else {
         s = a_other;
-      }  
+      }
     } else {
       s = shift.value()?a_shift:a_label;
-    }  
+    }
 
     b->set_label(s);
     b->add_callback(new button_cbk(*this,s));
     sep->add(b);
 
     if(s==s_none()) {
-      delete sep;      
+      delete sep;
       return new separator;
     }
 
@@ -1296,7 +1296,7 @@ protected:
                                     unsigned int a_row,
                                     unsigned int a_col) {
     separator* sep = new separator;
-    
+
     float wbutton = width/11;
     float hbutton = hitem();
 
@@ -1324,7 +1324,7 @@ protected:
     b->height = hbutton;
 
     b->set_label(shift.value()?a_shift:a_label);
-    
+
     b->add_callback(new button_cbk(*this,shift.value()?a_shift:a_label));
 
 
@@ -1448,9 +1448,9 @@ protected:
 
     float wbutton = 5*width/11;
     float hbutton = hitem();
-   
+
     unsigned int row = 4;
- 
+
     float xx = -width*0.5f+wbutton*0.5f+3.5f*width/11;
     float yy = height*0.5f-hbutton*1.5f-row*hbutton;
     matrix* m = new matrix;

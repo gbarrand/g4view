@@ -10,6 +10,8 @@ namespace inlib {
 namespace rroot {
 
 class geo_identity : public geo_matrix {
+  typedef geo_matrix parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoIdentity");
     return s_v;
@@ -22,7 +24,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_identity>(this,a_class)) return p;
-    return geo_matrix::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_identity(*this);}
@@ -30,21 +32,25 @@ public: //iro
     unsigned int s, c;
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
-    if(!geo_matrix::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
     if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
     return true;
   }
-
 public:
   static cid id_class() {return geo_identity_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_identity>(this,a_class)) {return p;}
-    else return geo_matrix::cast(a_class);
+    if(void* p = cmp_cast<geo_identity>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
-  geo_identity(ifac& a_fac):geo_matrix(a_fac){
+  virtual void dump(std::ostream& a_out,const std::string& a_indent = std::string()) const {
+    parent::dump(a_out,a_indent);
+    a_out << a_indent << "identity" << std::endl;
+  }
+public:
+  geo_identity(ifac& a_fac):parent(a_fac){
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
 #endif
@@ -55,11 +61,13 @@ public:
 #endif
   }
 protected:
-  geo_identity(const geo_identity& a_from):iro(a_from),geo_matrix(a_from){}
+  geo_identity(const geo_identity& a_from):iro(a_from),parent(a_from){}
   geo_identity& operator=(const geo_identity&){return *this;}
 };
 
 class geo_translation : public geo_matrix {
+  typedef geo_matrix parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoTranslation");
     return s_v;
@@ -72,7 +80,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_translation>(this,a_class)) return p;
-    return geo_matrix::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_translation(*this);}
@@ -81,25 +89,28 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_matrix::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read_fast_array(m_trans,3)) return false;
 
     if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
     return true;
   }
-
 public:
   static cid id_class() {return geo_translation_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_translation>(this,a_class)) {return p;}
-    else return geo_matrix::cast(a_class);
+    if(void* p = cmp_cast<geo_translation>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
-
+public:
+  virtual void dump(std::ostream& a_out,const std::string& a_indent = std::string()) const {
+    parent::dump(a_out,a_indent);
+    a_out << a_indent << "translation : " << m_trans[0] << " " << m_trans[1] << " " << m_trans[2] << std::endl;
+  }
 public:
   geo_translation(ifac& a_fac)
-  :geo_matrix(a_fac)
+  :parent(a_fac)
   {
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
@@ -114,12 +125,12 @@ public:
 protected:
   geo_translation(const geo_translation& a_from)
   :iro(a_from)
-  ,geo_matrix(a_from)
+  ,parent(a_from)
   {
     for(unsigned int i=0;i<3;i++) m_trans[i] = a_from.m_trans[i];
   }
   geo_translation& operator=(const geo_translation& a_from){
-    geo_matrix::operator=(a_from);
+    parent::operator=(a_from);
     for(unsigned int i=0;i<3;i++) m_trans[i] = a_from.m_trans[i];
     return *this;
   }
@@ -130,6 +141,8 @@ protected:
 };
 
 class geo_scale : public geo_matrix {
+  typedef geo_matrix parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoScale");
     return s_v;
@@ -142,7 +155,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_scale>(this,a_class)) return p;
-    return geo_matrix::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_scale(*this);}
@@ -151,7 +164,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_matrix::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read_fast_array(m_scale,3)) return false;
 
@@ -162,14 +175,19 @@ public: //iro
 public:
   static cid id_class() {return geo_scale_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_scale>(this,a_class)) {return p;}
-    else return geo_matrix::cast(a_class);
+    if(void* p = cmp_cast<geo_scale>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
+  virtual void dump(std::ostream& a_out,const std::string& a_indent = std::string()) const {
+    parent::dump(a_out,a_indent);
+    a_out << a_indent << "scale " << m_scale[0] << " " << m_scale[1] << " " << m_scale[2] << std::endl;
+  }
+public:
   geo_scale(ifac& a_fac)
-  :geo_matrix(a_fac)
+  :parent(a_fac)
   {
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
@@ -184,11 +202,11 @@ public:
 protected:
   geo_scale(const geo_scale& a_from)
   :iro(a_from)
-  ,geo_matrix(a_from){
+  ,parent(a_from){
     for(unsigned int i=0;i<3;i++) m_scale[i] = a_from.m_scale[i];
   }
   geo_scale& operator=(const geo_scale& a_from){
-    geo_matrix::operator=(a_from);
+    parent::operator=(a_from);
     for(unsigned int i=0;i<3;i++) m_scale[i] = a_from.m_scale[i];
     return *this;
   }
@@ -199,6 +217,8 @@ protected:
 };
 
 class geo_rotation : public geo_matrix {
+  typedef geo_matrix parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoRotation");
     return s_v;
@@ -211,7 +231,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_rotation>(this,a_class)) return p;
-    return geo_matrix::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_rotation(*this);}
@@ -220,7 +240,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_matrix::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read_fast_array(m_matrix,9)) return false;
 
@@ -231,14 +251,22 @@ public: //iro
 public:
   static cid id_class() {return geo_rotation_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_rotation>(this,a_class)) {return p;}
-    else return geo_matrix::cast(a_class);
+    if(void* p = cmp_cast<geo_rotation>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
+  virtual void dump(std::ostream& a_out,const std::string& a_indent = std::string()) const {
+    parent::dump(a_out,a_indent);
+    a_out << a_indent << "rotation :" << std::endl;
+    a_out << a_indent << m_matrix[0] << " " << m_matrix[1] << " " << m_matrix[2] << std::endl;
+    a_out << a_indent << m_matrix[3] << " " << m_matrix[4] << " " << m_matrix[5] << std::endl;
+    a_out << a_indent << m_matrix[6] << " " << m_matrix[7] << " " << m_matrix[8] << std::endl;
+  }
+public:
   geo_rotation(ifac& a_fac)
-  :geo_matrix(a_fac)
+  :parent(a_fac)
   {
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
@@ -255,12 +283,12 @@ public:
 protected:
   geo_rotation(const geo_rotation& a_from)
   :iro(a_from)
-  ,geo_matrix(a_from)
+  ,parent(a_from)
   {
     for(unsigned int i=0;i<9;i++) m_matrix[i] = a_from.m_matrix[i];
   }
   geo_rotation& operator=(const geo_rotation& a_from){
-    geo_matrix::operator=(a_from);
+    parent::operator=(a_from);
     for(unsigned int i=0;i<9;i++) m_matrix[i] = a_from.m_matrix[i];
     return *this;
   }
@@ -273,7 +301,7 @@ public:
     //vec[0] = 00;vec[1] = 01;vec[2] = 02;
     //vec[3] = 10;vec[4] = 11;vec[5] = 12;
     //vec[6] = 20;vec[7] = 21;vec[8] = 22;
-    
+
     float v00 = tv[0]*fv[0]+tv[1]*fv[3]+tv[2]*fv[6];
     float v10 = tv[3]*fv[0]+tv[4]*fv[3]+tv[5]*fv[6];
     float v20 = tv[6]*fv[0]+tv[7]*fv[3]+tv[8]*fv[6];
@@ -292,8 +320,8 @@ public:
   }
   void setup(double a_x,double a_y,double a_z,double a_angle) {
     //WARNING : (a_x,a_y,a_z) must be a normalized vector.
-    double c = ::cos(a_angle);    
-    double s = ::sin(a_angle);    
+    double c = ::cos(a_angle);
+    double s = ::sin(a_angle);
     double x = a_x;
     double y = a_y;
     double z = a_z;
@@ -322,6 +350,8 @@ protected:
 };
 
 class geo_hmatrix : public geo_matrix {
+  typedef geo_matrix parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoHMatrix");
     return s_v;
@@ -334,7 +364,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_hmatrix>(this,a_class)) return p;
-    return geo_matrix::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_hmatrix(*this);}
@@ -343,7 +373,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_matrix::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read_fast_array(m_trans,3)) return false;
     if(!a_buffer.read_fast_array(m_matrix,9)) return false;
@@ -356,13 +386,18 @@ public: //iro
 public:
   static cid id_class() {return geo_hmatrix_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_hmatrix>(this,a_class)) {return p;}
-    else return geo_matrix::cast(a_class);
+    if(void* p = cmp_cast<geo_hmatrix>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
-  geo_hmatrix(ifac& a_fac):geo_matrix(a_fac){
+  virtual void dump(std::ostream& a_out,const std::string& a_indent = std::string()) const {
+    parent::dump(a_out,a_indent);
+    a_out << a_indent << "hmatrix" << std::endl;
+  }
+public:
+  geo_hmatrix(ifac& a_fac):parent(a_fac){
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
 #endif
@@ -383,7 +418,7 @@ public:
 protected:
   geo_hmatrix(const geo_hmatrix& a_from)
   :iro(a_from)
-  ,geo_matrix(a_from){
+  ,parent(a_from){
     for(unsigned int i=0;i<3;i++) m_trans[i] = a_from.m_trans[i];
     for(unsigned int i=0;i<9;i++) m_matrix[i] = a_from.m_matrix[i];
     for(unsigned int i=0;i<3;i++) m_scale[i] = a_from.m_scale[i];
@@ -405,6 +440,8 @@ protected:
 };
 
 class geo_combi_trans : public geo_matrix {
+  typedef geo_matrix parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoCombiTrans");
     return s_v;
@@ -417,16 +454,18 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_combi_trans>(this,a_class)) return p;
-    return geo_matrix::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_combi_trans(*this);}
   virtual bool stream(buffer& a_buffer) {
+    _clear();
+
     unsigned int s, c;
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_matrix::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read_fast_array(m_trans,3)) return false;
 
@@ -438,29 +477,45 @@ public: //iro
 
     //TGeoRotation* fRotation;       // rotation matrix
     ifac::args args;
-    if(!pointer_stream(a_buffer,m_fac,args,m_rotation)) {
+    if(!pointer_stream(a_buffer,m_fac,args,m_rotation,m_rotation_created)) {
       a_buffer.out() << "inlib::rroot::geo_combi_trans::stream : "
             << "can't read fRotation."
             << std::endl;
+      _clear();
       return false;
     }
 
-    if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
+    if(!a_buffer.check_byte_count(s,c,s_store_class())) {_clear();return false;}
     return true;
   }
 
 public:
   static cid id_class() {return geo_combi_trans_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_combi_trans>(this,a_class)) {return p;}
-    else return geo_matrix::cast(a_class);
+    if(void* p = cmp_cast<geo_combi_trans>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
+  virtual void dump(std::ostream& a_out,const std::string& a_indent = std::string()) const {
+    parent::dump(a_out,a_indent);
+    a_out << a_indent << "combi_trans : tx " << m_trans[0] << ", ty " << m_trans[1] << ", tz " << m_trans[2] << std::endl;
+    if(!m_rotation) {
+      a_out << a_indent << "combi_trans : no rotation" << std::endl;
+    } else {
+      a_out << a_indent << "combi_trans : rotation :" << std::endl;
+      const double* _matrix = m_rotation->matrix();
+      a_out << a_indent << _matrix[0] << " " << _matrix[1] << " " << _matrix[2] << std::endl;
+      a_out << a_indent << _matrix[3] << " " << _matrix[4] << " " << _matrix[5] << std::endl;
+      a_out << a_indent << _matrix[6] << " " << _matrix[7] << " " << _matrix[8] << std::endl;
+    }
+  }
+public:
   geo_combi_trans(ifac& a_fac)
-  :geo_matrix(a_fac)
+  :parent(a_fac)
   ,m_rotation(0) //not owner
+  ,m_rotation_created(false)
   {
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
@@ -468,6 +523,7 @@ public:
     for(unsigned int i=0;i<3;i++) m_trans[i] = 0;
   }
   virtual ~geo_combi_trans(){
+    _clear();
 #ifdef INLIB_MEM
     mem::decrement(s_class().c_str());
 #endif
@@ -475,23 +531,30 @@ public:
 protected:
   geo_combi_trans(const geo_combi_trans& a_from)
   :iro(a_from)
-  ,geo_matrix(a_from)
+  ,parent(a_from)
   ,m_rotation(a_from.m_rotation)
+  ,m_rotation_created(a_from.m_rotation_created)
   {
     for(unsigned int i=0;i<3;i++) m_trans[i] = a_from.m_trans[i];
   }
   geo_combi_trans& operator=(const geo_combi_trans& a_from){
-    geo_matrix::operator=(a_from);
+    parent::operator=(a_from);
     for(unsigned int i=0;i<3;i++) m_trans[i] = a_from.m_trans[i];
     m_rotation = a_from.m_rotation;
+    m_rotation_created = a_from.m_rotation_created;
     return *this;
   }
 public:
   const double* trans() const {return m_trans;}
   const geo_rotation* rot() const {return m_rotation;}
 protected:
+  void _clear() {
+    if(m_rotation_created) {delete m_rotation;m_rotation = 0;m_rotation_created = false;}
+  }
+protected:
   double m_trans[3];
   geo_rotation* m_rotation;
+  bool m_rotation_created;
 };
 
 }}

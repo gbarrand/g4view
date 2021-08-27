@@ -72,26 +72,61 @@ inline bool to_vals(const std::string& a_string,const char a_sep,std::vector<T>&
 }
 
 template <class T>
-inline bool to_axis(const std::string& a_string,T& a_x,T& a_y,T& a_z,const std::string& a_sep = " "){
+inline bool to_3(const std::string& a_string,T& a_1,T& a_2,T& a_3,const std::string& a_sep = " "){
   std::vector<std::string> ws;
   words(a_string,a_sep,false,ws);
   if(ws.size()!=3) {
-    a_x = T();a_y = T();a_z = T();
+    a_1 = T();a_2 = T();a_3 = T();
     return false;
   }
-  if(!to<T>(ws[0],a_x)) {
-    a_x = T();a_y = T();a_z = T();
+  if(!to<T>(ws[0],a_1)) {
+    a_1 = T();a_2 = T();a_3 = T();
     return false;
   }
-  if(!to<T>(ws[1],a_y)) {
-    a_x = T();a_y = T();a_z = T();
+  if(!to<T>(ws[1],a_2)) {
+    a_1 = T();a_2 = T();a_3 = T();
     return false;
   }
-  if(!to<T>(ws[2],a_z)) {
-    a_x = T();a_y = T();a_z = T();
+  if(!to<T>(ws[2],a_3)) {
+    a_1 = T();a_2 = T();a_3 = T();
     return false;
   }
   return true;
+}
+
+template <class T>
+inline bool to_4(const std::string& a_string,T& a_1,T& a_2,T& a_3,T& a_4,const std::string& a_sep = " "){
+  std::vector<std::string> ws;
+  words(a_string,a_sep,false,ws);
+  if(ws.size()!=4) {
+    a_1 = T();a_2 = T();a_3 = T();a_4 = T();
+    return false;
+  }
+  if(!to<T>(ws[0],a_1)) {
+    a_1 = T();a_2 = T();a_3 = T();a_4 = T();
+    return false;
+  }
+  if(!to<T>(ws[1],a_2)) {
+    a_1 = T();a_2 = T();a_3 = T();a_4 = T();
+    return false;
+  }
+  if(!to<T>(ws[2],a_3)) {
+    a_1 = T();a_2 = T();a_3 = T();a_4 = T();
+    return false;
+  }
+  if(!to<T>(ws[3],a_4)) {
+    a_1 = T();a_2 = T();a_3 = T();a_4 = T();
+    return false;
+  }
+  return true;
+}
+
+template <class T>
+inline bool to_axis(const std::string& a_string,T& a_x,T& a_y,T& a_z,const std::string& a_sep = " ") {return to_3(a_string,a_x,a_y,a_z,a_sep);}
+
+template <class T>
+inline bool to_axis_angle(const std::string& a_string,T& a_x,T& a_y,T& a_z,T& a_angle,const std::string& a_sep = " ") {
+  return to_4(a_string,a_x,a_y,a_z,a_angle,a_sep);
 }
 
 inline bool name_args(const std::string& a_string,std::string& a_name,std::vector<std::string>& a_args){
@@ -121,7 +156,19 @@ inline bool name_args(const std::string& a_string,std::string& a_name,std::vecto
   std::string s = a_string.substr(lb+1,rb-lb-1);
   words(s,",",true,a_args);
   a_name = a_string.substr(0,lb);
-  return true; 
+  return true;
+}
+
+inline bool cmd_arg(const std::string& a_string,std::string& a_arg,std::string& a_value) {
+  // Look if a_string is of the form -<string>=<string>
+  // return true if so.
+  if(a_string.empty()) return false;
+  if(a_string[0]!='-') return false;
+  std::string::size_type pos = a_string.find('=');
+  if(pos==std::string::npos) return false;
+  a_arg = a_string.substr(1,pos-1);
+  a_value = a_string.substr(pos+1,a_string.size()-(pos+1));
+  return true;
 }
 
 inline bool parse_array(const std::string& a_string,std::string& a_name,int& a_index){
@@ -157,7 +204,7 @@ inline bool parse_array(const std::string& a_string,std::string& a_name,int& a_i
     return false;
   }
   a_name = a_string.substr(0,lb);
-  return true; 
+  return true;
 }
 
 inline bool to_doubles(const std::string& a_string,std::vector<double>& a_values,const std::string& a_sep){
@@ -204,7 +251,7 @@ inline bool to_doubles(const std::string& a_string,std::vector<double>& a_values
       }
       a_values[valuei] = value;
       valuei++;
-    }    
+    }
   }
   return true;
 }
@@ -225,7 +272,7 @@ inline size_t cstring_strtods(const char* a_cstr,std::vector<double>& a_vals,boo
   double d;
   size_t index = 0;
   std::vector<double>::iterator it = a_vals.begin();
-  while(true) {  
+  while(true) {
     d = ::strtod(begin,&end);
     if(end==begin) {
       if(a_fixed) {
@@ -259,7 +306,7 @@ inline size_t cstring_strtods(const char* a_cstr,std::vector<double>& a_vals,boo
 
 }
 
-#include "file"
+#include "file_read"
 #include "vmanip"
 
 namespace inlib {

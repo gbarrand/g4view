@@ -13,7 +13,7 @@ class fit_func {
 public:
   typedef std::vector<double> point;
 public:
-  virtual double value(const point& pt) const = 0; 
+  virtual bool value(const point& pt,double&) const = 0;
   virtual bool set(const double params[])  = 0;
 public:
   static const std::string& s_class() {

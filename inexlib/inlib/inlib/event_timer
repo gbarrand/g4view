@@ -6,6 +6,7 @@
 
 #include "sys/base_timer"
 #include "scast"
+#include "S_STRING"
 
 #ifdef INLIB_MEM
 #include "mem"
@@ -15,14 +16,12 @@ namespace inlib {
 
 class event_timer : public base_timer {
 public:
-  static const std::string& s_class() {
-    static const std::string s_v("inlib::event_timer");
-    return s_v;
-  }
+  INLIB_SCLASS(inlib::event_timer)
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<event_timer>(this,a_class)) return p;
     return 0;
   }
+  virtual const std::string& s_cls() const {return s_class();}
 public:
   event_timer(unsigned int a_interval)
   :base_timer(a_interval){
@@ -48,5 +47,5 @@ public:
 };
 
 }
-  
+
 #endif

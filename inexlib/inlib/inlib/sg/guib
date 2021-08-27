@@ -12,7 +12,10 @@
 
 #include "../sys/atime"
 #include "../file_finder"
-#include "../dirmanip"
+#include "../file_std"
+#include "../find_file"
+#include "../dirs"
+#include "../dirmanip" //windows.h
 
 namespace inlib {
 namespace sg {
@@ -25,7 +28,7 @@ protected:
 public:
   guib(bool a_verbose)
   :m_params()
-  ,m_data_dirs()
+  //,m_data_dirs()
   //,m_cookie()
   ,m_verbose(a_verbose)
   ,m_file_finder(0)
@@ -46,12 +49,13 @@ public:
   ,m_app_version(a_from.m_app_version)
   ,m_tmp_dir(a_from.m_tmp_dir)
   ,m_res_dir(a_from.m_res_dir)
-  ,m_pwd(a_from.m_pwd)
-  ,m_data_dirs(a_from.m_data_dirs)
+  ,m_doc_dir(a_from.m_doc_dir)
+  ,m_start_dir(a_from.m_start_dir)
+  //,m_data_dirs(a_from.m_data_dirs)
   //,m_cookie(a_from.m_cookie)
   ,m_verbose(a_from.m_verbose)
   ,m_file_finder(0)
-  { 
+  {
     delete m_file_finder;
     m_file_finder = a_from.m_file_finder?a_from.m_file_finder->copy():0;
   }
@@ -63,8 +67,9 @@ public:
     m_app_version = a_from.m_app_version;
     m_tmp_dir = a_from.m_tmp_dir;
     m_res_dir = a_from.m_res_dir;
-    m_pwd = a_from.m_pwd;
-    m_data_dirs = a_from.m_data_dirs;
+    m_doc_dir = a_from.m_doc_dir;
+    m_start_dir = a_from.m_start_dir;
+    //m_data_dirs = a_from.m_data_dirs;
     //m_cookie = a_from.m_cookie;
     m_verbose = a_from.m_verbose;
     if(&a_from==this) return *this;
@@ -119,6 +124,7 @@ public:
 public:
   void map_warn_failed() {warn("failed");}
   void map_warn_fit_failed() {warn("fit failed");}
+  void map_warn_not_existing_file() {warn("not existing file");}
   void map_warn_no_plot() {warn("no plot");}
   void map_warn_empty() {warn("empty");}
   void map_warn_no_vis() {warn("no vis");}
@@ -192,15 +198,86 @@ public:
   const std::string& app_version() const {return m_app_version;}
   const std::string& tmp_dir() const {return m_tmp_dir;}
   const std::string& res_dir() const {return m_res_dir;}
-  const std::string& pwd() const {return m_pwd;}
-  const std::vector<std::string>& data_dirs() const {return m_data_dirs;}
+  const std::string& doc_dir() const {return m_doc_dir;}
+  const std::string& start_dir() const {return m_start_dir;}
+//const std::vector<std::string>& data_dirs() const {return m_data_dirs;}
 
-  bool first_data_dir(std::string& a_s) const {
-    if(m_data_dirs.empty()) {a_s.clear();return false;}
-    a_s = m_data_dirs[0];
+//  bool first_data_dir(std::string& a_s) const {
+//    //if(m_data_dirs.empty()) {a_s.clear();return false;}
+//    //a_s = m_data_dirs[0];
+//    a_s = m_doc_dir;
+//    return true;
+//  }
+
+public:
+  bool find_res_files(const std::string& a_name,std::vector<std::string>& a_paths) const {
+    std::vector<std::string> dirs;
+    dirs.push_back(m_res_dir);
+    std::vector<std::string> names;
+    names.push_back(a_name);
+    return get_files_with_names(out_stream(),dirs,names,a_paths);
+  }
+
+  bool find_res_file(const std::string& a_name,std::string& a_path) const {
+    std::vector<std::string> paths;
+    if(!find_res_files(a_name,paths)) {a_path.clear();return false;}
+    if(paths.empty()) {a_path.clear();return false;}
+    a_path = paths[0];
     return true;
   }
 
+  bool find_doc_files(const std::string& a_name,std::vector<std::string>& a_paths) const {
+    std::vector<std::string> dirs;
+    dirs.push_back(m_doc_dir);
+    std::vector<std::string> names;
+    names.push_back(a_name);
+    return get_files_with_names(out_stream(),dirs,names,a_paths);
+  }
+
+  bool find_doc_file(const std::string& a_name,std::string& a_path) const {
+    std::vector<std::string> paths;
+    if(!find_doc_files(a_name,paths)) {a_path.clear();return false;}
+    if(paths.empty()) {a_path.clear();return false;}
+    a_path = paths[0];
+    return true;
+  }
+
+  bool find_doc_res_files(const std::string& a_name,std::vector<std::string>& a_paths) const {
+    std::vector<std::string> dirs;
+    dirs.push_back(m_doc_dir);
+    dirs.push_back(m_res_dir);
+    std::vector<std::string> names;
+    names.push_back(a_name);
+    return get_files_with_names(out_stream(),dirs,names,a_paths);
+  }
+
+  bool find_doc_res_file(const std::string& a_name,std::string& a_path) const {
+    std::vector<std::string> paths;
+    if(!find_doc_res_files(a_name,paths)) {a_path.clear();return false;}
+    if(paths.empty()) {a_path.clear();return false;}
+    a_path = paths[0];
+    return true;
+  }
+
+  bool is_doc_res_file(const std::string& a_name) const {
+    std::vector<std::string> paths;
+    if(!find_doc_res_files(a_name,paths)) return false;
+    if(paths.empty()) return false;
+    return true;
+  }
+
+  void doc_res_dirs_to_PATH(std::string& a_PATH) const {
+    a_PATH.clear();
+    std::vector<std::string> dirs;
+    dirs.push_back(m_doc_dir);
+    dirs.push_back(m_res_dir);
+    inlib_vforcit(std::string,dirs,it) {
+      if(it!=dirs.begin()) a_PATH += ":";
+      a_PATH += (*it);
+    }
+  }
+
+public:
   //const std::string& cookie() const {return m_cookie;}
   //void set_cookie(const std::string& a_v) {m_cookie = a_v;}
 
@@ -213,24 +290,21 @@ public: //wall
   ///////////////////////////////////////////////////
   virtual bool is_wall_screen_app() {return false;}
 
-  virtual bool get_data_sub_dirs(const std::string& a_path_from_first_data_dir,std::vector<std::string>& a_dirs){
-    std::string path;
-    first_data_dir(path);
+  virtual bool get_data_sub_dirs(const std::string& a_path_from_doc_dir,std::vector<std::string>& a_dirs){
+    std::string path = m_doc_dir;
     if(path.empty()) {a_dirs.clear();return false;}
-    if(a_path_from_first_data_dir.size()) {
+    if(a_path_from_doc_dir.size()) {
       path += sep();
-      path += a_path_from_first_data_dir;
+      path += a_path_from_doc_dir;
     }
-    return dir::dirs(path,a_dirs,false); 
+    return dir::dirs(path,a_dirs,false);
   }
 
   virtual bool get_data_files(std::vector<std::string>& a_files){
     a_files.clear();
-   {std::string path;
-    first_data_dir(path);
-    if(path.size()) {
-      if(!dir::entries(path,a_files,false)) return false;
-    }}
+    if(m_doc_dir.size()) {
+      if(!dir::entries(m_doc_dir,a_files,false)) return false;
+    }
    {std::vector<std::string> v;
     if(!dir::entries(res_dir(),v,false)) return false;
     append(a_files,v);}
@@ -238,23 +312,22 @@ public: //wall
   }
 
   virtual bool get_data_sub_dir_files(
-    const std::string& a_path_from_first_data_dir,
+    const std::string& a_path_from_first_doc_dir,
     std::vector<std::string>& a_files //absolute path.
   ){
-    std::string path;
-    first_data_dir(path);
+    std::string path = m_doc_dir;
     if(path.empty()) {a_files.clear();return false;}
-    if(a_path_from_first_data_dir.size()) {
+    if(a_path_from_first_doc_dir.size()) {
       path += sep();
-      path += a_path_from_first_data_dir;
+      path += a_path_from_first_doc_dir;
     }
     std::vector<std::string> ls;
     if(!dir::entries(path,ls,true)) {
       out_stream() << "inlib::sg::guib::get_data_sub_dir_files :"
-            << " can't get entrie of " << path << "."
-            << std::endl;
+                   << " can't get entrie of " << path << "."
+                   << std::endl;
       a_files.clear();
-      return false; 
+      return false;
     }
     std::vector<std::string>::const_iterator it;
     for(it=ls.begin();it!=ls.end();++it) {
@@ -270,6 +343,15 @@ public: //wall
     return true;
   }
 
+  virtual void clear_doc_dir() {
+    std::vector<std::string> ls;
+    if(!dir::entries(doc_dir(),ls,true)){
+      out_stream() << "inlib::sg::guib::clear_doc_dir :"
+                   << " can't get entries of directory " << sout(doc_dir()) << "." << std::endl;
+      return;
+    }
+    inlib_vforcit(std::string,ls,it) file::std_remove(*it);
+  }
 public:
   void set_file_finder(file::finder* a_ff) {
     //WARNING : we take ownership of a_ff.
@@ -305,7 +387,8 @@ protected:
                       std::string& a_path,
                       bool a_file = true){ //false dir
       //for pmx, agora in order to find det and vds files in res dir.
-      std::vector<std::string> dirs = m_gv.data_dirs();
+      std::vector<std::string> dirs;
+      dirs.push_back(m_gv.doc_dir());
       dirs.push_back(m_gv.res_dir());
       if(a_file) {
         return find_with_dirs(m_gv.out_stream(),dirs,a_what,a_path);
@@ -346,8 +429,10 @@ protected:
   std::string m_app_version;
   std::string m_tmp_dir;
   std::string m_res_dir;
-  std::string m_pwd;
-  std::vector<std::string> m_data_dirs;
+  std::string m_doc_dir;
+  std::string m_start_dir;
+protected:
+  //std::vector<std::string> m_data_dirs;
   //std::string m_cookie;
   bool m_verbose;
   file::finder* m_file_finder;

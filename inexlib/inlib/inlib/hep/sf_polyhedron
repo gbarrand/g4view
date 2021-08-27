@@ -45,7 +45,7 @@ public:
         ds[di] = f;di++;
       }
     }}
-      
+
     bool status = a_buffer.write_vec(di,ds);
 
     delete [] ds;
@@ -92,6 +92,8 @@ public:
   virtual bool dump(std::ostream&) {
     return true;
   }
+  virtual bool s_value(std::string& a_s) const {a_s.clear();return false;}
+  virtual bool s2value(const std::string&) {return false;}
 public:
   sf_polyhedron():parent(){}
   sf_polyhedron(const polyhedron& a_value):parent(a_value){}

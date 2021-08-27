@@ -38,7 +38,7 @@ public:
   walls(const walls& a_from):m_walls(a_from.m_walls) {}
   walls& operator=(const walls& a_from){m_walls = a_from.m_walls;return *this;}
 public:
-  const std::vector<wall_host>& _walls() const {return m_walls;}  
+  const std::vector<wall_host>& _walls() const {return m_walls;}
   //std::vector<wall_host> walls() {return m_walls;}
 
   void add_wall(const std::string& a_host) {
@@ -56,7 +56,7 @@ public:
   //    lines.push_back("  <wall>");
   //    lines.push_back("    <host>"+(*it).host()+"</host>");
   //    lines.push_back("  </wall>");
-  //  }    
+  //  }
   //  lines.push_back("</walls>");
   //  return file::write(a_path,lines);
   //}
@@ -65,14 +65,14 @@ public:
   bool scan_tree(tree& a_tree) {
     const std::string& tag = a_tree.tag_name();
     if(tag=="walls") {
-    } else if(tag=="wall") {   
+    } else if(tag=="wall") {
       load(a_tree);
     }
     // scan children :
    {looper _for(a_tree);
     while(tree* _tree = _for.next_tree()) {
       if(!scan_tree(*_tree)) return false;
-    }}  
+    }}
     return true;
   }
 
@@ -83,7 +83,7 @@ protected:
    {looper _for(a_tree);
     while(element* _elem = _for.next_element()) {
       if(_elem->name()=="host") host = _elem->value();
-    }}  
+    }}
     if(host.size()) add_wall(host);
   }
 

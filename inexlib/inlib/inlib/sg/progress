@@ -20,7 +20,7 @@ public:
   sf<float> value; //[0,1]
 
   sf_vec<colorf,float> color;
-  sf<bool> back_visible;  
+  sf<bool> back_visible;
 public:
   virtual const desc_fields& node_desc_fields() const {
     INLIB_FIELD_DESC_NODE_CLASS(inlib::sg::progress)
@@ -58,12 +58,12 @@ public:
     }
   }
   virtual void search(search_action& a_action) {
-    parent::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg();
       reset_touched();
     }
+    parent::search(a_action);
+    if(a_action.done()) return;
     if(back_visible.value()) {
       m_back_sep.search(a_action);
       if(a_action.done()) return;
@@ -155,7 +155,7 @@ protected:
     m_sep.add(mat);
 
     draw_style* ds = new draw_style;
-    ds->style = draw_style::lines;
+    ds->style = draw_lines;
     ds->line_width = 1;
     m_sep.add(ds);
 

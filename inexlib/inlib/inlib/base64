@@ -11,7 +11,7 @@ namespace inlib {
 namespace base64 {
 
 inline char b(unsigned char a) {
-  return ((/*(a)>=0 &&*/ (a)<=25)?((a)+'A'):	
+  return ((/*(a)>=0 &&*/ (a)<=25)?((a)+'A'):
               (((a)>=26 && (a)<=51)?((a)-26+'a'):
                (((a)>=52 && (a)<=61)?((a)-52+'0'):
                 (((a)==62)?('+'):
@@ -64,8 +64,8 @@ inline void encode(size_t a_sz,const char* a_b,std::vector<char>& a_out) {
 inline void decode(size_t a_sz,const char* a_b,std::vector<char>& a_out) {
   a_out.clear();
 
-  char* mx = (char*)a_b+a_sz;  
-  char* pos = (char*)a_b;  
+  char* mx = (char*)a_b+a_sz;
+  char* pos = (char*)a_b;
 
   char valcar[4];
   int i;

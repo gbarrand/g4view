@@ -38,7 +38,7 @@ public:
         m_ui.add_work(_cbk);
       }
 
-      return sg::return_to_render;     
+      return sg::return_to_render;
 
     } else if(m_action==action_stop()) {
 
@@ -47,7 +47,7 @@ public:
 
     }
 
-    return sg::return_none;     
+    return sg::return_none;
   }
   virtual sg::bcbk* copy() const {return new timer(*this);}
 
@@ -62,7 +62,7 @@ public:
   timer(sg::ui& a_ui,
         base_timer& a_timer,
         unsigned int a_action = action_start())
-  :sg::acbk(a_action)  
+  :sg::acbk(a_action)
   ,m_ui(a_ui)
   ,m_timer(a_timer)
   {
@@ -94,7 +94,7 @@ public:
   }
 protected:
   sg::ui& m_ui;
-  base_timer& m_timer;  
+  base_timer& m_timer;
 };
 
 }}

@@ -28,7 +28,26 @@ inline bool is_beg(const std::string& a_s,const std::string& a_b,bool a_forward 
     }
   }
   return true;
-  
+}
+
+inline bool is_beg(const std::string& a_s,const std::string& a_b,std::string& a_cmd,bool a_forward = true){
+  if(!inlib::is_beg(a_s,a_b,a_forward)) {a_cmd.clear();return false;}
+  if(a_s.size()<(a_b.size()+1)) {a_cmd.clear();return true;}
+  // a_s.size() >= a_b.size()+1 :
+  a_cmd = a_s.substr(a_b.size()+1,a_s.size()-(a_b.size()+1));
+  return true;
+}
+
+inline bool is_space_sharp(const std::string& a_s){
+  std::string::size_type ls = a_s.size();
+  const char* ps = a_s.c_str();
+  bool found_not_space = false;
+  for(std::string::size_type index=0;index<ls;index++,ps++) {
+    if((*ps)==' ') continue;
+    if((*ps)=='#') return found_not_space?false:true;
+    found_not_space = true;
+  }
+  return false;
 }
 
 }

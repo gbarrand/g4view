@@ -9,12 +9,12 @@ namespace sg {
 
 class plot_func {
 public:
-  virtual bool in_domain(double) const = 0;
-  virtual double value(double) const = 0;
-  // for f2plot :
+  virtual bool value(double,double&) const = 0;
   virtual unsigned int xdomain_number_of_steps() const = 0;
   virtual double xdomain_min() const = 0;
   virtual double xdomain_max() const = 0;
+
+  virtual bool value(double,double,double&) const = 0;
   virtual unsigned int ydomain_number_of_steps() const = 0;
   virtual double ydomain_min() const = 0;
   virtual double ydomain_max() const = 0;

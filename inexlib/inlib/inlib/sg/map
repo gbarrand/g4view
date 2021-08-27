@@ -24,7 +24,7 @@ public:
     it_t it;
     for(it=m_children.begin();it!=m_children.end();++it) {
       (*it).second->render(a_action);
-    }    
+    }
   }
   virtual void pick(pick_action& a_action) {
     typedef typename std::map<T,node*,CMP>::iterator it_t;
@@ -32,7 +32,7 @@ public:
     for(it=m_children.begin();it!=m_children.end();++it) {
       (*it).second->pick(a_action);
       if(a_action.done()) break;
-    }    
+    }
   }
   virtual void bbox(bbox_action& a_action) {
     typedef typename std::map<T,node*,CMP>::iterator it_t;
@@ -92,7 +92,7 @@ public:
     it_t it;
     for(it=a_from.m_children.begin();it!=a_from.m_children.end();++it) {
       m_children[(*it).first] = (*it).second->copy();
-    }    
+    }
   }
   map& operator=(const map& a_from){
     parent::operator=(a_from);
@@ -102,7 +102,7 @@ public:
     it_t it;
     for(it=a_from.m_children.begin();it!=a_from.m_children.end();++it) {
       m_children[(*it).first] = (*it).second->copy();
-    }    
+    }
     return *this;
   }
 public:
@@ -123,7 +123,7 @@ public:
   bool find(const T& a_index,node*& a_node) const {
     typedef typename std::map<T,node*,CMP>::const_iterator it_t;
     it_t it = m_children.find(a_index);
-    if(it==m_children.end()) return false;      
+    if(it==m_children.end()) return false;
     a_node = (*it).second;
     return true;
   }
@@ -131,11 +131,11 @@ public:
 /*
   const node* operator[](const T& a_index) const {
     //WARNING : no check is done on a_index.
-    return m_children[a_index];    
+    return m_children[a_index];
   }
   node* operator[](const T& a_index) {
     //WARNING : no check is done on a_index.
-    return m_children[a_index];    
+    return m_children[a_index];
   }
 */
   const std::map<T,node*,CMP>& children() const {return m_children;}

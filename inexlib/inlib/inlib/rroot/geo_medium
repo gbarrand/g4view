@@ -35,12 +35,16 @@ public:
 public:
   virtual iro* copy() const {return new geo_medium(*this);}
   virtual bool stream(buffer& a_buffer) {
+    _clear();
+
     unsigned int s, c;
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
+    //::printf("debug : geo_mediumn::stream : v %d\n",v);
+
     std::string name;
-    std::string title;  
+    std::string title;
     if(!Named_stream(a_buffer,name,title)) return false;
 
     int fId;         // unique Id
@@ -51,14 +55,15 @@ public:
 
     //TGeoMaterial* fMaterial;   // pointer to material
     ifac::args args;
-    if(!pointer_stream(a_buffer,m_fac,args,m_material)) {
+    if(!pointer_stream(a_buffer,m_fac,args,m_material,m_material_created)) {
       a_buffer.out() << "inlib::rroot::geo_medium::stream : "
                      << "can't read fMaterial."
                      << std::endl;
+      _clear();
       return false;
     }
 
-    if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
+    if(!a_buffer.check_byte_count(s,c,s_store_class())) {_clear();return false;}
     return true;
   }
 
@@ -66,12 +71,14 @@ public:
   geo_medium(ifac& a_fac)
   :m_fac(a_fac)
   ,m_material(0)
+  ,m_material_created(false)
   {
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
 #endif
   }
   virtual ~geo_medium(){
+    _clear();
 #ifdef INLIB_MEM
     mem::decrement(s_class().c_str());
 #endif
@@ -81,17 +88,24 @@ protected:
   :iro(a_from)
   ,m_fac(a_from.m_fac)
   ,m_material(a_from.m_material)
+  ,m_material_created(a_from.m_material_created)
   {}
   geo_medium& operator=(const geo_medium& a_from){
     m_material = a_from.m_material;
+    m_material_created = a_from.m_material_created;
     return *this;
   }
 public:
   const geo_material* material() const {return m_material;}
   geo_material* material() {return m_material;}
 protected:
+  void _clear() {
+    if(m_material_created) {delete m_material;m_material = 0;m_material_created = false;}
+  }
+protected:
   ifac& m_fac;
   geo_material* m_material;
+  bool m_material_created;
 };
 
 }}

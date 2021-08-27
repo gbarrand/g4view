@@ -34,10 +34,10 @@ public:
     return *this;
   }
 public:
-  bool in_domain(double) const {return true;}
-  double value(double a_x) const {
+  bool value(double a_x,double& a_value) const {
     double _value = (a_x - m_mean)/m_sigma;
-    return m_scale * ::exp(-0.5 * _value * _value);
+    a_value = m_scale * ::exp(-0.5 * _value * _value);
+    return true;
   }
 public:
   void set(double a_scale,double a_mean,double a_sigma){
@@ -54,7 +54,7 @@ public:
   }
   double scale() const {return m_scale;}
   double mean() const {return m_mean;}
-  double sigma() const {return m_sigma;} 
+  double sigma() const {return m_sigma;}
 private:
   double m_scale,m_mean,m_sigma;
 };
@@ -79,10 +79,10 @@ public:
     return *this;
   }
 public:
-  bool in_domain(double) const {return true;}
-  double value(double a_x) const {
+  bool value(double a_x,double& a_value) const {
     double _value = 2.*(a_x - m_center)/m_width;
-    return m_height/(1. + _value * _value);
+    a_value = m_height/(1. + _value * _value);
+    return true;
   }
 public:
   void set(double a_height,double a_center,double a_width){
@@ -122,8 +122,7 @@ public:
     return *this;
   }
 public:
-  bool in_domain(double) const {return true;}
-  double value(double a_x) const {return ::exp(m_a + m_b * a_x);}
+  bool value(double a_x,double& a_value) const {a_value = ::exp(m_a + m_b * a_x);return true;}
 public:
   void set(double a_a,double a_b){
     m_a = a_a;
@@ -155,8 +154,7 @@ public:
     return *this;
   }
 public:
-  bool in_domain(double) const {return true;}
-  double value(double a_x) const {return m_a*::exp(m_b * a_x);}
+  bool value(double a_x,double& a_value) const {a_value = m_a*::exp(m_b * a_x);return true;}
 public:
   void set(double a_a,double a_b){
     m_a = a_a;
@@ -187,16 +185,15 @@ public:
     return *this;
   }
 public:
-  bool in_domain(double) const {return true;}
-  double value(double a_x) const {
-    double _value = 0;
+  bool value(double a_x,double& a_value) const {
+    a_value = 0;
     double xxx = 1;
     size_t pn = m_params.size();
     for(size_t i=0;i<pn;i++) {
-      _value += m_params[i] * xxx;
+      a_value += m_params[i] * xxx;
       xxx = xxx * a_x;
     }
-    return _value;
+    return true;
   }
 public:
   void set(const std::vector<double>& a_params){m_params = a_params;}
@@ -232,15 +229,15 @@ public:
     m_width = a_from.m_width;
     return *this;
   }
-public:  
-  bool in_domain(double) const {return true;}
-  double value(double a_x) const {
+public:
+  bool value(double a_x,double& a_value) const {
     // From Wikipedia.
     double b = m_width/2.;
     double _value = (a_x - m_center)/b;
-    return m_height/((_value * _value + 1)*b*pi());
+    a_value = m_height/((_value * _value + 1)*b*pi());
+    return true;
   }
-public:  
+public:
   void set(double a_height,double a_center,double a_width){
     m_height = a_height;
     m_center = a_center;
@@ -274,8 +271,7 @@ public:
     return *this;
   }
 public:
-  bool in_domain(double) const {return true;}
-  double value(double a_x) const {return m_func(a_x);}
+  bool value(double a_x,double& a_value) const {a_value = m_func(a_x);return true;}
 private:
   func m_func;
 };
@@ -293,23 +289,23 @@ public:
     return *this;
   }
 public:
-  bool in_domain(double,double) const {return true;}
-  double value(double a_x,double a_y) const {
+  bool value(double a_x,double a_y,double& a_value) const {
     if(m_a>=m_b) {
       double f = ::sqrt(m_a*m_a-m_b*m_b);
       double x1  = a_x-f;
       double x2  = a_x+f;
       double y2 = a_y*a_y;
       double d = ::sqrt(x1*x1+y2) + ::sqrt(x2*x2+y2);
-      return (d>(2*m_a)?false:true); //border is outside.
+      a_value = (d>(2*m_a)?false:true); //border is outside.
     } else {
       double f = ::sqrt(m_b*m_b-m_a*m_a);
       double y1  = a_y-f;
       double y2  = a_y+f;
       double x2 = a_x*a_x;
       double d = ::sqrt(x2+y1*y1) + ::sqrt(x2+y2*y2);
-      return (d>(2*m_b)?false:true); //border is outside.
+      a_value = (d>(2*m_b)?false:true); //border is outside.      
     }
+    return true;
   }
 public:
   bool set_from_a_b(double a_a,double a_b) {
@@ -328,7 +324,7 @@ private:
 
 }}
 
-#include "geom2"
+#include "lina/geom2"
 
 namespace inlib {
 namespace func {
@@ -349,10 +345,10 @@ public:
     return *this;
   }
 public:
-  bool in_domain(const point&) const {return true;}
-  double value(const point& a_point) const {
-    if(!m_points.size()) return 0;
-    return (inside(a_point,m_points)?1:0);
+  bool value(const point& a_point,double& a_value) const {
+    if(!m_points.size()) {a_value = 0;return false;}
+    a_value = (inside(a_point,m_points)?1:0);
+    return true;
   }
 public:
   bool set(const std::vector<point>& a_points){

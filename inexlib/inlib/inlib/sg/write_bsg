@@ -12,7 +12,6 @@
 #include "../io/bwbuf"
 
 #include "../platform"
-#include "../file"
 #include "../version"
 #include "../num2s"
 
@@ -22,6 +21,7 @@ namespace inlib {
 namespace sg {
 
 class write_bsg : public write_action {
+  INLIB_ACTION(write_bsg,inlib::sg::write_bsg,write_action)
 public:
   virtual io::iwbuf& buffer() {return m_buffer;}
   virtual bool beg_node(const node& a_node) {
@@ -36,19 +36,19 @@ public:
   virtual unsigned int protocol() const {return m_protocol;}
 public:
   write_bsg(std::ostream& a_out)
-  :write_action(a_out)
+  :parent(a_out)
   ,m_buffer(a_out,byte_swap())
   ,m_protocol(3)
   {}
   virtual ~write_bsg(){}
 protected:
   write_bsg(const write_bsg& a_from)
-  :write_action(a_from)
+  :parent(a_from)
   ,m_buffer(a_from.m_buffer)
   ,m_protocol(a_from.m_protocol)
   {}
   write_bsg& operator=(const write_bsg& a_from){
-    write_action::operator=(a_from);
+    parent::operator=(a_from);
     m_buffer = a_from.m_buffer;
     m_protocol = a_from.m_protocol;
     return *this;
@@ -69,7 +69,7 @@ public:
       m_buffer.reset_pos();
       m_infos.clear();
       m_end_header_offset = 0;
-      return false;    
+      return false;
     }
     return true;
   }
@@ -99,10 +99,10 @@ public:
      {if(!num2s((uint32)(*it).second.fields().size(),stmp)) {}
       infos.push_back(stmp);}
       inlib_vforcit(field_desc,(*it).second.fields(),it2) {
-        infos.push_back((*it2).name()); 
+        infos.push_back((*it2).name());
         infos.push_back((*it2).cls());
      //{if(!num2s((*it2).offset(),stmp)) {} //protocol 2
-       {if(!num2s((field_desc::offset_t)0,stmp)) {} //protocol 3 : do not save offset which depends of the compiler.
+       {if(!ptrdiff_t2s((field_desc::offset_t)0,stmp)) {} //protocol 3 : do not save offset which depends of the compiler.
         infos.push_back(stmp);}
       }
       fd.add(infos);
@@ -160,7 +160,7 @@ protected:
 
     // write inlib version :
     if(!a_buffer.write(version())) return false;
-  
+
     // write protocol version :
     if(!a_buffer.write(a_protocol)) return false;
 

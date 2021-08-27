@@ -4,7 +4,7 @@
 #ifndef inlib_sqrot
 #define inlib_sqrot
 
-#include "qrot"
+#include "lina/qrot"
 #include "words"
 #include "sto"
 

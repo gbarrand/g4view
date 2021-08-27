@@ -18,7 +18,10 @@ inline void params2entries(const gui_params& a_params,
   a_node.add_bool(gui_params::s_auto_hide_scene(),a_params.m_auto_hide_scene);
   a_node.add_bool(gui_params::s_image_buttons(),a_params.m_image_buttons);
   a_node.add_bool(gui_params::s_plane_viewer(),a_params.m_plane_viewer);
+  a_node.add_bool(gui_params::s_touch_move(),a_params.m_touch_move);
   a_node.add_bool(gui_params::s_light_on(),a_params.m_light_on);
+  a_node.add_bool(gui_params::s_blend_on(),a_params.m_blend_on);
+  a_node.add_bool(gui_params::s_smooth_on(),a_params.m_smooth_on);
   a_node.add_bool(gui_params::s_solid(),a_params.m_solid);
   a_node.add_bool(gui_params::s_reduced_wire_frame(),a_params.m_reduced_wire_frame);
   a_node.add_uint(gui_params::s_max_depth(),a_params.m_max_depth);
@@ -32,6 +35,7 @@ inline void params2entries(const gui_params& a_params,
   a_node.add_float(gui_params::s_node_height(),a_params.m_node_height);
   a_node.add_color(gui_params::s_node_color(),a_params.m_node_color);
   a_node.add_uint(gui_params::s_time_interval(),a_params.m_time_interval);
+  a_node.add_uint(gui_params::s_anim_interval(),a_params.m_anim_interval);
   a_node.add_uint(gui_params::s_cycle_secs(),a_params.m_cycle_secs);
   a_node.add_color(gui_params::s_scene_screen_color(),a_params.m_scene_screen_color);
   a_node.add_float(gui_params::s_console_scale(),a_params.m_console_scale);
@@ -48,12 +52,14 @@ inline void params2entries(const gui_params& a_params,
   a_node.add_opts(gui_params::s_sliders_pos(),a_params.m_sliders_pos,opts);}
 
  {std::vector<std::string> opts;
+  opts.push_back(font_lato_regular_ttf());
+  opts.push_back(font_roboto_bold_ttf());
   opts.push_back(font_helveticabd_ttf());
   opts.push_back(font_arialbd_ttf());
   opts.push_back(font_courbd_ttf());
   opts.push_back(font_lucidagrandebd_ttf());
   a_node.add_opts(gui_params::s_gui_font(),a_params.m_gui_font,opts);}
-  
+
  {std::vector<std::string> opts;
   opts.push_back(s_font_pixmap());
   opts.push_back(s_font_filled());
@@ -64,7 +70,7 @@ inline void params2entries(const gui_params& a_params,
   if(a_params.m_gui_font_modeling==font_pixmap)  def = s_font_pixmap();
   a_node.add_opts(gui_params::s_gui_font_modeling(),def,opts);}
 
-}  
+}
 
 }}
 
@@ -73,4 +79,4 @@ inline void params2entries(const gui_params& a_params,
 #endif
 
 
- 
+

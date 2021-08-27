@@ -11,7 +11,7 @@ namespace rroot {
 
 inline const std::string& geo_volume_cls(){
   static const std::string s_v("inlib::rroot::geo_volume");
-  return s_v;  
+  return s_v;
 }
 
 }}

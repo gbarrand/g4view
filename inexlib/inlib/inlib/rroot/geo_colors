@@ -13,7 +13,7 @@ namespace rroot {
 
 inline void geo_colors(std::vector<unsigned int>& col) {
   col.resize(250,18);
-  
+
   //here we should create a new TColor with the same rgb as in the default
   //CERN-ROOT colors used below
   col[  8] = 15;

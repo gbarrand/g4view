@@ -6,6 +6,10 @@
 
 #include "atime"
 
+#ifdef INLIB_MEM
+#include "../mem"
+#endif
+
 namespace inlib {
 
 class base_timer {
@@ -17,6 +21,7 @@ public:
     return s_v;
   }
   virtual void* cast(const std::string&) const = 0;
+  virtual const std::string& s_cls() const = 0;
 public:
   virtual void start() {
     m_started = true;
@@ -30,14 +35,26 @@ public:
   :m_interval(a_interval)
   ,m_started(false)
   ,m_prev(atime(0,0))
-  {}
-  virtual ~base_timer(){}
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~base_timer(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
 public:
   base_timer(const base_timer& a_from)
   :m_interval(a_from.m_interval)
   ,m_started(false)
   ,m_prev(atime(0,0))
-  {}
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
   base_timer& operator=(const base_timer& a_from){
     if(&a_from==this) return *this;
     m_interval = a_from.m_interval;
@@ -54,9 +71,9 @@ public:
     atime elaps = atime::elapsed(m_prev);
     if((unsigned int)elaps.milli_seconds()>m_interval) {
       action();
-      m_prev = atime::now();    
+      m_prev = atime::now();
     }
-  }  
+  }
 protected:
   unsigned int m_interval; //milliseconds.
   bool m_started;

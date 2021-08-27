@@ -23,6 +23,7 @@ INLIB_GLOBAL_STRING(format_wrl)
 INLIB_GLOBAL_STRING(format_jpeg)
 INLIB_GLOBAL_STRING(format_png)
 INLIB_GLOBAL_STRING(format_root)
+INLIB_GLOBAL_STRING(format_dst)  //pmx,agora.
 INLIB_GLOBAL_STRING(format_csv)
 INLIB_GLOBAL_STRING(format_hippo)
 INLIB_GLOBAL_STRING(format_scenarios)
@@ -40,6 +41,9 @@ INLIB_GLOBAL_STRING(format_zheprep)
 INLIB_GLOBAL_STRING(format_lua)
 INLIB_GLOBAL_STRING(format_py)
 INLIB_GLOBAL_STRING(format_kumac)
+INLIB_GLOBAL_STRING(format_insh)
+INLIB_GLOBAL_STRING(format_shp)
+INLIB_GLOBAL_STRING(format_simbad)
 
 #define INLIB_GLOBAL_EXT(a_name)\
 inline const std::string& s_ext_##a_name() {\
@@ -55,9 +59,11 @@ INLIB_GLOBAL_EXT(dcm)
 INLIB_GLOBAL_EXT(iv)
 INLIB_GLOBAL_EXT(hiv)
 INLIB_GLOBAL_EXT(wrl)
+INLIB_GLOBAL_EXT(jpeg)
 INLIB_GLOBAL_EXT(jpg)
 INLIB_GLOBAL_EXT(png)
 INLIB_GLOBAL_EXT(root)
+INLIB_GLOBAL_EXT(dst)
 INLIB_GLOBAL_EXT(csv)
 INLIB_GLOBAL_EXT(hiptxt)
 INLIB_GLOBAL_EXT(tnt)
@@ -76,6 +82,9 @@ INLIB_GLOBAL_EXT(zheprep)
 INLIB_GLOBAL_EXT(lua)
 INLIB_GLOBAL_EXT(py)
 INLIB_GLOBAL_EXT(kumac)
+INLIB_GLOBAL_EXT(insh)
+INLIB_GLOBAL_EXT(shp)
+INLIB_GLOBAL_EXT(simbad)
 
 #undef INLIB_GLOBAL_EXT
 
@@ -92,6 +101,7 @@ inline void formats(std::vector<std::string>& a_v) {
   a_v.push_back(s_format_jpeg());
   a_v.push_back(s_format_png());
   a_v.push_back(s_format_root());
+  a_v.push_back(s_format_dst());
   a_v.push_back(s_format_csv());
   a_v.push_back(s_format_hippo());
   a_v.push_back(s_format_scenarios());
@@ -109,16 +119,21 @@ inline void formats(std::vector<std::string>& a_v) {
   a_v.push_back(s_format_lua());
   a_v.push_back(s_format_py());
   a_v.push_back(s_format_kumac());
+  a_v.push_back(s_format_insh());
+  a_v.push_back(s_format_shp());
+  a_v.push_back(s_format_simbad());
 }
 
 inline std::string ext_fmt(const std::string& a_ext) {
   if(a_ext==s_ext_fits()) return s_format_fits();
   if(a_ext==s_ext_aida()) return s_format_aida();
   if(a_ext==s_ext_root()) return s_format_root();
+  if(a_ext==s_ext_dst())  return s_format_dst();
   if(a_ext==s_ext_csv())  return s_format_csv();
   if(a_ext==s_ext_tnt())  return s_format_hippo();
   if(a_ext==s_ext_hiptxt()) return s_format_hippo();
   if(a_ext==s_ext_hdf5()) return s_format_hdf5();
+  if(a_ext==s_ext_jpeg()) return s_format_jpeg();
   if(a_ext==s_ext_jpg()) return s_format_jpeg();
   if(a_ext==s_ext_png()) return s_format_png();
   if(a_ext==s_ext_fog()) return s_format_fog();
@@ -141,7 +156,82 @@ inline std::string ext_fmt(const std::string& a_ext) {
   if(a_ext==s_ext_lua()) return s_format_lua();
   if(a_ext==s_ext_py()) return s_format_py();
   if(a_ext==s_ext_kumac()) return s_format_kumac();
+  if(a_ext==s_ext_insh()) return s_format_insh();
+  if(a_ext==s_ext_shp()) return s_format_shp();
+  if(a_ext==s_ext_simbad()) return s_format_simbad();
   return s_format_guessed();
+}
+
+inline bool need_placement(const std::string& a_format) {
+  if(a_format==s_format_guessed()) return true;
+//if(a_format==s_format_hdf5()) return true;
+//if(a_format==s_format_fits()) return true;
+//if(a_format==s_format_fog()) return true;  //load in static_sg.
+//if(a_format==s_format_dot()) return true;
+//if(a_format==s_format_dcm()) return true;
+//if(a_format==s_format_iv()) return true;    //load in static_sg.
+//if(a_format==s_format_wrl()) return true;   //load in static_sg.
+//if(a_format==s_format_jpeg()) return true;
+//if(a_format==s_format_png()) return true;
+//if(a_format==s_format_root()) return true;
+//if(a_format==s_format_dst()) return true;
+//if(a_format==s_format_csv()) return true;
+//if(a_format==s_format_hippo()) return true;
+//if(a_format==s_format_scenarios()) return true;
+//if(a_format==s_format_slides()) return true;
+//if(a_format==s_format_zvid()) return true;
+  if(a_format==s_format_exsg()) return true;
+//if(a_format==s_format_gdml()) return true;    //load in static_sg.
+//if(a_format==s_format_mac()) return true;
+//if(a_format==s_format_cmnd()) return true;
+//if(a_format==s_format_aida()) return true;
+  if(a_format==s_format_bsg()) return true;
+//if(a_format==s_format_jive()) return true;    //load in dynamic_sg.
+//if(a_format==s_format_heprep()) return true;  //load in static_sg.
+//if(a_format==s_format_zheprep()) return true; //load in static_sg.
+//if(a_format==s_format_lua()) return true;
+//if(a_format==s_format_py()) return true;
+//if(a_format==s_format_kumac()) return true;
+//if(a_format==s_format_insh()) return true;
+//if(a_format==s_format_shp()) return true;    //load in static_sg.
+//if(a_format==s_format_simbad()) return true; //load in arg sep.
+  return false;
+}
+
+// related files : sg/write_paper, paper_format.
+
+inline bool is_paper_format(const std::string& a_format) {
+  if(a_format=="gl2ps_eps") return true;
+  if(a_format=="gl2ps_ps") return true;
+  if(a_format=="gl2ps_pdf") return true;
+  if(a_format=="gl2ps_svg") return true;
+  if(a_format=="gl2ps_tex") return true;
+  if(a_format=="gl2ps_pgf") return true;
+  if(a_format=="inzb_ps") return true;
+  if(a_format=="inzb_jpeg") return true;
+  if(a_format=="inzb_png") return true;
+  return false;
+}
+
+inline bool is_inzb_format(const std::string& a_format) {
+  if(a_format=="inzb_ps") return true;
+  if(a_format=="inzb_jpeg") return true;
+  if(a_format=="inzb_png") return true;
+  return false;
+}
+
+inline bool paper_format_extension(const std::string& a_format,std::string& a_ext) {
+  if(a_format=="gl2ps_eps") {a_ext = "eps";return true;}
+  if(a_format=="gl2ps_ps")  {a_ext = "ps";return true;}
+  if(a_format=="gl2ps_pdf") {a_ext = "pdf";return true;}
+  if(a_format=="gl2ps_svg") {a_ext = "svg";return true;}
+  if(a_format=="gl2ps_tex") {a_ext = "tex";return true;}
+  if(a_format=="gl2ps_pgf") {a_ext = "pgf";return true;}
+  if(a_format=="inzb_ps")   {a_ext = "ps";return true;}
+  if(a_format=="inzb_jpeg") {a_ext = "jpeg";return true;}
+  if(a_format=="inzb_png")  {a_ext = "png";return true;}
+  a_ext.clear();
+  return false;
 }
 
 }}

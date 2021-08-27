@@ -5,7 +5,7 @@
 #define inlib_file_reader
 
 #include <string>
-#include <cstdio>
+#include <cstddef>
 
 namespace inlib {
 namespace file {

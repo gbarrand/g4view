@@ -4,8 +4,10 @@
 #ifndef inlib_app
 #define inlib_app
 
-#include "system"
-#include "file"
+#include "path_env"
+#include "sout"
+#include "path"
+#include "file_exists"
 #include "forit"
 #include "sys/dir"
 
@@ -86,7 +88,7 @@ inline bool if_mouse_startup(const std::string& a_arg0,const std::string& a_env_
     std::string Contents_dir = dir_name(exe_dir);
     if(!put_env(a_env_HOME_DIR,Contents_dir)) {
       a_out << "if_mouse_startup :"
-            << " can't putenv " << a_env_HOME_DIR 
+            << " can't putenv " << a_env_HOME_DIR
             << " to " << sout(Contents_dir)
             << "."
             << std::endl;
@@ -135,11 +137,11 @@ inline bool if_mouse_startup(const std::string& a_arg0,const std::string& a_env_
     std::vector<std::string> words;
     path_words(exe_dir,words,is_abs,is_win,drive);
     std::vector<std::string>::size_type n = words.size();
-    
-    if( (n>=3) && 
-        (words[n-1]=="bin") && 
+
+    if( (n>=3) &&
+        (words[n-1]=="bin") &&
         is_version(words[n-2]) &&
-        (words[n-3].substr(0,4)=="osc_") 
+        (words[n-3].substr(0,4)=="osc_")
       ){
 
       std::string osc_vers_dir = dir_name(exe_dir);
@@ -149,7 +151,7 @@ inline bool if_mouse_startup(const std::string& a_arg0,const std::string& a_env_
       //if(a_env_HOME_DIR.size()) {
         if(!put_env(a_env_HOME_DIR,osc_vers_dir)) {
           a_out << "arg0_setenv :"
-                << " can't putenv " << a_env_HOME_DIR 
+                << " can't putenv " << a_env_HOME_DIR
                 << " to " << sout(osc_vers_dir)
                 << "."
                 << std::endl;

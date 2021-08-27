@@ -39,10 +39,10 @@ public:
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    //a_buffer.out() << " debug : geo_material : vers " << v << std::endl;
+    //::printf("debug : geo_material::stream : v %d\n",v);
 
     std::string name;
-    std::string title;  
+    std::string title;
     if(!Named_stream(a_buffer,name,title)) return false;
 
    {short color,style;
@@ -73,7 +73,7 @@ public:
     }
 
     //TObject* fShader;     // shader with optical properties
-    if(!dummy_TXxx_pointer_stream(a_buffer,m_fac,false)) {
+    if(!dummy_TXxx_pointer_stream(a_buffer,m_fac)) {
       a_buffer.out() << "inlib::rroot::geo_material::stream : "
                      << "can't read fShader."
                      << std::endl;
@@ -83,7 +83,7 @@ public:
     if(v>3) {
 
     //TObject* fCerenkov;   // pointer to class with Cerenkov properties
-    if(!dummy_TXxx_pointer_stream(a_buffer,m_fac,false)) {
+    if(!dummy_TXxx_pointer_stream(a_buffer,m_fac)) {
       a_buffer.out() << "inlib::rroot::geo_material::stream : "
                      << "can't read fCerenkov."
                      << std::endl;
@@ -91,7 +91,7 @@ public:
     }
 
     //TGeoElement* fElement;    // pointer to element composing the material
-    if(!dummy_TXxx_pointer_stream(a_buffer,m_fac,false)) {
+    if(!dummy_TXxx_pointer_stream(a_buffer,m_fac)) {
       a_buffer.out() << "inlib::rroot::geo_material::stream : "
                      << "can't read fElement."
                      << std::endl;
@@ -205,7 +205,9 @@ public:
     unsigned int s, c;
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
-	
+
+    //::printf("debug : geo_mixture::stream : v %d\n",v);
+
     // version 5 and 3 handled.
 
     //a_buffer.out() << " debug : geo_mixture : vers " << v << std::endl;
@@ -228,8 +230,13 @@ public:
       //Int_t* fNatoms;     // [fNelements] array of numbers of atoms
       if(!dummy_array_stream<int>(a_buffer,fNelements)) return false;
 
+      if(v>=3) { //EsbRoot/geo_full.root has v = 3.
+        //Double_t* fVecNbOfAtomsPerVolume; //[fNelements] array of numbers of atoms per unit volume
+        if(!dummy_array_stream<double>(a_buffer,fNelements)) return false;
+      }
+
       //TObjArray* fElements;   // array of elements composing the mixture
-      if(!dummy_TXxx_pointer_stream(a_buffer,m_fac,false)) {
+      if(!dummy_TXxx_pointer_stream(a_buffer,m_fac)) {
         a_buffer.out() << "inlib::rroot::geo_mixture::stream : "
                        << "can't read fElements."
                        << std::endl;

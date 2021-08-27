@@ -19,59 +19,60 @@
 // radian                  (radian)
 // steradian               (steradian)
 //
+// G.Barrand : the upper means that C/C++ corresponding variables are set to one.
 
 namespace inlib {
 namespace edep {
 
-  // 
+  //
   // Length [L]
   //
-  static const double millimeter  = 1.;                        
+  static const double millimeter  = 1.;
   static const double millimeter2 = millimeter*millimeter;
   static const double millimeter3 = millimeter*millimeter*millimeter;
 
-  static const double centimeter  = 10.*millimeter;   
+  static const double centimeter  = 10.*millimeter;
   static const double centimeter2 = centimeter*centimeter;
   static const double centimeter3 = centimeter*centimeter*centimeter;
 
-  static const double meter  = 1000.*millimeter;                  
+  static const double meter  = 1000.*millimeter;
   static const double meter2 = meter*meter;
   static const double meter3 = meter*meter*meter;
 
-  static const double kilometer = 1000.*meter;                   
+  static const double kilometer = 1000.*meter;
   static const double kilometer2 = kilometer*kilometer;
   static const double kilometer3 = kilometer*kilometer*kilometer;
 
   static const double parsec = 3.0856775807e+16*meter;
 
-  static const double micrometer = 1.e-6 *meter;             
-  static const double  nanometer = 1.e-9 *meter;
+  static const double micrometer = 1.e-6*meter;
+  static const double  nanometer = 1.e-9*meter;
   static const double  angstrom  = 1.e-10*meter;
   static const double  fermi     = 1.e-15*meter;
 
   static const double      barn = 1.e-28*meter2;
-  static const double millibarn = 1.e-3 *barn;
-  static const double microbarn = 1.e-6 *barn;
-  static const double  nanobarn = 1.e-9 *barn;
+  static const double millibarn = 1.e-3*barn;
+  static const double microbarn = 1.e-6*barn;
+  static const double  nanobarn = 1.e-9*barn;
   static const double  picobarn = 1.e-12*barn;
 
   // symbols
-  static const double nm  = nanometer;                        
-  static const double um  = micrometer;                        
+  static const double nm  = nanometer;
+  static const double um  = micrometer;
 
-  static const double mm  = millimeter;                        
+  static const double mm  = millimeter;
   static const double mm2 = millimeter2;
   static const double mm3 = millimeter3;
 
-  static const double cm  = centimeter;   
+  static const double cm  = centimeter;
   static const double cm2 = centimeter2;
   static const double cm3 = centimeter3;
 
-  static const double m  = meter;                  
+  static const double m  = meter;
   static const double m2 = meter2;
   static const double m3 = meter3;
 
-  static const double km  = kilometer;                   
+  static const double km  = kilometer;
   static const double km2 = kilometer2;
   static const double km3 = kilometer3;
 
@@ -80,12 +81,12 @@ namespace edep {
   //
   // Angle
   //
-  static const double radian      = 1.;                  
+  static const double radian      = 1.;
   static const double milliradian = 1.e-3*radian;
   static const double degree = (3.14159265358979323846/180.0)*radian;
 
   static const double   steradian = 1.;
-  
+
   // symbols
   static const double rad  = radian;
   static const double mrad = milliradian;
@@ -96,9 +97,9 @@ namespace edep {
   // Time [T]
   //
   static const double nanosecond  = 1.;
-  static const double second      = 1.e+9 *nanosecond;
-  static const double millisecond = 1.e-3 *second;
-  static const double microsecond = 1.e-6 *second;
+  static const double second      = 1.e+9*nanosecond;
+  static const double millisecond = 1.e-3*second;
+  static const double microsecond = 1.e-6*second;
   static const double  picosecond = 1.e-12*second;
 
   static const double hertz = 1./second;
@@ -113,21 +114,27 @@ namespace edep {
   //
   // Electric charge [Q]
   //
-  static const double eplus = 1. ;// positron charge
-  static const double e_SI  = 1.602176487e-19;// positron charge in coulomb
-  static const double coulomb = eplus/e_SI;// coulomb = 6.24150 e+18 * eplus
+  static const double eplus       = 1.;  // positron charge
+  static const double em_avogadro = 6.241509647e+18; //G.Barrand. //6.24 exa
+  static const double coulomb     = em_avogadro*eplus;
+  static const double e_SI        = eplus/coulomb; //1.602176487e-19 = positron charge in coulomb
+
+  //static const double e_SI  = 1.602176487e-19;  // positron charge in coulomb (from Geant4).
+  //static const double coulomb = eplus/e_SI;  // coulomb = 6.24150 e+18 * eplus
+
+  // G.Barrand : Q(SI) = Coulomb, Q(G4) = eplus, Q(CGS) ? (it is not statC).
 
   //
   // Energy [E]
   //
-  static const double megaelectronvolt = 1. ;
+  static const double megaelectronvolt = 1.;
   static const double     electronvolt = 1.e-6*megaelectronvolt;
   static const double kiloelectronvolt = 1.e-3*megaelectronvolt;
   static const double gigaelectronvolt = 1.e+3*megaelectronvolt;
   static const double teraelectronvolt = 1.e+6*megaelectronvolt;
   static const double petaelectronvolt = 1.e+9*megaelectronvolt;
 
-  static const double joule = electronvolt/e_SI;// joule = 6.24150 e+12 * MeV
+  static const double joule = electronvolt/e_SI; // joule = 6.24150 e+12 * MeV
 
   // symbols
   static const double MeV = megaelectronvolt;
@@ -140,7 +147,7 @@ namespace edep {
   //
   // Mass [E][T^2][L^-2]
   //
-  static const double  kilogram = joule*second*second/(meter*meter);   
+  static const double  kilogram = joule*second*second/(meter*meter);
   static const double      gram = 1.e-3*kilogram;
   static const double milligram = 1.e-3*gram;
 
@@ -152,12 +159,12 @@ namespace edep {
   //
   // Power [E][T^-1]
   //
-  static const double watt = joule/second;// watt = 6.24150 e+3 * MeV/ns
+  static const double watt = joule/second;  //watt = 6.24150 e+3 * MeV/ns
 
   //
   // Force [E][L^-1]
   //
-  static const double newton = joule/meter;// newton = 6.24150 e+9 * MeV/mm
+  static const double newton = joule/meter; //newton = 6.24150 e+9 * MeV/mm
 
   //
   // Pressure [E][L^-3]
@@ -167,7 +174,7 @@ namespace edep {
 //static const double blaise_pascal = newton/m2; //it is long.
   static const double Pa = newton/m2;
   // bar    = 6.24150 e+8 * MeV/mm3
-  static const double bar        = 100000*Pa;
+  static const double bar = 100000*Pa;
   // atm    = 6.32420 e+8 * MeV/mm3
   static const double atmosphere = 101325*Pa;
 
@@ -206,7 +213,7 @@ namespace edep {
   //
   // Magnetic Flux [T][E][Q^-1]
   //
-  static const double weber = volt*second;// weber = 1000*megavolt*ns
+  static const double weber = volt*second;  // weber = 1000*megavolt*ns
 
   //
   // Magnetic Field [T][E][Q^-1][L^-2]
@@ -236,13 +243,13 @@ namespace edep {
   //
   // Activity [T^-1]
   //
-  static const double becquerel = 1./second ;
-  static const double curie = 3.7e+10 * becquerel;
+  static const double becquerel = 1./second;
+  static const double curie = 3.7e+10*becquerel;
 
   //
   // Absorbed dose [L^2][T^-2]
   //
-  static const double      gray = joule/kilogram ;
+  static const double      gray = joule/kilogram;
   static const double  kilogray = 1.e+3*gray;
   static const double milligray = 1.e-3*gray;
   static const double microgray = 1.e-6*gray;
@@ -265,10 +272,22 @@ namespace edep {
   //
   // Miscellaneous
   //
-  static const double per_cent     = 0.01 ;
+  static const double per_cent     = 0.01;
   static const double per_thousand = 0.001;
   static const double per_million  = 0.000001;
 
+  static const double statC_squared = gram*cm3/(second*second); //G.Barrand. statcoulomb (or Franklin).
+
+  // kilo  1e+3
+  // mega  1e+6
+  // giga  1e+9
+  // tera  1e+12
+  // peta  1e+15
+  // exa   1e+18
+  // zetta 1e+21
+  // yotta 1e+24
+
 }}
+
 
 #endif

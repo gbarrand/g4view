@@ -43,6 +43,7 @@ public:
 public:
   const xml::styles& styles() const {return m_styles;}
   xml::styles& styles() {return m_styles;}
+
 protected:
   void set_gui_style(const std::string& a_style) {
 
@@ -51,17 +52,17 @@ protected:
     const xml::styles::style_t* sty = m_styles.find_style(style);
     if(!sty) return;
     m_gui_style = style;
-    
+
     if(!m_styles.res_color(*sty,"screen_color",m_params.m_gui_screen_color,style)){}
-			   
+
     if(!find<std::string,std::string>(*sty,"gui_font",m_params.m_gui_font)){} //FIXME : should check that val is a font name.
-   {std::string val;			   
+   {std::string val;
     if(find<std::string,std::string>(*sty,"gui_font_modeling",val)){
            if(val==s_font_outline()) m_params.m_gui_font_modeling = font_outline;
       else if(val==s_font_filled())  m_params.m_gui_font_modeling = font_filled;
       else if(val==s_font_pixmap())  m_params.m_gui_font_modeling = font_pixmap;
     }}
-    
+
     if(!m_styles.res_color(*sty,"back_color",
                            m_params.m_gui_back_color,style)){}
     if(!m_styles.res_color(*sty,"front_color",

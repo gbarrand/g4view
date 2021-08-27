@@ -69,7 +69,7 @@ INLIB_GLOBAL_STRING_VALUE(nc_plum,plum)
 INLIB_GLOBAL_STRING_VALUE(nc_red,red)
 INLIB_GLOBAL_STRING_VALUE(nc_indianred,indianred)
 INLIB_GLOBAL_STRING_VALUE(nc_mediumvioletred,mediumvioletred)
-      
+
 INLIB_GLOBAL_STRING_VALUE(nc_orangered,orangered)
 INLIB_GLOBAL_STRING_VALUE(nc_violetred,violetred)
 INLIB_GLOBAL_STRING_VALUE(nc_salmon,salmon)
@@ -147,7 +147,7 @@ public:
     parent::operator[](s_nc_red()) = &get_color_red<COLOR>();
     parent::operator[](s_nc_indianred()) = &get_color_indianred<COLOR>();
     parent::operator[](s_nc_mediumvioletred()) = &get_color_mediumvioletred<COLOR>();
-      
+
     parent::operator[](s_nc_orangered()) = &get_color_orangered<COLOR>();
     parent::operator[](s_nc_violetred()) = &get_color_violetred<COLOR>();
     parent::operator[](s_nc_salmon()) = &get_color_salmon<COLOR>();

@@ -18,7 +18,7 @@
 #include "../smatch"
 #include "../schar"
 #include "../sys/atime"
-#include "../vec3d"
+#include "../lina/vec3d"
 #include "../hep/polyhedron"
 
 #include "../rroot/geo_colors"
@@ -41,23 +41,11 @@ public:
     return node::cast(a_class);
   }
 public:
-
   virtual void update_sg(std::ostream&) = 0;
   virtual const std::string& volume_name(const VOLUME&) const = 0;
-
   virtual bool volume_material_color(std::ostream&,const VOLUME& a_vol,colorf& a_color) = 0;
-
-  virtual bool add_shape(std::ostream& a_out,
-                         const VOLUME& a_vol,
-                         const MATRIX& a_matrix,
-                         separator& a_sep,
-                         bool a_solid) = 0;
-
-  virtual bool vis_children(std::ostream& a_out,
-                            const VOLUME& a_vol,
-                            const MATRIX& a_matrix,
-                            unsigned int a_depth) = 0;
-
+  virtual bool add_shape(std::ostream& a_out,const VOLUME& a_vol,const MATRIX& a_matrix,separator& a_sep,bool a_solid) = 0;
+  virtual bool vis_children(std::ostream& a_out,const VOLUME& a_vol,const MATRIX& a_matrix,unsigned int a_depth) = 0;
 public:
   sf_string volume;
   sf<int> volume_depth; //optional.
@@ -125,12 +113,12 @@ public:
     nodekit_pick(a_action,m_group,this);
   }
   virtual void search(search_action& a_action) {
-    node::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg(a_action.out());
       reset_touched();
     }
+    node::search(a_action);
+    if(a_action.done()) return;
     m_group.search(a_action);
   }
 
@@ -221,14 +209,14 @@ public:
   bool volume_not_found() const {return m_not_found;}
 
 protected:
-  void begin_update_sg(std::ostream& a_out) {
+  bool begin_update_sg(std::ostream& a_out) {
     clear();
 
     if(volume.value().empty()) {
       a_out << "inlib::sg::geo :"
             << " no volume name given."
             << std::endl;
-      return; //have to give something.
+      return false; //have to give something.
     }
 
     //a_out << "inlib::sg::geo::update_sg :"
@@ -240,7 +228,7 @@ protected:
     m_stopped_by_max_shapes = false;
     m_not_found = true;
 
-    if(atb.value()==atb_by_material) {         
+    if(atb.value()==atb_by_material) {
       m_group.add(new noderef(m_sg_map));
     }
 
@@ -253,6 +241,7 @@ protected:
     m_started_depth = -1;
 
     m_time_begin = atime::now();
+    return true;
   }
 
     //unsigned int depth = 0;
@@ -282,7 +271,7 @@ protected:
       node* _node = (*it).second;
       separator* sep = safe_cast<node,separator>(*_node);
       if(sep) sep->raw_clear();
-    }} 
+    }}
    {size_t num = m_group.size();
     for(size_t index=0;index<num;index++){
       node* _node = m_group[index];
@@ -294,10 +283,7 @@ protected:
   }
 
 protected:
-  bool _vis_volume(std::ostream& a_out,
-                   const VOLUME& a_vol,
-                   const MATRIX& a_matrix,
-                   unsigned int a_depth){
+  bool _vis_volume(std::ostream& a_out,const VOLUME& a_vol,const MATRIX& a_matrix,unsigned int a_depth){
 
     if(max_time.value() &&
        (atime::elapsed(m_time_begin).seconds()>=max_time.value()) ){
@@ -312,7 +298,7 @@ protected:
 
     //a_out << "debug : vis_volume : vol name " << a_vol.GetName()
     //      << std::endl;
-    
+
     if(m_started_depth==(-1)) { //volume not yet found.
 
       //::printf("debug : search \"%s\" \"%s\" %d\n",
@@ -352,11 +338,11 @@ protected:
 
         separator* sep = 0;
 
-        if(atb.value()==atb_by_material) {         
+        if(atb.value()==atb_by_material) {
 
           colorf c;
 	  if(!volume_material_color(a_out,a_vol,c)){}
-  
+
          {node* _node = 0;
           if(m_sg_map.find(c,_node)) {
             sep = safe_cast<node,separator>(*_node);
@@ -370,15 +356,15 @@ protected:
                   << std::endl;
             return false;
           }
-  
+
           if(sep->empty()) {
             rgba* col = new rgba;
             col->color = c;
             sep->add(col);
           }
-  
+
         } else if(atb.value()==atb_by_depth) {
-  
+
           if(ddepth>=m_group.size()) {
             //sz = 4
             // ddepth = 6 : 0123456, have to add : 3 = 6-4+1
@@ -387,9 +373,9 @@ protected:
               m_group.add(new separator());
             }
           }
-  
+
           sep = (separator*)m_group[ddepth];
-  
+
           if(sep->empty()) {
             colorf c;
             if(!m_cmap.get_color(ddepth-min_depth.value(),c)) {
@@ -401,17 +387,17 @@ protected:
             col->color = c;
             sep->add(col);
           }
-  
+
         } else { //atb_single
           sep = &m_group;
           if(sep->empty()) {
             rgba* col = new rgba;
             col->color = color.value();
             sep->add(col);
-          }  
-  
+          }
+
         }
-    
+
         if(!add_shape(a_out,a_vol,a_matrix,*sep,is_solid)) {}
 
       } // endif add_shape

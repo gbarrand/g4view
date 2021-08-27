@@ -56,7 +56,7 @@ public:
       INLIB_ARG_FIELD_DESC(slider_max),
       INLIB_ARG_FIELD_DESC(show_cancel),
       INLIB_ARG_FIELD_DESC(corner_radius),
-      
+
       INLIB_ARG_FIELD_DESC_OPTS_BEG(font,8)
         font_hershey().c_str(),
         font_arial_ttf().c_str(),
@@ -67,7 +67,7 @@ public:
         font_helvetica_ttf().c_str(),
         font_times_roman_ttf().c_str()
       INLIB_ARG_FIELD_DESC_OPTS_END,
-      
+
       INLIB_ARG_FIELD_DESC_ENUMS_BEG(font_modeling,3)
         INLIB_ARG_ENUM(font_outline),
         INLIB_ARG_ENUM(font_filled),
@@ -113,12 +113,12 @@ public:
     if(a_action.done()) return;
   }
   virtual void search(search_action& a_action) {
-    parent::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg(show_slider.touched()||show_cancel.touched()?true:false);
       reset_touched();
     }
+    parent::search(a_action);
+    if(a_action.done()) return;
     if(a_action.do_path()) a_action.path_push(this);
     m_sep.search(a_action);
     if(a_action.done()) return;
@@ -151,6 +151,7 @@ public:
 
   ,m_result(a_ttf)
   ,m_clear(a_ttf)
+  ,m_del(a_ttf)
   ,m_pow(a_ttf)
   ,m_enter(a_ttf)
   ,m_cancel(a_ttf)
@@ -198,6 +199,7 @@ public:
 
   ,m_result(a_from.m_result)
   ,m_clear(a_from.m_clear)
+  ,m_del(a_from.m_del)
   ,m_pow(a_from.m_pow)
   ,m_enter(a_from.m_enter)
   ,m_cancel(a_from.m_cancel)
@@ -274,15 +276,26 @@ protected:
   INLIB_CLASS_STRING(Ok)
   INLIB_CLASS_STRING(Cancel)
 
+  INLIB_CLASS_STRING(del)
+
   class button_cbk : public bcbk {
     typedef bcbk parent;
   public:
     virtual return_action action() {
-      std::string s = m_numeric.value.value(); 
+      std::string s = m_numeric.value.value();
+
+      if(m_action==s_C()) {
+        s.clear();
+        m_numeric.value = s;
+        return return_to_render;
+      } else if(m_action==numeric::s_del()) {
+        if(s.size()) s = s.substr(0,s.size()-1);
+        m_numeric.value = s;
+        return return_to_render;
+      }
+
       if(m_numeric.number_type==number_real) {
-        if(m_action==s_C()) {
-          s.clear();
-        } else if(m_action==numeric::s_dot()) {
+        if(m_action==numeric::s_dot()) {
           if(s.empty()) {
             s = "0.";
           } else if(s.find('e')!=std::string::npos) {
@@ -327,9 +340,7 @@ protected:
         }
 
       } else if(m_numeric.number_type==number_uint) {
-        if(m_action==s_C()) {
-          s.clear();
-        } else if(m_action==numeric::s_dot()) {
+        if(m_action==numeric::s_dot()) {
           //do nothing.
         } else if(m_action==numeric::s_sign()) {
           //do nothing.
@@ -342,9 +353,7 @@ protected:
         }
 
       } else if(m_numeric.number_type==number_int) {
-        if(m_action==s_C()) {
-          s.clear();
-        } else if(m_action==numeric::s_dot()) {
+        if(m_action==numeric::s_dot()) {
           //do nothing.
         } else if(m_action==numeric::s_sign()) {
           std::string::size_type pos = s.find('e');
@@ -367,9 +376,7 @@ protected:
 
       } else if(m_numeric.number_type==number_ip) {
         //four uints separated by three dots.
-        if(m_action==s_C()) {
-          s.clear();
-        } else if(m_action==numeric::s_dot()) {
+        if(m_action==numeric::s_dot()) {
           if(s.empty()) {
             //do nothing.
           } else {
@@ -379,18 +386,14 @@ protected:
             }
           }
         } else if(m_action==numeric::s_sign()) {
-          //do nothing.
         } else if(m_action==numeric::s_pow()) {
-          //do nothing.
         } else {
           s += m_action;
         }
 
       } else if(m_numeric.number_type==number_radec) {
         //h:m:s or d:ma:sa
-        if(m_action==s_C()) {
-          s.clear();
-        } else if(m_action==numeric::s_double_dot()) {
+        if(m_action==numeric::s_double_dot()) {
           if(s.empty()) {
             //do nothing.
           } else {
@@ -455,7 +458,7 @@ protected:
     if(height.value()<=0) return;
 
     // [resul]
-    // 7  8  9 
+    // 7  8  9
     // 4  5  6
     // 1  2  3
     // 0  . sg
@@ -477,10 +480,15 @@ protected:
 
     update_button(m_mtx_0,m_0,"0",3,0);
     update_button(m_mtx_dot,m_dot,s_dot(),3,1);
-    update_button(m_mtx_sign,m_sign,s_sign(),3,2);
+    if(number_type==number_ip) {
+      update_button(m_mtx_sign,m_sign,s_del(),3,2);
+    } else {
+      update_button(m_mtx_sign,m_sign,s_sign(),3,2);
+    }
 
     update_result();
     update_clear();
+    update_del();
     update_pow();
     update_enter();
 
@@ -513,6 +521,7 @@ protected:
     m_sep.add(sep);}
 
     m_sep.add(create_elem(m_mtx_clear,m_clear));
+    m_sep.add(create_elem(m_mtx_del,m_del));
     m_sep.add(create_elem(m_mtx_pow,m_pow));
     m_sep.add(create_elem(m_mtx_enter,m_enter));
 
@@ -570,7 +579,7 @@ protected:
   }
 
   void update_clear() {
-    float wtext = width/3;
+    float wtext = width/6;
     float htext = hitem();
 
     float xx = -width*0.5f+wtext*0.5f;
@@ -603,6 +612,38 @@ protected:
     m_clear.add_callback(new button_cbk(*this,s_C()));
   }
 
+  void update_del() {
+    float wtext = width/6;
+    float htext = hitem();
+
+    float xx = -width*0.5f+wtext+wtext*0.5f;
+    unsigned int row = 4;
+    float yy = height*0.5f-hitem()*1.5f-row*hitem();
+
+    m_mtx_del.set_translate(xx,yy,0);
+
+    m_del.width = wtext;
+    m_del.height = htext;
+
+    m_del.back_area::color = back_color;
+    m_del.back_area::border_color = border_color;
+
+    m_del.color = front_color;
+    m_del.font = font;
+    m_del.font_modeling = font_modeling;
+    m_del.wmargin_factor = text_wmargin_factor;
+    m_del.hmargin_factor = text_hmargin_factor;
+    m_del.arm_color = arm_color;
+
+    m_del.confine = true;
+    m_del.hjust = center;
+
+    m_del.set_label(s_del());
+
+    m_del.clear_cbks();
+    m_del.add_callback(new button_cbk(*this,s_del()));
+  }
+
   void update_pow() {
     float wtext = width/3;
     float htext = hitem();
@@ -632,6 +673,8 @@ protected:
     if(number_type.value()==number_radec) {
       m_pow.set_label(s_double_dot());
       m_pow.add_callback(new button_cbk(*this,s_double_dot()));
+    } else if(number_type.value()==number_ip) {
+      m_pow.set_label(std::string());
     } else {
       m_pow.set_label(s_pow());
       m_pow.add_callback(new button_cbk(*this,s_pow()));
@@ -785,6 +828,8 @@ protected:
   text m_result;
   matrix m_mtx_clear;
   text_button m_clear;
+  matrix m_mtx_del;
+  text_button m_del;
   matrix m_mtx_pow;
   text_button m_pow;
   matrix m_mtx_enter;

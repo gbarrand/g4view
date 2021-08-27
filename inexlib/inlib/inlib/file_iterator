@@ -56,7 +56,7 @@ public:
     return *this;
   }
 protected:
-  std::ostream& m_out; 
+  std::ostream& m_out;
   bool m_verbose;
 };
 

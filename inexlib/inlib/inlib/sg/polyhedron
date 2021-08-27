@@ -47,7 +47,7 @@ private:
   }
 public: //node
 
-  typedef tessellate::prims_t prims_t; 
+  typedef tessellate::prims_t prims_t;
 
 protected: //gstos
   virtual unsigned int create_gsto(std::ostream& a_out,render_manager& a_mgr) {
@@ -78,7 +78,7 @@ protected: //gstos
       if(sz) {
 
         float* buffer = new float[sz];
-        char* pos = (char*)buffer;         
+        char* pos = (char*)buffer;
         size_t psz = 0;
 
         if(m_draw_edges) {
@@ -147,11 +147,11 @@ public:
       if(enforce_edges.value()) draw_edges = true;
     }
 
-    if( touched() || 
+    if( touched() ||
        (draw_edges && m_xyzs.empty()) ||
        (solid.value() && m_primss.empty())  ){
       update_what what = lines;
-      if(solid.value()) what = draw_edges?faces_and_lines:faces;         
+      if(solid.value()) what = draw_edges?faces_and_lines:faces;
       update_sg(a_action.out(),what);
       reset_touched();
     }
@@ -205,23 +205,23 @@ public:
             //Same logic as Inventor SoLightModel.model = BASE_COLOR.
             a_action.set_lighting(false);
             a_action.color4f(0,0,0,1);
-  
+
             a_action.draw_vertex_array(gl::lines(),m_xyzs);
-  
+
             //pushes back the filled polygons to avoid z-fighting with lines
             a_action.set_polygon_offset(true);
-  
+
             a_action.color4f(state.m_color);
             a_action.set_lighting(state.m_GL_LIGHTING);
           }
         }
-  
+
        {inlib_vforcit(prims_t,m_primss,itt) {
           const prims_t& prims = *itt;
           inlib_vforcit(tess_prim*,prims,it) {
             const tess_prim& item = *(*it);
             const std::vector<float>& coords = item.m_coords;
-            if(coords.empty()) continue;  
+            if(coords.empty()) continue;
             const std::vector<float>& norms = item.m_norms;
             if(norms.size()!=coords.size()) {
               a_action.out() << "inlib::sg::polyhedron::render :"
@@ -256,18 +256,27 @@ public:
       update_sg(a_action.out(),lines);
       reset_touched();
     }
-    a_action.add_points(m_xyzs);
+    if(solid.value()) {
+      inlib_vforcit(prims_t,m_primss,itt) {
+        const prims_t& prims = *itt;
+        inlib_vforcit(tess_prim*,prims,it) {
+          const tess_prim& item = *(*it);
+          const std::vector<float>& coords = item.m_coords;
+          a_action.add_points(coords);
+        }
+      }
+    } else {
+      a_action.add_points(m_xyzs);
+    }
   }
 
   virtual void pick(pick_action& a_action) {
     if(touched()) {
-      update_what what = solid.value()?faces:lines;         
+      update_what what = solid.value()?faces:lines;
       update_sg(a_action.out(),what);
       reset_touched();
     }
-
     if(solid.value()) {
-
       inlib_vforcit(prims_t,m_primss,itt) {
         const prims_t& prims = *itt;
         inlib_vforcit(tess_prim*,prims,it) {
@@ -276,11 +285,12 @@ public:
           if(a_action.add__primitive(*this,item.m_mode,coords,true)) return;
         }
       }
-
     } else {
       a_action.add__lines(*this,m_xyzs,true);
     }
   }
+public:
+  virtual void clear_gstos() {gstos::clean_gstos();}
 public:
   polyhedron()
   :parent()
@@ -290,7 +300,7 @@ public:
   ,enforce_edges(false)
 
   ,m_tess(0)
-  { 
+  {
     add_fields();
   }
   virtual ~polyhedron(){
@@ -340,9 +350,7 @@ public:
 
     const hep::polyhedron& sbPolyhedron = ph.value();
     if(sbPolyhedron.GetNoFacets()<=0) {
-      a_out << "inlib::sg::polyhedron::update_sg :"
-            << " abnormal polyhedron."
-            << std::endl;
+      //a_out << "inlib::sg::polyhedron::update_sg : abnormal polyhedron." << std::endl;
       return; // Abnormal polyhedron.
     }
 
@@ -352,12 +360,12 @@ public:
 
       vec3d unitNormal;
       vec3d* pV = sbPolyhedron.GetPV();
-  
+
       // Assume all facets are convex quadrilaterals :
       bool notLastFace;
       do {
         notLastFace = sbPolyhedron.GetNextUnitNormal(unitNormal);
-  
+
         doubles.clear(); //begin POLYGON
 
         bool notLastEdge;
@@ -368,18 +376,18 @@ public:
           int index;
           notLastEdge = sbPolyhedron.GetNextVertexIndex(index,edgeFlag);
           vec3d* vertex = pV+index; //WARNING : must not be modified !
-  
+
           doubles.push_back((*vertex)[0]);
           doubles.push_back((*vertex)[1]);
           doubles.push_back((*vertex)[2]);
-  
+
         } while (notLastEdge);
 
         if(!m_tess) m_tess = new tessellate(a_out);
 
         m_primss.push_back(prims_t());
         prims_t& prims = m_primss.back();
-       
+
         m_tess->do_it(doubles.size()/3,vec_data(doubles),prims);
 
         m_tess->clear();
@@ -396,11 +404,11 @@ public:
 
       vec3d unitNormal;
       vec3d* pV = sbPolyhedron.GetPV();
-  
+
       bool notLastFace;
       do {
         notLastFace = sbPolyhedron.GetNextUnitNormal(unitNormal);
-  
+
         // Treat edges :
         int edgeFlag = 1;
         int prevEdgeFlag = edgeFlag;
@@ -410,8 +418,8 @@ public:
           int index;
           notLastEdge = sbPolyhedron.GetNextVertexIndex(index,edgeFlag);
           vec3d* vertex = pV+index; //WARNING : must not be modified !
-  
-          if(!reduced_wire_frame) edgeFlag = 1;        
+
+          if(!reduced_wire_frame) edgeFlag = 1;
           if(firstEdge) {
             if(edgeFlag) {
               pvbx = (float)(*vertex)[0];
@@ -422,7 +430,7 @@ public:
             firstEdge = false;
             prevEdgeFlag = edgeFlag;
           } else {
-            if(edgeFlag!=prevEdgeFlag) { 
+            if(edgeFlag!=prevEdgeFlag) {
               if(edgeFlag) { // Pass to a visible edge :
                 pvbx = (float)(*vertex)[0];
                 pvby = (float)(*vertex)[1];
@@ -464,7 +472,7 @@ public:
           }
         } while (notLastEdge);
       } while (notLastFace);
-  
+
     }
   }
 

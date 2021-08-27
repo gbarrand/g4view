@@ -80,12 +80,12 @@ public:
     if(a_action.done()) return;
   }
   virtual void search(search_action& a_action) {
-    parent::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg();
       reset_touched();
     }
+    parent::search(a_action);
+    if(a_action.done()) return;
     if(a_action.do_path()) a_action.path_push(this);
     m_sep.search(a_action);
     if(a_action.done()) return;
@@ -224,7 +224,7 @@ public:
     if(border_width.value()<0) return;
     if(border_height.value()<0) return;
 
-    bool back_button = ((border_width.value()>0) && (border_height.value()>0))?true:false; 
+    bool back_button = ((border_width.value()>0) && (border_height.value()>0))?true:false;
 
     float bw = border_width;
     float bh = border_height;
@@ -250,19 +250,19 @@ public:
       sep->add(mtx);
 
       BUTTON* b = new BUTTON;
-  
+
       b->back_area::border_visible = false;
 
       b->back_area::color = back_color;
       b->back_area::border_color = border_color;
       b->arm_color = arm_color;
-      
+
       b->width = wbutton;
       b->height = hbutton;
-  
+
       b->add_callback(new button_cbk(*this,-1,-1));
       b->copy_cbks(m_cbks,false);
-      
+
       sep->add(b);}
 
       // bottom :
@@ -279,19 +279,19 @@ public:
       sep->add(mtx);
 
       BUTTON* b = new BUTTON;
-  
+
       b->back_area::border_visible = false;
 
       b->back_area::color = back_color;
       b->back_area::border_color = border_color;
       b->arm_color = arm_color;
-      
+
       b->width = wbutton;
       b->height = hbutton;
-  
+
       b->add_callback(new button_cbk(*this,-1,-1));
       b->copy_cbks(m_cbks,false);
-      
+
       sep->add(b);}
 
       // left :
@@ -308,19 +308,19 @@ public:
       sep->add(mtx);
 
       BUTTON* b = new BUTTON;
-  
+
       b->back_area::border_visible = false;
 
       b->back_area::color = back_color;
       b->back_area::border_color = border_color;
       b->arm_color = arm_color;
-      
+
       b->width = wbutton;
       b->height = hbutton;
-  
+
       b->add_callback(new button_cbk(*this,-1,-1));
       b->copy_cbks(m_cbks,false);
-      
+
       sep->add(b);}
 
       // right :
@@ -337,23 +337,23 @@ public:
       sep->add(mtx);
 
       BUTTON* b = new BUTTON;
-  
+
       b->back_area::border_visible = false;
 
       b->back_area::color = back_color;
       b->back_area::border_color = border_color;
       b->arm_color = arm_color;
-      
+
       b->width = wbutton;
       b->height = hbutton;
-  
+
       b->add_callback(new button_cbk(*this,-1,-1));
       b->copy_cbks(m_cbks,false);
-      
+
       sep->add(b);}
 
     }
-  
+
     float wbutton = (width-2*bw)/cols.value();
     float hbutton = (height-2*bh)/rows.value();
     float bx = -width*0.5f+bw;
@@ -381,13 +381,13 @@ public:
         b->back_area::color = back_color;
         b->back_area::border_color = border_color;
         b->arm_color = arm_color;
-    
+
         b->width = wbutton;
         b->height = hbutton;
 
         b->add_callback(new button_cbk(*this,col,row));
         b->copy_cbks(m_cbks,false);
-    
+
         sep->add(b);
       }
     }
@@ -402,16 +402,16 @@ public:
       rgba* mat = new rgba();
       mat->color = border_color;
       m_sep.add(mat);
-  
+
       draw_style* ds = new draw_style;
-      ds->style = draw_style::lines;
+      ds->style = draw_lines;
       ds->line_width = 1;
       m_sep.add(ds);
-  
+
       vertices* vtxs = new vertices;
       vtxs->mode = gl::line_strip();
       m_sep.add(vtxs);
-  
+
       vtxs->add(xb,yb,zz);
       vtxs->add(xe,yb,zz);
       vtxs->add(xe,ye,zz);

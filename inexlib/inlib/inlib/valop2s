@@ -51,7 +51,7 @@ public:
   }
 
   virtual bool variable(unsigned int,const value& a_var) {
-    m_s += value::to_string(a_var);    
+    m_s += value::to_string(a_var);
     return true;
   }
 

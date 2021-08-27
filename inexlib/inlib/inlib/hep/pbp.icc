@@ -11,7 +11,7 @@
  *                                                                     *
  ***********************************************************************/
 
-#include "../plane"
+#include "../lina/plane"
 
 //#define INLIB_HEP_BP_OUT_ERR
 //#define INLIB_HEP_BP_CHECK_INDEX

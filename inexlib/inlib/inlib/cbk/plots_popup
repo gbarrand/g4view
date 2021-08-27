@@ -5,8 +5,9 @@
 #define inlib_cbk_plots_popup
 
 #include "popup"
+#include "popup_data"
 
-#include "../sg/view_plots"
+#include "edit_plots"
 #include "fit"
 
 namespace inlib {
@@ -19,8 +20,8 @@ inline sg::return_action plots_popup_action_current_edit(sg::gui_viewer& a_gv,co
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"node not a sg::plots");
     return sg::return_to_render;
   }
-  sg::plots_data data(*plots,true,a_data.m_ex,a_data.m_ey);
-  return sg::action_resedit(a_gv,data);
+  cbk::plots_data data(*plots,true,a_data.m_ex,a_data.m_ey);
+  return cbk::action_resedit(a_gv,data);
 }
 
 inline sg::return_action plots_popup_action_current_fit(sg::gui_viewer& a_gv,sg::ilist& a_node,const popup_data& a_data) {
@@ -47,18 +48,18 @@ public:
 //    new sg::fundata_cbk<sg::gui_viewer,sg::ilist,popup_data>(m_gv,a_list,plots_popup_action_layout,popup_data(*m_node,a_x,a_y)));
     sg::plots* plots = safe_cast<sg::node,sg::plots>(*m_node);
     if(plots) {
-      sg::plots_data _data(*plots,true,a_x,a_y);
-      sg::add_item(m_gv,a_list,"toggle border",sg::action_toggle_border,_data);
-      sg::add_item(m_gv,a_list,"adjust size",sg::action_adjust_size,_data);
-      sg::add_item(m_gv,a_list,"set regions",sg::action_regions,_data);
-      sg::add_item(m_gv,a_list,"set current plotter",sg::action_current,_data);
-      sg::add_item(m_gv,a_list,"plotter to one",sg::action_current_to_one,_data);
-      sg::add_item(m_gv,a_list,"toggle plotter border",sg::action_toggle_view_border,_data);
-      sg::add_item(m_gv,a_list,"plotter clear bins",sg::action_clear_bins,_data);
-      sg::add_item(m_gv,a_list,"plotter clear points",sg::action_clear_points,_data);
-      sg::add_item(m_gv,a_list,"plotter clear functions",sg::action_clear_functions,_data);
-      sg::add_item(m_gv,a_list,"plotter clear",sg::action_clear,_data);
-      sg::add_item(m_gv,a_list,"clear all plotters",sg::action_clear_plots,_data);
+      cbk::plots_data _data(*plots,true,a_x,a_y);
+      sg::add_item(m_gv,a_list,"toggle border",cbk::action_toggle_border,_data);
+    //sg::add_item(m_gv,a_list,"adjust size",cbk::action_adjust_size,_data);
+      sg::add_item(m_gv,a_list,"set regions",cbk::action_regions,_data);
+      sg::add_item(m_gv,a_list,"set current plotter",cbk::action_current,_data);
+      sg::add_item(m_gv,a_list,"plotter to one",cbk::action_current_to_one,_data);
+      sg::add_item(m_gv,a_list,"toggle plotter border",cbk::action_toggle_view_border,_data);
+      sg::add_item(m_gv,a_list,"plotter clear bins",cbk::action_clear_bins,_data);
+      sg::add_item(m_gv,a_list,"plotter clear points",cbk::action_clear_points,_data);
+      sg::add_item(m_gv,a_list,"plotter clear functions",cbk::action_clear_functions,_data);
+      sg::add_item(m_gv,a_list,"plotter clear",cbk::action_clear,_data);
+      sg::add_item(m_gv,a_list,"clear all plotters",cbk::action_clear_plots,_data);
     }
 
     a_list.add("edit current plotter",
@@ -88,7 +89,5 @@ protected:
 };
 
 }}
-
-//inlib_build_use kernel
 
 #endif

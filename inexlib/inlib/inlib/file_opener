@@ -13,18 +13,12 @@ class file_opener {
 public:
   virtual ~file_opener(){}
 public:
-  virtual bool open(uint64 size,
-                    const char* buffer,
-                    const args& args,
-                    bool& done) = 0;
+  virtual bool open(uint64 size,const char* buffer,const args& args,bool& done) = 0;
 
   //not in enum due to potential inheritance.
   typedef std::string format_type;
 
-  virtual bool open(const std::string& path,
-                    const format_type& format,
-                    const args& args,
-                    bool& done) = 0;
+  virtual bool open(const std::string& path,const format_type& format,const args& args,bool& done) = 0;
 };
 
 }

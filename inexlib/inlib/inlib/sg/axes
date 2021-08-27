@@ -13,7 +13,7 @@ namespace sg {
 class axes : public node {
   INLIB_NODE(axes,inlib::sg::axes,node)
 private:
-  static float default_infos_margin() {return 0.005f;} //0.005 or Wt
+  static float default_infos_margin() {return 0.005f;}
 public:
   sf<float> width;          //PAW XSIZ
   sf<float> height;         //PAW YSIZ
@@ -23,10 +23,10 @@ public:
   sf<float> top_margin;     //PAW YMGU
 
   sf<float> depth;
-  sf<float> down_margin;    
+  sf<float> down_margin;
   sf<float> up_margin;
 
-  // Wanted axes parameters. 
+  // Wanted axes parameters.
   // They are not necessary realized on the sg::axis nodes.
   sf<bool> x_axis_enforced;
   sf<bool> x_axis_automated;
@@ -166,7 +166,7 @@ public: //style
     //reset fields that are considered as part of the style.
 
     shape = xy;
-        
+
     xy_depth = 0;
     z_axis_at_origin = true;
 
@@ -192,7 +192,7 @@ public: //style
     float XLAB = 1.4F * xfac;  //0.07  //x distance of y title to data frame.
     float YLAB = 0.8F * yfac;  //0.04  //y distance of x title to data frame.
     float ASIZ = 0.28F * yfac; //0.014 // axis title (label) character size.
-  
+
   //float YHTI = 1.2F * yfac;  //0.06  //y distance of title to x axis.
   //float TSIZ = 0.28F * yfac; //0.014 //title character size
 
@@ -237,28 +237,28 @@ public: //style
       //m_z_axis.title_to_axis.value(XLAB);
       //m_z_axis.title_height.value(ASIZ);
 
-    } else { //xyz    
+    } else { //xyz
       m_x_axis.tick_length.value(XTIC);
       m_x_axis.label_to_axis.value(YVAL);
       m_x_axis.label_height.value(VSIZ);
       m_x_axis.title_to_axis.value(YLAB);
       m_x_axis.title_height.value(ASIZ);
-    
+
       m_y_axis.tick_length.value(XTIC);
       m_y_axis.label_to_axis.value(YVAL);
       m_y_axis.label_height.value(VSIZ);
       m_y_axis.title_to_axis.value(YLAB);
       m_y_axis.title_height.value(ASIZ);
-    
+
       m_z_axis.tick_length.value(YTIC);
       m_z_axis.label_to_axis.value(XVAL);
       m_z_axis.label_height.value(VSIZ);
       m_z_axis.title_to_axis.value(XLAB);
       m_z_axis.title_height.value(ASIZ);
 
-    }  
+    }
 
-    } 
+    }
 
     ////////////////////////////////////////////
     x_axis_enforced = false;
@@ -463,7 +463,7 @@ public:
     }
     m_group.render(a_action);
   }
-  virtual void pick(pick_action& a_action) { 
+  virtual void pick(pick_action& a_action) {
     if(touched()) {
       //uuu have to look if styles had been touched.
       update_sg(a_action.out());
@@ -471,13 +471,13 @@ public:
     }
     nodekit_pick(a_action,m_group,this);
   }
-  virtual void search(search_action& a_action) { 
-    node::search(a_action);
-    if(a_action.done()) return;
+  virtual void search(search_action& a_action) {
     if(touched()) {
       update_sg(a_action.out());
       reset_touched();
     }
+    node::search(a_action);
+    if(a_action.done()) return;
     m_group.search(a_action);
   }
   virtual void bbox(bbox_action& a_action) {
@@ -679,13 +679,13 @@ public:
     m_x_axis.labels_style().color = a_color;
     m_x_axis.title_style().color = a_color;
     m_x_axis.mag_style().color = a_color;
-  
+
     m_y_axis.line_style().color = a_color;
     m_y_axis.ticks_style().color = a_color;
     m_y_axis.labels_style().color = a_color;
     m_y_axis.title_style().color = a_color;
     m_y_axis.mag_style().color = a_color;
-  
+
     m_z_axis.line_style().color = a_color;
     m_z_axis.ticks_style().color = a_color;
     m_z_axis.labels_style().color = a_color;
@@ -697,11 +697,11 @@ public:
     m_x_axis.labels_style().scale = a_v;
     m_x_axis.title_style().scale = a_v;
     m_x_axis.mag_style().scale = a_v;
-  
+
     m_y_axis.labels_style().scale = a_v;
     m_y_axis.title_style().scale = a_v;
     m_y_axis.mag_style().scale = a_v;
-  
+
     m_z_axis.labels_style().scale = a_v;
     m_z_axis.title_style().scale = a_v;
     m_z_axis.mag_style().scale = a_v;
@@ -712,29 +712,29 @@ public:
     m_y_axis.line_style().pattern = a_v;
     m_z_axis.line_style().pattern = a_v;
   }
-  
+
   void set_line_width(int a_v){
     m_x_axis.line_style().width = float(a_v);
     m_y_axis.line_style().width = float(a_v);
     m_z_axis.line_style().width = float(a_v);
-  
+
     m_x_axis.ticks_style().width = float(a_v);
     m_y_axis.ticks_style().width = float(a_v);
     m_z_axis.ticks_style().width = float(a_v);
   }
-  
+
   void set_tick_length(float a_v){
     m_x_axis.tick_length = a_v;
     m_y_axis.tick_length = a_v;
     m_z_axis.tick_length = a_v;
   }
-  
+
   void set_title_height(float a_v){
     m_x_axis.title_height = a_v;
     m_y_axis.title_height = a_v;
     m_z_axis.title_height = a_v;
   }
-  
+
   void set_label_height(float a_v){
     m_x_axis.label_height = a_v;
     m_y_axis.label_height = a_v;
@@ -762,12 +762,12 @@ protected:
     float XMGL = left_margin;
     float XMGR = right_margin;
     float wData = XSIZ-XMGL-XMGR;
-  
+
     float YSIZ = height;
     float YMGL = bottom_margin;
     float YMGU = top_margin;
     float hData = YSIZ-YMGL-YMGU;
-  
+
     float ZSIZ = depth;
     float ZMGD = down_margin;
     float ZMGU = up_margin;
@@ -778,19 +778,19 @@ protected:
 
     if(m_shape==xy) {
       // in rep primitives (0,0) is the lower left corner
-      // of the data area square; 
+      // of the data area square;
       mtx.mul_translate(-XSIZ/2+XMGL,-YSIZ/2+YMGL,0);
     } else { //xyz
       //printf("debug : update_layout : X : %g %g %g %g\n",
       //  XSIZ,XMGL,XMGR,wData);
       //printf("debug : update_layout : Y : %g %g %g %g\n",
       //  YSIZ,YMGL,YMGU,hData);
-  
+
       // global transformation (to have a "lego" layout) :
-      //  translate so that the center of the scene 
-      //  is the center of the data area cube; 
+      //  translate so that the center of the scene
+      //  is the center of the data area cube;
       //  then rotate to have lego 3D layout.
-  
+
       mtx.mul_rotate(1,0,0,theta*fdeg2rad());
       mtx.mul_rotate(0,1,0,phi*fdeg2rad());
       mtx.mul_rotate(1,0,0,-90.0F*fdeg2rad());
@@ -799,7 +799,7 @@ protected:
       // In CERN-PAW, it is the projection
       // which fits in the (XSIZ,XMGL,XMGR)/(YSIZ,YMGL,YMGU)
       // page setup.
-  
+
       rotf r1(vec3f(1,0,0),theta * fdeg2rad());
       rotf r2(vec3f(0,1,0),phi * fdeg2rad());
       rotf r3(vec3f(1,0,0),-90.0F * fdeg2rad());
@@ -851,7 +851,7 @@ protected:
 
       //cube setup (driven by hData) :
       mtx.mul_scale(hData/xfac,hData/yfac,hData/zfac);
-  
+
       mtx.mul_translate(-wData/2,-hData/2,-dData/2); //Applied first.
     }}
 
@@ -886,7 +886,7 @@ public:
         xmax = flog10(xmax);
       }
     }
-  
+
     float ymin =  m_y_axis_data.min_value();
     float ymax =  m_y_axis_data.max_value();
     bool ylog = m_y_axis_data.is_log();
@@ -904,7 +904,7 @@ public:
         ymax = flog10(ymax);
       }
     }
-  
+
     float zmin =  m_z_axis_data.min_value();
     float zmax =  m_z_axis_data.max_value();
     bool zlog = m_z_axis_data.is_log();
@@ -922,7 +922,7 @@ public:
         zmax = flog10(zmax);
       }
     }
-  
+
     if(m_shape==xy) {
       if(xmin>=xmax) {
         DUMP_UPDATE_WHAT(a_out,"bad min/max x axes");
@@ -941,12 +941,12 @@ public:
         DUMP_UPDATE_WHAT(a_out,"bad min/max z axes");
       }
     }
-  
+
    {float XSIZ = width;
     float XMGL = left_margin;
     float XMGR = right_margin;
     float wData = XSIZ-XMGL-XMGR;
-  
+
     float YSIZ = height;
     float YMGL = bottom_margin;
     float YMGU = top_margin;
@@ -973,11 +973,11 @@ public:
         DUMP_UPDATE_WHAT(a_out,"null d data area");
       }
     }}
-  
+
   //float dx   = xmax - xmin;
   //float dy   = ymax - ymin;
   //float dz   = zmax - zmin;
-  
+
     ////////////////////////////////////
     /// axes : /////////////////////////
     ////////////////////////////////////
@@ -1029,32 +1029,32 @@ public:
   }
 
   void update_axes_data(std::ostream&){
-    m_x_axis_data.min_value(0);
-    m_x_axis_data.max_value(0);
-    m_x_axis_data.is_log(x_axis_is_log);
-  
-    m_y_axis_data.min_value(0);
-    m_y_axis_data.max_value(0);
-    m_y_axis_data.is_log(y_axis_is_log);
-  
-    m_z_axis_data.min_value(0);
-    m_z_axis_data.max_value(0);
-    m_z_axis_data.is_log(z_axis_is_log);
-  
+    m_x_axis_data.set_min_value(0);
+    m_x_axis_data.set_max_value(0);
+    m_x_axis_data.set_is_log(x_axis_is_log);
+
+    m_y_axis_data.set_min_value(0);
+    m_y_axis_data.set_max_value(0);
+    m_y_axis_data.set_is_log(y_axis_is_log);
+
+    m_z_axis_data.set_min_value(0);
+    m_z_axis_data.set_max_value(0);
+    m_z_axis_data.set_is_log(z_axis_is_log);
+
     if(!x_axis_automated) { //def = true
-      m_x_axis_data.min_value(x_axis_min);
-      m_x_axis_data.max_value(x_axis_max);
+      m_x_axis_data.set_min_value(x_axis_min);
+      m_x_axis_data.set_max_value(x_axis_max);
     }
-  
+
     if(!y_axis_automated) {
-      m_y_axis_data.min_value(y_axis_min);
-      m_y_axis_data.max_value(y_axis_max);
+      m_y_axis_data.set_min_value(y_axis_min);
+      m_y_axis_data.set_max_value(y_axis_max);
     }
-  
+
     if(!z_axis_automated) {
-      m_z_axis_data.min_value(z_axis_min);
-      m_z_axis_data.max_value(z_axis_max);
-    }  
+      m_z_axis_data.set_min_value(z_axis_min);
+      m_z_axis_data.set_max_value(z_axis_max);
+    }
 
     m_x_axis_data_modeling = x_axis_modeling.value();
     m_x_axis_data_divisions = x_axis_divisions;
@@ -1092,17 +1092,17 @@ public:
       style.vjust = top;
     //}
     }
-    
+
    {text_style& style = m_x_axis.title_style();
     style.x_orientation = vec3f(1,0,0);
     style.y_orientation = vec3f(0,1,0);
     style.hjust = m_x_axis.title_hjust;
     style.vjust = top;}
-  
-   {text_style& style = m_x_axis.mag_style(); 
+
+   {text_style& style = m_x_axis.mag_style();
     style.hjust = left;
     style.vjust = bottom;}
-  
+
     m_x_axis_matrix.set_translate(0,0,_zaxis());
   }
 
@@ -1124,14 +1124,14 @@ public:
       style.vjust = middle;
     //}
     }
-    
+
    {text_style& style = m_y_axis.title_style();
     style.x_orientation = vec3f(1,0,0);
     style.y_orientation = vec3f(0,-1,0);
     style.hjust = m_y_axis.title_hjust;
     style.vjust = bottom;}
-  
-   {text_style& style = m_y_axis.mag_style(); 
+
+   {text_style& style = m_y_axis.mag_style();
     style.x_orientation = vec3f(0,1,0);
     style.y_orientation = vec3f(1,0,0);
     style.hjust = right;
@@ -1167,17 +1167,17 @@ public:
       style.vjust = top;
     //}
     }
-    
+
    {text_style& style = m_x_axis.title_style();
     style.x_orientation = vec3f(1,0,0);
     style.y_orientation = vec3f(0,1,0);
     style.hjust = right;
     style.vjust = top;}
-  
-   //{text_style& style = m_x_axis.mag_style(); 
+
+   //{text_style& style = m_x_axis.mag_style();
    // style.hjust = left;
    // style.vjust = bottom;}
-  
+
     m_x_axis_matrix.set_rotate(1,0,0,fhalf_pi());
 
   }
@@ -1201,14 +1201,14 @@ public:
       style.vjust = top;
     //}
     }
-    
+
    {text_style& style = m_y_axis.title_style();
     style.x_orientation = vec3f(-1,0,0);
     style.y_orientation = vec3f( 0,1,0);
     style.hjust = left;
     style.vjust = top;}
-  
-   //{text_style& style = m_y_axis.mag_style(); 
+
+   //{text_style& style = m_y_axis.mag_style();
    // style.x_orientation = vec3f(0,1,0);
    // style.y_orientation = vec3f(1,0,0);
    // style.hjust = right;
@@ -1237,14 +1237,14 @@ public:
       style.vjust = middle;
     //}
     }
-    
+
    {text_style& style = m_z_axis.title_style();
     style.x_orientation = vec3f(0,1,0);
     style.y_orientation = vec3f(1,0,0);
     style.hjust = right;
     style.vjust = bottom;}
-  
-   //{text_style& style = m_z_axis.mag_style(); 
+
+   //{text_style& style = m_z_axis.mag_style();
    // style.hjust = center;
    // style.vjust = bottom;}
 
@@ -1288,7 +1288,7 @@ protected: //fields for skeleton.
   sg::axis m_z_axis;
 
 protected: //fields
-  shape_type m_shape;    
+  shape_type m_shape;
 
   data_axis m_x_axis_data;
   data_axis m_y_axis_data;

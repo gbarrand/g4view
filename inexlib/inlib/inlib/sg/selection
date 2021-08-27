@@ -38,7 +38,7 @@ public:
     separator::event(a_action);
     if(a_action.done()) {
       if(verbose.value()) {
-        a_action.out() << "inlib::sg::selection::event :" 
+        a_action.out() << "inlib::sg::selection::event :"
                        << " separator has treated the event."
                        << std::endl;
       }
@@ -47,14 +47,14 @@ public:
 
     const sg::event& evt = a_action.get_event();
 
-    if(const up_event* uevt = event_cast<sg::event,up_event>(evt)){
+    if(const mouse_up_event* uevt = event_cast<sg::event,mouse_up_event>(evt)){
       if(m_up_cbks.is_empty()) return;
 
       float z,w;
       node* nd = do_pick(a_action,uevt->x(),uevt->y(),z,w);
       if(nd) {
         if(verbose.value()) {
-          a_action.out() << "inlib::sg::selection::event :" 
+          a_action.out() << "inlib::sg::selection::event :"
                          << " up : pick node cls " << nd->s_cls()
                          << std::endl;
         }
@@ -64,14 +64,14 @@ public:
         ecbk::exec_event_cbks(m_up_cbks.callbacks(),evt,&a_action,0,0,0); //it is ok.
       }
 
-    } else if(const down_event* devt = event_cast<sg::event,down_event>(evt)){
+    } else if(const mouse_down_event* devt = event_cast<sg::event,mouse_down_event>(evt)){
       if(m_down_cbks.is_empty()) return;
 
       float z,w;
       node* nd = do_pick(a_action,devt->x(),devt->y(),z,w);
       if(nd) {
         if(verbose.value()) {
-          a_action.out() << "inlib::sg::selection::event :" 
+          a_action.out() << "inlib::sg::selection::event :"
                          << " down : pick node cls " << nd->s_cls()
                          << std::endl;
         }
@@ -81,14 +81,14 @@ public:
         ecbk::exec_event_cbks(m_down_cbks.callbacks(),evt,&a_action,0,0,0); //it is ok.
       }
 
-    } else if(const move_event* mevt = event_cast<sg::event,move_event>(evt)){
+    } else if(const mouse_move_event* mevt = event_cast<sg::event,mouse_move_event>(evt)){
       if(m_move_cbks.is_empty()) return;
 
       float z,w;
       node* nd = do_pick(a_action,mevt->x(),mevt->y(),z,w);
       if(nd) {
         if(verbose.value()) {
-          a_action.out() << "inlib::sg::selection::event :" 
+          a_action.out() << "inlib::sg::selection::event :"
                          << " move : pick node cls " << nd->s_cls()
                          << std::endl;
         }
@@ -166,9 +166,9 @@ protected:
     action.matrix_action::operator=(a_action); //IMPORTANT.
 
     int old_cur = action.cur(); //not 0.
-    pick(action);        
-    if(action.cur()!=old_cur) { 
-      a_action.out() << "inlib::sg::selection::do_pick :" 
+    pick(action);
+    if(action.cur()!=old_cur) {
+      a_action.out() << "inlib::sg::selection::do_pick :"
                      << " bad pick_action end."
                      << std::endl;
       a_z = 0;
@@ -177,7 +177,7 @@ protected:
     } else {
       if(stop_at_first.value()) {
         if(action.node()){
-          a_action.save_state(action.saved_state());          
+          a_action.save_state(action.saved_state());
           //minimum(action.zs(),a_z);
 
          {const std::vector<float>& zs = action.zs();
@@ -201,7 +201,7 @@ protected:
           return action.node();
         } else {
           if(verbose) {
-            a_action.out() << "inlib::sg::selection::do_pick :" 
+            a_action.out() << "inlib::sg::selection::do_pick :"
                            << " stop_at_first : pick nothing."
                            << std::endl;
           }
@@ -210,13 +210,13 @@ protected:
           return 0;
         }
       } else {
-        if(verbose.value()) action.dump_picks();        
+        if(verbose.value()) action.dump_picks();
         pick_element* _pick = action.closest_pick();
         if(_pick) {
           if(verbose.value()) {
-            a_action.out() << "inlib::sg::selection::do_pick :" 
+            a_action.out() << "inlib::sg::selection::do_pick :"
                            << " closest node cls " << _pick->node().s_cls()
-                           << std::endl;     
+                           << std::endl;
           }
           a_action.save_state(_pick->state());
 
@@ -241,7 +241,7 @@ protected:
           return &(_pick->node());
         } else {
           if(verbose) {
-            a_action.out() << "inlib::sg::selection::do_pick :" 
+            a_action.out() << "inlib::sg::selection::do_pick :"
                            << " closest pick : pick nothing."
                            << std::endl;
           }
@@ -249,7 +249,7 @@ protected:
           a_w = 0;
           return 0;
         }
-      }       
+      }
     }
   }
 protected:

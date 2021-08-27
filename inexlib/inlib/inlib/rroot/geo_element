@@ -21,6 +21,7 @@ public:
     static const std::string s_v("inlib::rroot::geo_element");
     return s_v;
   }
+  virtual const std::string& s_cls() const {return s_class();}
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_element>(this,a_class)) return p;
@@ -33,27 +34,60 @@ public:
     else return 0;
   }
 public:
+  virtual iro* copy() const {return new geo_element(*this);}
   virtual bool stream(buffer& a_buffer) {
     unsigned int s, c;
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
+    //::printf("debug : geo_element::stream : v %d\n",v);
+
     std::string name;
-    std::string title;  
+    std::string title;
     if(!Named_stream(a_buffer,name,title)) return false;
 
-    int fZ;          // Z of materia{}
+    int fZ;          // Z of element
     if(!a_buffer.read(fZ)) return false;
 
-    double fA;          // A of material
+    int fNisotopes = 0;
+    if(v>=3) {
+      int fN;          // Number of nucleons
+      if(!a_buffer.read(fN)) return false;
+
+      //Int_t fNisotopes;  // Number of isotopes for the element
+      if(!a_buffer.read(fNisotopes)) return false;
+    }
+
+    double fA;          // A of element
     if(!a_buffer.read(fA)) return false;
+
+    if(v>=3) { //EsbRoot/geo_full.root has v = 3.
+
+      //TObjArray* fIsotopes;   // List of isotopes
+      if(!dummy_TXxx_pointer_stream(a_buffer,m_fac)) {
+        a_buffer.out() << "inlib::rroot::geo_element::stream : "
+                       << "can't read fIsotopes."
+                       << std::endl;
+        return false;
+      }
+
+      //Double_t* fAbundances; //[fNisotopes] Array of relative isotope abundances
+      if(!dummy_array_stream<double>(a_buffer,fNisotopes)) return false;
+
+      double fCoulomb;          // Coulomb correction factor
+      if(!a_buffer.read(fCoulomb)) return false;
+
+      double fRadTsai;          // Tsai formula for the radiation length
+      if(!a_buffer.read(fRadTsai)) return false;
+
+    }
 
     if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
     return true;
   }
 
 public:
-  geo_element(){
+  geo_element(ifac& a_fac):m_fac(a_fac){
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
 #endif
@@ -64,8 +98,10 @@ public:
 #endif
   }
 protected:
-  geo_element(const geo_element& a_from): iro(a_from){}
+  geo_element(const geo_element& a_from):iro(a_from),m_fac(a_from.m_fac){}
   geo_element& operator=(const geo_element&){return *this;}
+protected:
+  ifac& m_fac;
 };
 
 }}

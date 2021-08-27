@@ -69,7 +69,7 @@ public:
       INLIB_ARG_FIELD_DESC(text_hjust),
       INLIB_ARG_FIELD_DESC(buttons_to_arrows_factor),
       INLIB_ARG_FIELD_DESC(corner_radius),
-      
+
       INLIB_ARG_FIELD_DESC_OPTS_BEG(font,8)
         font_hershey().c_str(),
         font_arial_ttf().c_str(),
@@ -80,7 +80,7 @@ public:
         font_helvetica_ttf().c_str(),
         font_times_roman_ttf().c_str()
       INLIB_ARG_FIELD_DESC_OPTS_END,
-      
+
       INLIB_ARG_FIELD_DESC_ENUMS_BEG(font_modeling,3)
         INLIB_ARG_ENUM(font_outline),
         INLIB_ARG_ENUM(font_filled),
@@ -128,12 +128,12 @@ public:
     if(a_action.done()) return;
   }
   virtual void search(search_action& a_action) {
-    node::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg(a_action.out());
       reset_touched();
     }
+    node::search(a_action);
+    if(a_action.done()) return;
     if(a_action.do_path()) a_action.path_push(this);
     m_sep.search(a_action);
     if(a_action.done()) return;
@@ -320,7 +320,7 @@ protected:
 
     unsigned int beg = m_first_item;
     //012345 : 6 items
-    //  2 
+    //  2
     unsigned int remain = m_first_item>number_of_items()?0:number_of_items()-m_first_item;
 
     unsigned int nvis = mn<unsigned int>(visible_items.value(),remain);
@@ -472,12 +472,12 @@ protected:
       vertices* vtxs = new vertices;
       vtxs->mode = gl::line_strip();
       m_sep.add(vtxs);
-  
+
       float xb = left_btns;
       float xe = left_btns+witem();
       float yb = top_btns;
       float ye = top_btns-hbtns;
-  
+
       float zz = 1;
       vtxs->add(xb,yb,zz);
       vtxs->add(xe,yb,zz);
@@ -485,7 +485,7 @@ protected:
       vtxs->add(xb,ye,zz);
       vtxs->add(xb,yb,zz);
     }
-  
+
   }
 
 protected:

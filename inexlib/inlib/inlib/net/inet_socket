@@ -18,6 +18,12 @@ typedef unsigned long in_addr_t;
 #include <fcntl.h>
 #endif
 
+//#define INLIB_INET_SOCKET_TRY
+#ifdef INLIB_INET_SOCKET_TRY
+#include <netinet/tcp.h>
+#endif
+
+/*
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
 #endif
@@ -29,11 +35,27 @@ typedef unsigned long in_addr_t;
 #if TARGET_OS_EMBEDDED || defined(ANDROID)
 #include "addresses"
 #endif
+*/
 
 namespace inlib {
 namespace net {
 
-inline unsigned int num_try() {return 3;}
+inline unsigned int bin_num_trial() {return 3;}
+
+inline bool socket_system_startup() {
+#ifdef _WIN32
+  WSADATA data;
+  if (::WSAStartup(MAKEWORD(2,2),&data)!=NO_ERROR) return false;
+#endif
+  return true;
+}
+
+
+inline void socket_system_cleanup() {
+#ifdef _WIN32
+  ::WSACleanup();
+#endif
+}
 
 inline std::string herror() {
    std::ostringstream strm;
@@ -47,9 +69,73 @@ inline std::string herror() {
 #endif
 }
 
-inline bool inet_addr(std::ostream& a_out,
-                      const std::string& a_host,
-                      in_addr_t& a_addr) {
+inline bool set_non_blocking(std::ostream& a_out,SOCKET a_socket,int& a_old_flags) {
+#ifdef _WIN32
+  a_old_flags = 0; //not used for _WIN32.
+  unsigned long val = 1;
+  if(::ioctlsocket(a_socket,FIONBIO,&val)!=0) {
+    a_out << "inlib::set_non_blocking : ioctlsocket FIONBIO failed." << std::endl;
+    return false;
+  }
+#else
+  a_old_flags = ::fcntl(a_socket,F_GETFL);
+  if(a_old_flags<0) {
+    a_out << "inlib::set_non_blocking : fcntl F_GETFL failed." << std::endl;
+    return false;
+  }
+  if(::fcntl(a_socket,F_SETFL,a_old_flags+O_NONBLOCK)<0) {
+    a_out << "inlib::set_non_blocking : fcntl(F_SETF,O_NONBLOCK) failed." << std::endl;
+    return false;
+  }
+#endif
+  return true;
+}
+
+inline bool restore_blocking(std::ostream& a_out,SOCKET a_socket,int a_old_flags) {
+#ifdef _WIN32
+  unsigned long val = 0;
+  if(::ioctlsocket(a_socket,FIONBIO,&val)!=0) {
+    a_out << "inlib::restore_blocking : ioctlsocket FIONBIO failed." << std::endl;
+    return false;
+  }
+#else
+  if(::fcntl(a_socket,F_SETFL,a_old_flags)<0) {
+    a_out << "inlib::restore_blocking : fcntl(F_SETFL,old_flags) failed." << std::endl;
+    return false;
+  }
+#endif
+  return true;
+}
+
+#ifdef INLIB_INET_SOCKET_TRY
+inline bool set_tcp_nodelay(std::ostream& a_out,int a_socket) {
+  int one = 1;
+  if(::setsockopt(a_socket,SOL_TCP,TCP_NODELAY,&one,sizeof(one))<0) {
+    a_out << "inlib::base_socket::set_tcp_nodelay : setsockopt() : " << serror() << std::endl;
+    return false;
+  }
+  return true;
+}
+inline bool set_tcp_rm_cork(std::ostream& a_out,int a_socket) {
+  int zero = 0;
+  if(::setsockopt(a_socket,SOL_TCP,TCP_CORK,&zero,sizeof(zero))<0) {
+    a_out << "inlib::base_socket::set_tcp_cork : setsockopt() : " << serror() << std::endl;
+    return false;
+  }
+  return true;
+}
+#endif
+
+inline bool socket_failure(SOCKET a_socket) {
+#ifdef _WIN32
+  if(a_socket==INVALID_SOCKET) return true;
+#else
+  if(a_socket<0) return true;
+#endif
+  return false;
+}
+
+inline bool inet_addr(std::ostream& a_out,const std::string& a_host,in_addr_t& a_addr) {
   a_addr = ::inet_addr(a_host.c_str());
   if(a_addr!=INADDR_NONE) {
     //a_out << "inlib::net::inet_addr :"
@@ -65,7 +151,7 @@ inline bool inet_addr(std::ostream& a_out,
           << " for " << sout(a_host)
           << " gethostbyname() : " << herror()
           << std::endl;
-    a_addr = 0;      
+    a_addr = 0;
     return false;
   }
   if(host_p->h_length!=sizeof(in_addr_t)) {
@@ -73,28 +159,37 @@ inline bool inet_addr(std::ostream& a_out,
           << " for " << sout(a_host)
           << " gethostbyname() : bad length."
           << std::endl;
-    a_addr = 0;      
+    a_addr = 0;
     return false;
   }
   ::memcpy((char*)&a_addr,(char*)(host_p->h_addr),host_p->h_length);
   return true;
 }
 
+inline bool inet_sip(std::ostream& a_out,const std::string& a_host,std::string& a_s) {
+  in_addr_t addr = 0;
+  if(!inet_addr(a_out,a_host,addr)) {a_s.clear();return false;}
+  a_s = std::string(::inet_ntoa(*(struct in_addr*)&addr));
+  return true;
+}
+
+/*
 inline bool inet_host(std::ostream& a_out,std::string& a_host){
 #if TARGET_OS_EMBEDDED
   if(!inlib::net::if_address(a_out,"en0",a_host)) return false;
 #elif defined(ANDROID)
-  //inlib::net::dump_ip_addresses(a_out);    
+  //inlib::net::dump_ip_addresses(a_out);
   if(!inlib::net::if_address(a_out,"eth0",a_host)) return false;
 #else
   if(!host_name(a_out,a_host)) return false;
 #endif
   return true;
 }
+*/
 
 class inet_socket : public base_socket {
   typedef base_socket parent;
-public: //base_socket        
+public: //base_socket
   virtual void disconnect(){close();}
 public:
   inet_socket(std::ostream& a_out,bool a_verbose = false)
@@ -104,32 +199,27 @@ public:
   ,m_accept_func(0)
   ,m_accept_tag(0)
   ,m_dump_ECONNABORTED(true)
-  { 
-#ifdef _WIN32
-    WSADATA data;
-    if (::WSAStartup(MAKEWORD(2,2),&data)!=NO_ERROR) {
+  {
+    if(!socket_system_startup()) {
       m_out << "inlib::inet_socket::inet_socket :"
-            << " starting sockets failed." 
+            << " starting sockets failed."
             << std::endl;
     } else {
       if(a_verbose) {
         m_out << "inlib::inet_socket::inet_socket :"
-              << " WSAStartup ok." 
+              << " socket_system_startup() ok."
               << std::endl;
       }
     }
-#endif
   }
 
   virtual ~inet_socket() {
     close();
-#ifdef _WIN32
-    ::WSACleanup(); //must be done after the upper.
-#endif
+    socket_system_cleanup(); //must be done after the upper.
   }
 
 protected:
-  inet_socket(const inet_socket& a_from) 
+  inet_socket(const inet_socket& a_from)
   :parent(a_from)
   ,m_after_bind_func(a_from.m_after_bind_func)
   ,m_after_bind_tag(a_from.m_after_bind_tag)
@@ -142,7 +232,7 @@ public:
   struct bind_info {
     unsigned int m_true_port;
     unsigned int m_sin_addr; //in_addr_t = uint32
-    unsigned short m_sin_port; //in_port_t = uint16    
+    unsigned short m_sin_port; //in_port_t = uint16
   };
   typedef bool(*after_bind_func)(const bind_info&,void*);
 
@@ -158,8 +248,8 @@ public:
     m_accept_tag = aTag;
   }
 
-  bool bind(const std::string& a_host,unsigned int a_port,
-            unsigned int a_max_trial,unsigned int a_secs,bool a_reuse_addr){   
+  bool bind_milli(const std::string& a_host,unsigned int a_port,
+                  unsigned int a_max_trial,unsigned int a_milli_secs,bool a_reuse_addr){
     if(m_socket!=INVALID_SOCKET) return true; //Done.
 
     if(m_verbose) {
@@ -188,90 +278,68 @@ public:
 
       // make socket
       fd_socket_waiting = ::socket(AF_INET,SOCK_STREAM,0);
-#ifdef _WIN32
-      if(fd_socket_waiting==INVALID_SOCKET) { 
-#else
-      if(fd_socket_waiting<0) { 
-#endif
+      if(socket_failure(fd_socket_waiting)) {
         m_out << "inlib::inet_socket:::bind :"
               << " on host : " << a_host
               << " socket() : " << serror()
               << std::endl;
         return false;
       }
-  
+
       // Force reuse of the server socket (i.e. do not wait for the time
       // out to pass).
       if(a_reuse_addr) {
         if(!set_reuse_addr(m_out,fd_socket_waiting)) return false;
       }
-  
+
       // binding
       sockaddr_in address;
-      ::memset((char*)&address,0,sizeof(address)); 
+      ::memset((char*)&address,0,sizeof(address));
       address.sin_family = AF_INET;
       address.sin_port = htons(a_port);
       address.sin_addr.s_addr = addr;
-  
-      if(::bind(fd_socket_waiting,
-                (struct sockaddr*)(&address),sizeof(address))==0) {
+
+      if(::bind(fd_socket_waiting,(struct sockaddr*)(&address),sizeof(address))==0) {
         if(m_verbose) {
           m_out << "inlib::inet_socket:::bind :"
                 << " on host : " << a_host
-                << " socket is bound on port " << a_port << "." 
+                << " socket is bound on port " << a_port << "."
                 << std::endl;
         }
         break;
       }
-  
-#ifdef _WIN32
-#else
-      std::string serror(strerror(errno));
-#endif
 
-#ifdef _WIN32
-      ::closesocket(fd_socket_waiting);
-#else
-      ::close(fd_socket_waiting);
-#endif
-  
-      if(num_trial>=a_max_trial) { 
+      std::string _serror = serror();
+
+      close_socket(fd_socket_waiting);
+
+      if(num_trial>=a_max_trial) {
         m_out << "inlib::inet_socket:::bind :"
               << " on host : " << a_host
               << " with port " << a_port
-              << ". Max trials done. Cannot use port " << a_port << "." 
+              << ". Max trials done. Cannot use port " << a_port << "."
               << std::endl;
         return false;
       }
       num_trial++;
-  
+
       //FIXME : should filter the errno. Some may be fatal.
       //if(m_verbose) {
         m_out << "inlib::inet_socket:::bind :"
               << " on host : " << a_host
               << " with port " << a_port
-#ifdef _WIN32
-              << " bind()"
-#else
-              << " bind() : " << serror
-#endif
-              << " : retry..." 
+              << " bind() : " << _serror
+              << " : retry..."
               << std::endl;
       //}
 
-      sleep_secs(a_secs);                
+      sleep_milli_secs(a_milli_secs);
     }
 
     sockaddr_in address;
-    ::memset((char*)&address,0,sizeof(address)); 
-#ifdef _WIN32
-    int
-#else
-    socklen_t 
-#endif
-    address_length = sizeof(address);
-    if(::getsockname(fd_socket_waiting,
-                     (struct sockaddr*)&address,&address_length)!=0) { 
+    ::memset((char*)&address,0,sizeof(address));
+    socklen_t address_length = sizeof(address);
+    if(::getsockname(fd_socket_waiting,(struct sockaddr*)&address,&address_length)!=0) {
       m_out << "inlib::inet_socket:::bind :"
             << " on host : " << a_host
             << " getsockname() : " << serror()
@@ -279,7 +347,7 @@ public:
       return false;
     }
 
-    unsigned int true_port = a_port; 
+    unsigned int true_port = a_port;
     if(a_port==0) { //get the used port.
       true_port = ntohs(address.sin_port);
       if(m_verbose) {
@@ -289,7 +357,7 @@ public:
               << std::endl;
       }
     }
-  
+
     if(m_after_bind_func)  {
       //getsockname again !
       bind_info info;
@@ -298,18 +366,14 @@ public:
       info.m_sin_port = address.sin_port;
       if(!m_after_bind_func(info,m_after_bind_tag)) return false;
     }
-    
+
     // listen (wait connection)
-    if(::listen(fd_socket_waiting,1)<0) { 
+    if(::listen(fd_socket_waiting,1)<0) {
       m_out << "inlib::inet_socket:::bind :"
             << " on host : " << a_host
             << " listen() : " << serror()
             << std::endl;
-#ifdef _WIN32
-      ::closesocket(fd_socket_waiting);
-#else
-      ::close(fd_socket_waiting);
-#endif
+      close_socket(fd_socket_waiting);
       return false;
     }
 
@@ -322,8 +386,13 @@ public:
             << " Socket is " << m_socket << "."
             << std::endl;
     }
-  
+
     return true;
+  }
+
+  bool bind(const std::string& a_host,unsigned int a_port,
+            unsigned int a_max_trial,unsigned int a_secs,bool a_reuse_addr){
+    return bind_milli(a_host,a_port,a_max_trial,a_secs*1000,a_reuse_addr);
   }
 
   void set_dump_ECONNABORTED(bool a_value) {m_dump_ECONNABORTED = a_value;}
@@ -341,22 +410,11 @@ public:
 
     if(a_blocking) {
       sockaddr_in address;
-      ::memset((char*)&address,0,sizeof(address)); 
-#ifdef _WIN32
-      int
-#else
-      socklen_t
-#endif
-      address_length = sizeof(address);
-      m_socket = ::accept(a_socket, 
-                         (struct sockaddr*)(&address), 
-                         &address_length);
-      if(m_socket<0) { 
-#ifdef _WIN32
-        if(WSAGetLastError()==WSAECONNABORTED) {
-#else
-        if(errno==ECONNABORTED) {
-#endif
+      ::memset((char*)&address,0,sizeof(address));
+      socklen_t address_length = sizeof(address);
+      m_socket = ::accept(a_socket,(struct sockaddr*)(&address),&address_length);
+      if(m_socket<0) {
+        if(error_is_CONNABORTED()) {
           //may be ok. Caused by a close(a_socket) done in another thread.
           if(m_dump_ECONNABORTED) {
             m_out << "inlib::inet_socket:::accept :"
@@ -380,55 +438,24 @@ public:
               << " Socket is " << m_socket << "."
               << std::endl;
       }
-    } else {
-#ifdef _WIN32
-     {unsigned long val = 1;
-      if(::ioctlsocket(a_socket,FIONBIO,&val)!=0) {
+    } else { //!a_blocking
+      int old_flags;
+      if(!set_non_blocking(m_out,a_socket,old_flags)) {
         m_out << "inlib::inet_socket:::accept :"
-              << " on host : " << this_host
-              << " ioctlsocket FIONBIO failed."
-              << std::endl;
-        return false;
-      }}
-#else
-      int old_flags = ::fcntl(a_socket,F_GETFL);
-      if(old_flags<0) {
-        m_out << "inlib::inet_socket:::accept :"
-              << " on host : " << this_host
-              << " fcntl F_GETFL failed."
+              << " on host : " << this_host << ". set_non_blocking() failed."
               << std::endl;
         return false;
       }
-      if(::fcntl(a_socket,F_SETFL,old_flags+O_NONBLOCK)<0) {
-        m_out << "inlib::inet_socket:::accept :"
-              << " on host : " << this_host
-              << " fcntl F_SETFL failed."
-              << std::endl;
-        return false;
-      }
-#endif
-  
+
       bool status = false;
-  
+
       while(true) {
         sockaddr_in address;
-        ::memset((char*)&address,0,sizeof(address)); 
-#ifdef _WIN32
-        int
-#else
-        socklen_t
-#endif
-        address_length = sizeof(address);
-        SOCKET retval = ::accept(a_socket, 
-                              (struct sockaddr*)(&address), 
-                              &address_length);
-#ifdef _WIN32
-        if(retval==INVALID_SOCKET) {
-          if(WSAGetLastError()==WSAEWOULDBLOCK) {
-#else
-        if(retval<0) {
-          if(errno==EWOULDBLOCK) {
-#endif
+        ::memset((char*)&address,0,sizeof(address));
+        socklen_t address_length = sizeof(address);
+        SOCKET retval = ::accept(a_socket,(struct sockaddr*)(&address),&address_length);
+        if(socket_failure(retval)) {
+          if(error_is_WOULDBLOCK()) {
             if(m_accept_func)  {
               if(!m_accept_func(m_accept_tag)) {
                 status = true;
@@ -442,65 +469,37 @@ public:
                   << " accept() : " << serror()
                   << std::endl;
             status = false;
-            break;  
+            break;
           }
         }
-  
+
         m_socket = retval;
         status = true;
         break;
       }
-  
-#ifdef _WIN32
-     {unsigned long val = 0;
-      if(::ioctlsocket(a_socket, FIONBIO, &val)!=0) {
+
+      if(!restore_blocking(m_out,a_socket,old_flags)) { //warning : a_socket and not m_socket.
         m_out << "inlib::inet_socket:::accept :"
-              << " on host : " << this_host
-              << " ioctlsocket FIONBIO failed."
-              << std::endl;
+               << " on host : " << this_host
+               << " restore_blocking() failed."
+               << std::endl;
         if(m_socket!=INVALID_SOCKET) {
-          ::closesocket(m_socket);
-          m_socket = INVALID_SOCKET;
-        }
-        return false;
-      }}
-#else
-      if(::fcntl(a_socket,F_SETFL,old_flags)<0) {
-        m_out << "inlib::inet_socket:::accept :"
-              << " on host : " << this_host
-              << " fcntl F_SETFL (2) failed."
-              << std::endl;
-        if(m_socket!=INVALID_SOCKET) {
-          ::close(m_socket);
+          close_socket(m_socket);
           m_socket = INVALID_SOCKET;
         }
         return false;
       }
-#endif
 
       if(m_socket!=INVALID_SOCKET) {
-#ifdef _WIN32
-       {unsigned long val = 0;
-        if(::ioctlsocket(m_socket,FIONBIO,&val)!=0) {
+        if(!restore_blocking(m_out,m_socket,old_flags)) {
           m_out << "inlib::inet_socket:::accept :"
-                << " on host : " << this_host
-                << " ioctlsocket FIONBIO failed."
-                << std::endl;
-          ::closesocket(m_socket);
-          m_socket = INVALID_SOCKET;
-          return false;
-        }}
-#else
-        if(::fcntl(m_socket,F_SETFL,old_flags)<0) {
-          m_out << "inlib::inet_socket:::accept :"
-                << " on host : " << this_host
-                << " fcntl F_SETFL (2) failed."
-                << std::endl;
-          ::close(m_socket);
+                 << " on host : " << this_host
+                 << " restore_blocking() failed."
+                 << std::endl;
+          close_socket(m_socket);
           m_socket = INVALID_SOCKET;
           return false;
         }
-#endif
       }
 
       if(!status) return false;
@@ -520,29 +519,31 @@ public:
         }
       }
     }
-  
+
     return true;
+  }
+
+  bool bind_accept_milli(const std::string& a_host,unsigned int a_port,
+                         unsigned int a_max_trial,unsigned int a_milli_secs,
+                         bool a_reuse_addr,bool a_blocking){
+    if(!bind_milli(a_host,a_port,a_max_trial,a_milli_secs,a_reuse_addr)) return false;
+    SOCKET sock = m_socket;
+    m_socket = INVALID_SOCKET;
+    bool status = accept(sock,a_blocking);
+    close_socket(sock);
+    return status;
   }
 
   bool bind_accept(const std::string& a_host,unsigned int a_port,
                    unsigned int a_max_trial,unsigned int a_secs,
                    bool a_reuse_addr,bool a_blocking){
-    if(!bind(a_host,a_port,a_max_trial,a_secs,a_reuse_addr)) return false;
-    SOCKET sock = m_socket;
-    m_socket = INVALID_SOCKET;
-    bool status = accept(sock,a_blocking);
-#ifdef _WIN32
-    ::closesocket(sock);
-#else
-    ::close(sock);
-#endif
-    return status;
+    return bind_accept_milli(a_host,a_port,a_max_trial,a_secs*1000,a_reuse_addr,a_blocking);
   }
-  
+
   bool connect(const std::string& a_host,unsigned int a_port,
-               unsigned int a_max_trial,unsigned int a_secs){
+               unsigned int a_select_secs,unsigned int a_max_trial,unsigned int a_sleep_milli_secs){
     if(m_socket!=INVALID_SOCKET) return true; //Done.
-  
+
     std::string this_host;
     if(!host_name(m_out,this_host)) {
       // in this method this_host is used for m_out only
@@ -564,91 +565,129 @@ public:
             << std::endl;
       return false;
     }
-  
+
     unsigned int num_trial = 0;
     while(true) {
 
       // make socket :
       m_socket = ::socket(AF_INET, SOCK_STREAM,0);
-#ifdef _WIN32
-      if(m_socket==INVALID_SOCKET) { 
-#else
-      if(m_socket<0) { 
-#endif
+      if(socket_failure(m_socket)) {
         m_out << "inlib::inet_socket:::connect :"
               << " on host : " << this_host
-              << " socket() : " << serror()
+              << ", socket() : " << serror()
               << std::endl;
         m_socket = INVALID_SOCKET;
         return false;
       }
 
       sockaddr_in address;
-      ::memset((char*)&address,0,sizeof(address)); 
+      ::memset((char*)&address,0,sizeof(address));
       address.sin_family = AF_INET;
       address.sin_port = htons(a_port);
       address.sin_addr.s_addr = addr;
 
-      if(::connect(m_socket,(struct sockaddr*)(&address),sizeof(address))==0) {
+      int old_flags;
+      if(!set_non_blocking(m_out,m_socket,old_flags)) {
+        m_out << "inlib::inet_socket:::connect :"
+              << " on host : " << this_host
+              << ", set_non_blocking() failed."
+              << std::endl;
+        close_socket(m_socket);
+        m_socket = INVALID_SOCKET;
+        return false;
+      }
+
+      ::connect(m_socket,(struct sockaddr*)(&address),sizeof(address));
+
+      {
+        fd_set mask;
+        FD_ZERO(&mask);
+        FD_SET(m_socket,&mask);
+        struct timeval timeout;
+        timeout.tv_sec = a_select_secs;
+        timeout.tv_usec = 0;
+        int nfds = 0;
+        nfds = mx(nfds,int(m_socket));
+        nfds++;
+        if(::select(nfds,NULL,&mask,NULL,&timeout)!=1)    {
+          m_out << "inlib::inet_socket:::connect : on host : " << this_host << ", select() failed." << std::endl;
+          close_socket(m_socket);
+          m_socket = INVALID_SOCKET;
+          return false;
+        }
+      /* the below induces problem with wall startup.
+        int so_error;
+        if(!get_sock_error(m_out,m_socket,so_error)) {
+          close_socket(m_socket);
+          m_socket = INVALID_SOCKET;
+          return false;
+	}
+        if(so_error!=0) {
+          m_out << "inlib::inet_socket:::connect :"
+                << " on host : " << this_host
+                << ", get_sock_error() : " << so_error << " : " << serror()
+                << std::endl;
+          close_socket(m_socket);
+          m_socket = INVALID_SOCKET;
+          return false;
+        }*/
+        if(!restore_blocking(m_out,m_socket,old_flags)) {
+          m_out << "inlib::inet_socket:::connect :"
+                 << " on host : " << this_host
+                 << ", restore_blocking() failed."
+                 << std::endl;
+          close_socket(m_socket);
+          m_socket = INVALID_SOCKET;
+          return false;
+        }
+
         if(m_verbose) {
           m_out << "inlib::inet_socket:::connect :"
                 << " on host : " << this_host
 #ifdef INLIB_SOCKET_DUMP_PID
-                << " with pid " << process_id()
+                << ", with pid " << process_id()
 #endif
-                << " connect to " << a_host << " on port " << a_port << " ok."
+                << ", connect to " << a_host << " on port " << a_port << " ok."
                 << " Socket is " << m_socket << "."
                 << std::endl;
         }
         return true;
       }
 
-#ifdef _WIN32
-      if(WSAGetLastError()==WSAECONNREFUSED) {
-#else
-      if(errno==ECONNREFUSED) {
-#endif
+      if(error_is_CONNREFUSED()) {
         if(m_verbose) {
           m_out << "inlib::inet_socket:::connect :"
                 << " on host : " << this_host
-                << " connect to " << a_host 
-                << " with port " << a_port
-                << " connect() : " << serror()
+                << " connect to " << a_host
+                << ", with port " << a_port
+                << ", connect() : " << serror()
                 << " Retry..."
                 << std::endl;
         }
-  
-#ifdef _WIN32
-        ::closesocket(m_socket);
-#else
-        ::close(m_socket);
-#endif
+
+        close_socket(m_socket);
         m_socket = INVALID_SOCKET;
-  
-        if(num_trial>=a_max_trial) { 
+
+        if(num_trial>=a_max_trial) {
           m_out << "inlib::inet_socket:::connect :"
                 << " on host : " << this_host
-                << " connect to " << a_host 
-                << " with port " << a_port
+                << ", connect to " << a_host
+                << ", with port " << a_port
                 << ". Max trials done. Can't connect."
                 << std::endl;
           return false;
         }
         num_trial++;
-  
-        sleep_secs(a_secs);                
-      } else {
+
+        sleep_milli_secs(a_sleep_milli_secs);
+      } else { // not refused.
         m_out << "inlib::inet_socket:::connect :"
               << " on host : " << this_host
-              << " connect to " << a_host 
-              << " with port " << a_port
-              << " connect() : " << serror()
+              << ", connect to " << a_host
+              << ", with port " << a_port
+              << ", connect() : not refused : " << serror()
               << std::endl;
-#ifdef _WIN32
-        ::closesocket(m_socket);
-#else
-        ::close(m_socket);
-#endif
+        close_socket(m_socket);
         m_socket = INVALID_SOCKET;
         return false;
       }
@@ -657,7 +696,27 @@ public:
     return false;
   }
 
-protected:        
+#ifdef INLIB_INET_SOCKET_TRY
+  bool setup_tcp() {
+    if(m_socket==INVALID_SOCKET) return false;
+    bool status = true;
+    if(!set_tcp_nodelay(m_out,m_socket)) {
+      m_out << "set_tcp_no_delay failed." << std::endl;
+      status = false;
+    } else {
+      m_out << "set_tcp_no_delay ok." << std::endl;
+    }
+    if(!set_tcp_rm_cork(m_out,m_socket)) {
+      m_out << "set_tcp_rm_cork failed." << std::endl;
+      status = false;
+    } else {
+      m_out << "set_tcp_rm_cork ok." << std::endl;
+    }
+    return status;
+  }
+#endif
+
+protected:
   after_bind_func m_after_bind_func;
   void* m_after_bind_tag;
   accept_func m_accept_func;

@@ -75,7 +75,7 @@ public:
       INLIB_ARG_FIELD_DESC(vars_label),
       INLIB_ARG_FIELD_DESC(edit_what),
       INLIB_ARG_FIELD_DESC(show_mode),
-      
+
       INLIB_ARG_FIELD_DESC_OPTS_BEG(font,8)
         font_hershey().c_str(),
         font_arial_ttf().c_str(),
@@ -86,7 +86,7 @@ public:
         font_helvetica_ttf().c_str(),
         font_times_roman_ttf().c_str()
       INLIB_ARG_FIELD_DESC_OPTS_END,
-      
+
       INLIB_ARG_FIELD_DESC_ENUMS_BEG(font_modeling,3)
         INLIB_ARG_ENUM(font_outline),
         INLIB_ARG_ENUM(font_filled),
@@ -136,12 +136,12 @@ public:
     if(a_action.done()) return;
   }
   virtual void search(search_action& a_action) {
-    parent::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg(a_action.out());
       reset_touched();
     }
+    parent::search(a_action);
+    if(a_action.done()) return;
     if(a_action.do_path()) a_action.path_push(this);
     m_switch.search(a_action);
     if(a_action.done()) return;
@@ -229,43 +229,40 @@ public:
     m_funcs.add(new cfunc_t("acos",::acos,in_domain_acos));
     m_funcs.add(new cfunc_t("asin",::asin,in_domain_acos));
     m_funcs.add(new cfunc_t("atan",::atan,in_domain_all));
-  
+
     m_funcs.add(new cfunc_t("cosh",::cosh,in_domain_all));
     m_funcs.add(new cfunc_t("sinh",::sinh,in_domain_all));
     m_funcs.add(new cfunc_t("tanh",::tanh,in_domain_all));
-  
+
     m_funcs.add(new cfunc_t("fabs",::fabs,in_domain_all));
-/*
-    m_funcs.add(new cfunc_t("abs",::fabs,in_domain_all));
-    m_funcs.add(new cfunc_t("rndm",::inlib_random_flat_shoot,
-                                       in_domain_all));
-    m_funcs.add(new cfunc_t("toint",::inlib_toint,
-                                       in_domain_all));
-  
+
+  //m_funcs.add(new cfunc_t("abs",::fabs,in_domain_all));
+  //m_funcs.add(new cfunc_t("rndm",::inlib_random_flat_shoot,in_domain_all));
+  //m_funcs.add(new cfunc_t("toint",::inlib_toint,in_domain_all));
+
     //for OpenPAW/c_pawex20.kumac
-    m_funcs.add(new cfunc_t("int",::inlib_toint,in_domain_all)); 
-  
-    m_funcs.add(new val_func_nco());
-    m_funcs.add(new val_func_vsum());
-  
-    m_funcs.add(new val_func_pow());
-    m_funcs.add(new val_func_mod());
-  
-    m_funcs.add(new val_func_array());
-    m_funcs.add(new val_func_expo());
-    m_funcs.add(new val_func_pol1());
+  //m_funcs.add(new cfunc_t("int",::inlib_toint,in_domain_all));
 
-    m_funcs.add(new val_func_gauss());
-    m_funcs.add(new val_func_bw());
-    m_funcs.add(new val_func_cauchy());
+  //m_funcs.add(new val_func_nco());
+  //m_funcs.add(new val_func_vsum());
 
-    m_funcs.add(new val_func_pol2());
-    m_funcs.add(new val_func_pol3());
-    m_funcs.add(new val_func_pol4());
-  
+  //m_funcs.add(new val_func_pow());
+  //m_funcs.add(new val_func_mod());
+
+  //m_funcs.add(new val_func_array());
+  //m_funcs.add(new val_func_expo());
+  //m_funcs.add(new val_func_pol1());
+
+  //m_funcs.add(new val_func_gauss());
+  //m_funcs.add(new val_func_bw());
+  //m_funcs.add(new val_func_cauchy());
+
+  //m_funcs.add(new val_func_pol2());
+  //m_funcs.add(new val_func_pol3());
+  //m_funcs.add(new val_func_pol4());
+
     // For backward compatibility :
-    m_funcs.add(new val_func_breit());
-*/
+  //m_funcs.add(new val_func_breit());
   }
   virtual ~edvalop(){
     delete m_valop;
@@ -474,9 +471,9 @@ public:
       } else if(m_action==action_set_edit()) {
         m_this.m_switch.which = WHICH_PANEL();
 
-             if(m_var==s_calc())   m_this.edit_what = edit_calc;      
-        else if(m_var==s_math())   m_this.edit_what = edit_math;      
-        else if(m_var==s_ntuple()) m_this.edit_what = edit_ntuple;      
+             if(m_var==s_calc())   m_this.edit_what = edit_calc;
+        else if(m_var==s_math())   m_this.edit_what = edit_math;
+        else if(m_var==s_ntuple()) m_this.edit_what = edit_ntuple;
 
         m_this.touch();
         return return_to_render;
@@ -643,7 +640,7 @@ public:
       /////////////////////////////////////////////////
       /// end leaf ////////////////////////////////////
       /////////////////////////////////////////////////
-      } else if( (m_action==action_end_numeric()) || 
+      } else if( (m_action==action_end_numeric()) ||
                  (m_action==action_end_var())     ||
                  (m_action==action_end_symb())    ||
                  (m_action==action_end_latin())
@@ -657,7 +654,7 @@ public:
           if(!to<double>(_s,v)){v=0;}
           res = new valop(valop::REAL,v);
 
-        } else if(m_action==action_end_var()) {          
+        } else if(m_action==action_end_var()) {
           bool found = false;
           unsigned int index = 0;
           const std::vector<std::string>& _vars = m_this.vars.values();
@@ -772,7 +769,7 @@ public:
         if(!res){
           m_out << "edvalop::_cbk::action : unknown case : 5" << std::endl;
           return return_none;
-        }      
+        }
         m_this.set_curop(res);
         return return_to_render;
 
@@ -797,7 +794,7 @@ public:
         return return_to_render;
 
 /*
-        if(//const up_event* up_evt = event_cast<event,up_event>(*m_event)){
+        if(//const mouse_up_event* up_evt = event_cast<event,mouse_up_event>(*m_event)){
           //::printf("debug : edvalop : action_up\n");
 
           wout alert(m_event_action->out());
@@ -809,7 +806,7 @@ public:
           } else {
             cbk::move_manip::set_manip(alert,m_event_action->out(),m_this.m_switch,m_node,false);
           }
-   
+
           //cbk::move_manip::toggle_manip
           //  (alert,m_event_action->out(),m_this.m_switch,m_node,false);
 
@@ -826,7 +823,7 @@ public:
     virtual bcbk* copy() const {return new _cbk(*this);}
   public:
     _cbk(edvalop& a_this,std::ostream& a_out,unsigned int a_action)
-    :ecbk(a_action)    
+    :ecbk(a_action)
     ,m_this(a_this)
     ,m_out(a_out)
     ,m_op(valop::REAL)
@@ -853,7 +850,7 @@ public:
     edvalop& m_this;
     std::ostream& m_out;
   public:
-    valop::e_type m_op;  
+    valop::e_type m_op;
     std::string m_var;
     ival_func* m_func; //not owner.
   };
@@ -994,12 +991,12 @@ protected:
 
     separator* _sep = new separator;
     sep->add(_sep);
-    
+
     valop2sg v(a_out,*_sep,m_ttf);
     if(!m_valop || !v.visit(*m_valop)) {
       _sep->clear();
       base_freetype* tft = base_freetype::create(m_ttf);
-      //TTNODE* tft = new TTNODE();   
+      //TTNODE* tft = new TTNODE();
       tft->font = font;
       tft->modeling = font_modeling;
       tft->strings.add("???");
@@ -1074,8 +1071,8 @@ protected:
   void undo_pop() {
     if(m_stack.empty()) return;
     delete m_valop;
-    m_valop = m_stack.back();	
-    m_stack.pop_back();    
+    m_valop = m_stack.back();
+    m_stack.pop_back();
     m_curop = get_tagged();
     if(!m_curop) m_curop = m_valop;
     m_curop->m_tag = 0;
@@ -1205,13 +1202,13 @@ protected:
       } else if(m_curop->is_unary()) {
         if(m_on==on_A) {
           undo_push();
-          m_curop->m_A = 
+          m_curop->m_A =
             new valop(valop::FUNC,a_func,m_curop->m_A);
           touch();
           return true;
 
         } else if(m_on==on_all) {
-          valop* res = 
+          valop* res =
             new valop(valop::FUNC,a_func,m_curop->copy());
           set_curop(res);
           return true;
@@ -1222,7 +1219,7 @@ protected:
       } else if(m_curop->is_binary()) {
         if(m_on==on_A) {
           undo_push();
-          m_curop->m_A = 
+          m_curop->m_A =
             new valop(valop::FUNC,a_func,m_curop->m_A);
           touch();
           return true;
@@ -1235,7 +1232,7 @@ protected:
           return true;
 
         } else if(m_on==on_all) {
-          valop* res = 
+          valop* res =
             new valop(valop::FUNC,a_func,m_curop->copy());
           set_curop(res);
           return true;

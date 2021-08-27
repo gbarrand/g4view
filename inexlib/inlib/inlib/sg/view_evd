@@ -12,6 +12,7 @@
 
 #include "../cbk/move_manip"
 #include "../cbk/viewer_popup"
+#include "../parse"
 
 namespace inlib {
 namespace sg {
@@ -23,41 +24,43 @@ public:
   view_evd(gui_viewer& a_gv)
   :m_gv(a_gv)
   ,m_event_index(0)
-  ,m_next_event_sleep(0)
   {
-    m_cmaps[sg::style_default_colormap::s_default()] = sg::style_default_colormap();
-    //m_cmaps.add_colormap("ROOT",sg::style_ROOT_colormap());
+    m_cmaps[style_default_colormap::s_default()] = style_default_colormap();
+    //m_cmaps.add_colormap("ROOT",style_ROOT_colormap());
   }
   virtual ~view_evd(){}
 protected:
   view_evd(const view_evd& a_from)
   :m_gv(a_from.m_gv)
   ,m_event_index(a_from.m_event_index)
-  ,m_next_event_sleep(a_from.m_next_event_sleep)
   ,m_cmaps(a_from.m_cmaps)
   {}
 
   view_evd& operator=(const view_evd& a_from){
     m_event_index = a_from.m_event_index;
-    m_next_event_sleep = a_from.m_next_event_sleep;
     m_cmaps = a_from.m_cmaps;
     return *this;
   }
 protected:
   static unsigned int INFOS()                {return 0;}
-  static unsigned int GEOM_DETECTOR_EVENT()  {return 1;}
+  static unsigned int GEOM_STATIC_DYNAMIC()  {return 1;}
   static unsigned int GEOM_SCREEN()          {return 2;}
 
-  static unsigned int GEOM_CAMERA()  {return 0;}
-//static unsigned int GEOM_TORCHE()  {return 1;}
+  static unsigned int GEOM_CAMERA()      {return 0;}
+//static unsigned int GEOM_TORCHE()      {return 1;}
+//static unsigned int GEOM_BLEND()       {return 2;}
+//static unsigned int GEOM_SHADE_MODEL() {return 3;}
 
-  static unsigned int SCREEN_CAMERA()  {return 0;}
+  static unsigned int SCREEN_CAMERA()    {return 0;}
 public:
+  const gui_viewer& gv() const {return m_gv;}
+  gui_viewer& gv() {return m_gv;}
+
   bool replace_camera(base_camera* a_camera){
     if(m_gv.scene().size()<3) return false;
     infos* _node = safe_cast<node,infos>(*(m_gv.scene()[INFOS()]));
     if(!_node) return false;
-    separator* _sep = safe_cast<node,separator>(*(m_gv.scene()[GEOM_DETECTOR_EVENT()]));
+    separator* _sep = safe_cast<node,separator>(*(m_gv.scene()[GEOM_STATIC_DYNAMIC()]));
     if(!_sep) return false;
     if(!_sep->size()) return false;
     base_camera* old_scene_cam = m_gv.scene_camera();
@@ -89,7 +92,7 @@ public:
     infos* _node = safe_cast<node,infos>(*(m_gv.scene()[0]));
     if(!_node) return false;
     _node->add_keyval(s_title(),a_title);
-    return true;    
+    return true;
   }
   bool show_scene_title() {
     if(m_gv.scene().size()<2) return false;
@@ -110,7 +113,7 @@ public:
     m_gv.scene().up_cbks().add(new cbk::viewer_popup(m_gv));
 
     m_gv.scene().verbose = m_gv.verbose();
-      
+
    {infos* _node = new infos; //INFOS()
 //  _node->add_keyval(s_kind(),a_kind);
     m_gv.scene().add(_node);}
@@ -120,7 +123,7 @@ public:
     //////////////////////////////////////////////
     //////////////////////////////////////////////
     //////////////////////////////////////////////
-   {separator* _sep = new separator;  //GEOM_DETECTOR_EVENT()
+   {separator* _sep = new separator;  //GEOM_STATIC_DYNAMIC()
     m_gv.scene().add(_sep);
 
     //WARNING : if changing things in sep, think to change the upper.
@@ -138,15 +141,28 @@ public:
     m_light.on = m_gv.m_params.m_light_on;
     _sep->add(new noderef(m_light)); //GEOM_TORCHE()
 
+    m_blend.on = m_gv.m_params.m_blend_on;
+    _sep->add(new noderef(m_blend)); //GEOM_BLEND()
+
+    if(m_gv.m_params.m_smooth_on) {
+      m_shade_model.model = shade_smooth;
+    } else {
+      m_shade_model.model = shade_flat;
+    }
+    _sep->add(new noderef(m_shade_model)); //GEOM_SHADE_MODEL()
+
     m_layout.set_identity();
     _sep->add(new noderef(m_layout));
-    _sep->add(new clrref<separator>(m_event));
-    // put m_detector after m_event in case
-    // there are transparent volumes in the detector sg.
-    _sep->add(new clrref<separator>(m_detector));
+    _sep->add(new clrref<separator>(m_static_sg));
+    _sep->add(new clrref<separator>(m_dynamic_sg));
+    _sep->add(new clrref<separator>(m_static_sg_blend));
+
+    // m_static_sg_blend can be used if wanting to have a transparent piece of detector over non-transparent event data.
 
     m_gv.set_scene_camera(camera);
     m_gv.set_scene_light(&m_light);
+    m_gv.set_scene_blend(&m_blend);
+    m_gv.set_scene_shade_model(&m_shade_model);
     m_gv.set_plane_viewer(false);
     }
 
@@ -156,7 +172,7 @@ public:
     // case of a wall app to have a sg targeted to be
     // visualized within the screen handled by the app.
     // The nodes are put under a special branch parallel
-    // to the one with m_detector and m_event.
+    // to the one with m_static_sg, m_dynamic_sg and m_static_blend_sg.
 
    {separator* _sep = new separator; //GEOM_SCREEN()
     m_gv.scene().add(_sep);
@@ -166,15 +182,14 @@ public:
 
   }
 
-  const separator& detector_sg() const {return m_detector;}
-  separator& detector_sg() {return m_detector;}
-  const separator& static_sg() const {return m_detector;}
-  separator& static_sg() {return m_detector;}
+  const separator& static_sg() const {return m_static_sg;}
+  separator& static_sg() {return m_static_sg;}
 
-  const separator& event_sg() const {return m_event;}
-  separator& event_sg() {return m_event;}
-  const separator& dynamic_sg() const {return m_event;}
-  separator& dynamic_sg() {return m_event;}
+  const separator& dynamic_sg() const {return m_dynamic_sg;}
+  separator& dynamic_sg() {return m_dynamic_sg;}
+
+  const separator& static_blend_sg() const {return m_static_sg_blend;}
+  separator& static_blend_sg() {return m_static_sg_blend;}
 
   const matrix& layout() const {return m_layout;}
   matrix& layout() {return m_layout;}
@@ -192,7 +207,7 @@ public:
                     << " viewer.get_time_now() failed."
                     << std::endl;
       m_gv.map_warn("can't get time now");
-      return;     
+      return;
     }
 
     if(!a_it->open(a_what)) {
@@ -201,30 +216,30 @@ public:
                     << " can't open " << a_what << "."
                     << std::endl;
       m_gv.map_warn(std::string("can't open ")+a_what);
-      return;     
+      return;
     }
     if(!a_it->entries()) {
       delete a_it;
       m_gv.map_warn(std::string("file ")+a_what+" empty.");
-      return;     
+      return;
     }
 
     //args args;
     //args.add(s_no_hide_menu());
     //args.add(s_back_color(),a_back_color);
     //args.add(s_adapt_camera()); //for anim with .fog files.
-  
+
     _create_diapo_scene(a_hcam,a_same,a_one_screen);
 
     // can't be on detector() since openers works on that.
-    separator& sep = event_sg();
+    separator& sep = dynamic_sg();
     sep.clear();
 
     doc_anim* node = new doc_anim(_now,*a_it,a_opener,static_sg(),a_nclear);
     node->time_interval = a_msecs;
-      
+
     sep.add(node);
-  
+
     // to delete _it :
     sep.add(new holder<file_iterator>(a_it));
 
@@ -243,36 +258,36 @@ public:
 
     bool args_tsf = false;
     float pos_x_wcam;
-    if(a_args.find(sg::s_pos_x_wcam(),pos_x_wcam)) {
+    if(a_args.find(s_pos_x_wcam(),pos_x_wcam)) {
       _adapt_camera = false;
       args_tsf = true;
     }
     float pos_y_hcam;
-    if(a_args.find(sg::s_pos_y_hcam(),pos_y_hcam)) {
+    if(a_args.find(s_pos_y_hcam(),pos_y_hcam)) {
       _adapt_camera = false;
       args_tsf = true;
     }
     int col;
-    if(a_args.find(sg::s_pos_col(),col,-1)) {
+    if(a_args.find(s_pos_col(),col,-1)) {
       _adapt_camera = false;
       args_tsf = true;
     }
     int row;
-    if(a_args.find(sg::s_pos_row(),row,-1)) {
+    if(a_args.find(s_pos_row(),row,-1)) {
       _adapt_camera = false;
       args_tsf = true;
     }
-  
+
     if(_adapt_camera) {
       float cam_height = a_tex.height;
-  
+
       replace_camera(m_gv.create_2D_camera(cam_height));
-  
+
     } else if(args_tsf) {
-  
+
       float img_scale;
-      a_args.find(sg::s_scale(),img_scale,1.0f);
-  
+      a_args.find(s_scale(),img_scale,1.0f);
+
       if((row>=0)&&(col>=0)) {
 
         float cam_height = 2;
@@ -280,7 +295,7 @@ public:
         float aspect;  //pixel aspect without external borders.
         float tx,ty;
         float scale_to_see_borders = 1;
-  
+
         unsigned int cols,rows;
         m_gv.get_screens(cols,rows);
         if((cols==4)&&(rows==3)) { //LAL murino.
@@ -288,45 +303,45 @@ public:
         } else { //ioda or wall local 21.
           murino_get_screen_wcw_wch(cam_height,col,row,wcw,wch,tx,ty,aspect,scale_to_see_borders);
         }
-  
+
         a_tsf.set_scale(scale_to_see_borders,scale_to_see_borders,1);
-  
+
         a_tsf.mul_translate(tx,ty,0);
-  
+
         unsigned int aimg_w = a_tex.img.value().width();
         unsigned int aimg_h = a_tex.img.value().height();
-  
+
         float wih = float(m_gv.wanted_size());
         float wiw = wih*float(aimg_w)/float(aimg_h);
-  
+
         float scale = wch/wih;
         // new width is :
         float new_w = wiw*scale;
         if(new_w>=wcw) scale *= wcw/new_w;
-  
+
         scale *= img_scale;
-        a_tsf.mul_scale(scale,scale,1); //applied first.          
-  
+        a_tsf.mul_scale(scale,scale,1); //applied first.
+
       } else {
-  
+
         //NOTE : should be done in slides_opener.
         //NOTE : we assume cam_height = gui_camera_height() !
-  
+
         float wcw,wch;
         m_gv.get_gui_all_wcw_wch(wcw,wch);
-  
+
         a_tsf.set_translate(wcw*pos_x_wcam,wch*pos_y_hcam,0);
-  
+
         //adapt image height to camera height :
-  
+
         float scale = wch/float(m_gv.wanted_size());
-  
+
         scale *= img_scale;
         a_tsf.mul_scale(scale,scale,1); //applied first.
       }
-    
-    }  
-  }  
+
+    }
+  }
 */
 
 /*
@@ -350,10 +365,7 @@ public:
   unsigned int& event_index() {return m_event_index;}
   unsigned int event_index() const {return m_event_index;}
 
-  unsigned int& next_event_sleep() {return m_next_event_sleep;}
-  unsigned int next_event_sleep() const {return m_next_event_sleep;}
-
-  sg::cmaps_t& cmaps() {return m_cmaps;}
+  cmaps_t& cmaps() {return m_cmaps;}
 
 public:
   // if wall app :
@@ -446,11 +458,10 @@ protected:
     if(m_gv.scene().size()<3) return 0;
     infos* _node = safe_cast<node,infos>(*(m_gv.scene()[INFOS()]));
     if(!_node) return 0;
-    separator* _sep =
-     safe_cast<node,separator>(*(m_gv.scene()[GEOM_DETECTOR_EVENT()]));
+    separator* _sep = safe_cast<node,separator>(*(m_gv.scene()[GEOM_STATIC_DYNAMIC()]));
     if(!_sep) return 0;
     if(!_sep->size()) return 0;
-    node* chld = (*_sep)[GEOM_CAMERA()];    
+    node* chld = (*_sep)[GEOM_CAMERA()];
     return safe_cast<node,base_camera>(*chld);
   }
 
@@ -461,7 +472,7 @@ protected:
     separator* _sep = safe_cast<node,separator>(*(m_gv.scene()[GEOM_SCREEN()]));
     if(!_sep) return 0;
     if(!_sep->size()) return 0;
-    node* chld = (*_sep)[SCREEN_CAMERA()];    
+    node* chld = (*_sep)[SCREEN_CAMERA()];
     return safe_cast<node,base_camera>(*chld);
   }
 */
@@ -482,17 +493,18 @@ protected:
     //}
   }
 
-protected:
 private:
   gui_viewer& m_gv;
   head_light m_light;
+  blend m_blend;
+  shade_model m_shade_model;
   matrix m_layout;
-  separator m_detector;
-  separator m_event;
+  separator m_static_sg;
+  separator m_dynamic_sg;
+  separator m_static_sg_blend;
   separator m_screen_sg; //if wall app.
   unsigned int m_event_index;
-  unsigned int m_next_event_sleep;
-  sg::cmaps_t m_cmaps;
+  cmaps_t m_cmaps;
 };
 
 inline view_evd* cast_view_evd(viewer& a_viewer) {
@@ -536,33 +548,33 @@ inline void set_empty_scene_2D(gui_viewer& a_gv,view_evd& a_evd) {
 /// actions : ///////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-inline sg::return_action action_clear_static_sg(sg::gui_viewer& a_gv) {
-  sg::view_evd* _evd = cast_view_evd(a_gv);
-  if(!_evd) return sg::return_none;
+inline return_action action_clear_static_sg(gui_viewer& a_gv) {
+  view_evd* _evd = cast_view_evd(a_gv);
+  if(!_evd) return return_none;
   _evd->static_sg().clear();
-  return sg::return_to_render;
+  return return_to_render;
 }
 
-inline sg::return_action action_clear_dynamic_sg(sg::gui_viewer& a_gv) {
-  sg::view_evd* _evd = cast_view_evd(a_gv);
-  if(!_evd) return sg::return_none;
+inline return_action action_clear_dynamic_sg(gui_viewer& a_gv) {
+  view_evd* _evd = cast_view_evd(a_gv);
+  if(!_evd) return return_none;
   _evd->dynamic_sg().clear();
-  return sg::return_to_render;
+  return return_to_render;
 }
 
-inline sg::return_action action_clear_static_and_dynamic_sg(sg::gui_viewer& a_gv) {
-  sg::view_evd* _evd = cast_view_evd(a_gv);
-  if(!_evd) return sg::return_none;
+inline return_action action_clear_static_and_dynamic_sg(gui_viewer& a_gv) {
+  view_evd* _evd = cast_view_evd(a_gv);
+  if(!_evd) return return_none;
   _evd->static_sg().clear();
   _evd->dynamic_sg().clear();
-  return sg::return_to_render;
+  return return_to_render;
 }
 
-inline sg::return_action action_clear_screen_sg(sg::gui_viewer& a_gv) {
-  sg::view_evd* _evd = cast_view_evd(a_gv);
-  if(!_evd) return sg::return_none;
+inline return_action action_clear_screen_sg(gui_viewer& a_gv) {
+  view_evd* _evd = cast_view_evd(a_gv);
+  if(!_evd) return return_none;
   _evd->screen_sg().clear();
-  return sg::return_to_render;
+  return return_to_render;
 }
 
 inline return_action action_empty_scene_3D(gui_viewer& a_gv) {
@@ -579,6 +591,33 @@ inline return_action action_empty_scene_2D(gui_viewer& a_gv) {
   return return_to_render;
 }
 
+inline return_action action_static_to_vertices(gui_viewer& a_gv) {
+  view_evd* _evd = cast_view_evd(a_gv);
+  if(!_evd) return return_none;
+  a_gv.separator_to_vertices(_evd->static_sg());
+  a_gv.hide_main_menu();
+  return return_to_render;
+}
+
+inline return_action action_dynamic_to_vertices(gui_viewer& a_gv) {
+  view_evd* _evd = cast_view_evd(a_gv);
+  if(!_evd) return return_none;
+  a_gv.separator_to_vertices(_evd->dynamic_sg());
+  a_gv.hide_main_menu();
+  return return_to_render;
+}
+
+inline return_action action_menu_utils(gui_viewer& a_gv) {
+  action_utils(a_gv);
+  node* _node = a_gv.current_list();
+  if(!_node) return return_none;
+  list* _list = safe_cast<node,list>(*_node);
+  if(!_list) return return_none;
+  add_white_item(a_gv,*_list,"static sg to pts,lns,tris",action_static_to_vertices);
+  add_white_item(a_gv,*_list,"dynamic sg to pts,lns,tris",action_dynamic_to_vertices);
+  return return_to_render;
+}
+
 /*
 inline return_action action_show_scene_title(gui_viewer& a_gv,const pos_data& a_data) {
   view_evd* _evd = cast_view_evd(a_gv);
@@ -589,6 +628,16 @@ inline return_action action_show_scene_title(gui_viewer& a_gv,const pos_data& a_
 */
 
 }}
+
+#define INLIB_VIEW_EVD_ADD_CAMENU_ITEMS\
+  inlib::sg::create_main_button(m_out,m_res_dir,m_params,m_image_readers,m_ttf,\
+                                m_camenu_sep,a_wcw,a_wch,a_wb,a_hb,0,\
+                                0,m_camenu_items_0_row++,"clear stat","","clear_static.jpg",\
+                                new inlib::sg::ishell_fundata_cbk<std::string>(insh(),inlib::sg::action_insh_source_script,"scene_clear_static"));\
+  inlib::sg::create_main_button(m_out,m_res_dir,m_params,m_image_readers,m_ttf,\
+                                m_camenu_sep,a_wcw,a_wch,a_wb,a_hb,0,\
+                                0,m_camenu_items_0_row++,"clear dyn","","clear_event.jpg",\
+                                new inlib::sg::ishell_fundata_cbk<std::string>(insh(),inlib::sg::action_insh_source_script,"scene_clear_dynamic"));
 
 //inlib_build_use kernel
 

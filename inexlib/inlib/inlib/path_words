@@ -21,7 +21,7 @@ inline void path_words(const std::string& a_path,std::vector<std::string>& a_wor
   if(a_win_path) {
     replace(path,"\\","/");
     pos = path.find(':');
-    if(pos!=std::string::npos) { //drive 
+    if(pos!=std::string::npos) { //drive
       a_drive = path.substr(0,pos);
       path = path.substr(pos+1,path.size()-(pos+1));
     } else {

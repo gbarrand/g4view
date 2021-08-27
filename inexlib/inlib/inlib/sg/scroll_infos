@@ -42,17 +42,17 @@ private:
   }
 public:
   virtual void render(render_action& a_action) {
-    if(parent::touched()) {
+    if(touched()) {
       update_sg();
-      parent::reset_touched();
+      reset_touched();
     }
     parent::render(a_action);
     m_sep.render(a_action);
   }
   virtual void pick(pick_action& a_action) {
-    if(parent::touched()) {
+    if(touched()) {
       update_sg();
-      parent::reset_touched();
+      reset_touched();
     }
     parent::pick(a_action);
     if(a_action.done()) return;
@@ -60,21 +60,21 @@ public:
     if(a_action.done()) return;
   }
   virtual void search(search_action& a_action) {
+    if(touched()) {
+      update_sg();
+      reset_touched();
+    }
     node::search(a_action);
     if(a_action.done()) return;
-    if(parent::touched()) {
-      update_sg();
-      parent::reset_touched();
-    }
     parent::search(a_action);
     if(a_action.done()) return;
     m_sep.search(a_action);
     if(a_action.done()) return;
   }
   virtual void bbox(bbox_action& a_action) {
-    if(parent::touched()) {
+    if(touched()) {
       update_sg();
-      parent::reset_touched();
+      reset_touched();
     }
     parent::bbox(a_action);
     m_sep.bbox(a_action);
@@ -183,7 +183,7 @@ protected:
 
     unsigned int beg = m_first_item;
     //012345 : 6 items
-    //  2 
+    //  2
     unsigned int remain = uint32(litms.size())-m_first_item;
 
     unsigned int nvis = mn<unsigned int>(visible_items.value(),remain);
@@ -196,7 +196,7 @@ protected:
         parent::lstrings.add(" ");
         parent::rstrings.add(" ");
       }
-    }}    
+    }}
 
     float warrow = scroll_width;
     float xtrans = parent::width*0.5f+warrow*0.5f+warrow*0.2f;
@@ -295,7 +295,7 @@ protected:
 
     }
 
-    parent::update_sg();  
+    parent::update_sg();
   }
 protected:
   separator m_sep;

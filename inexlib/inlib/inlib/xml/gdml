@@ -8,10 +8,10 @@
 #include "../edep/physical_constants"
 
 #include "../S_STRING"
-#include "../vec3d"
+#include "../lina/vec3d"
 #include "../parse"
 #include "../array"
-#include "../mat4d"
+#include "../lina/mat4d"
 #include "../forit"
 #include "../mathd"
 //#include "../yacc/cexpr_eval.h"
@@ -207,7 +207,7 @@ public:
     op_intersection = 2,
     op_subtraction = 3
   };
-  
+
   enum surface_type {
     surface_dielectric_metal,
     surface_dielectric_dielectric,
@@ -382,8 +382,8 @@ public:
                                        double a_phi_twist) = 0;
   virtual _G4VSolid* create_twisted_tubs(const std::string& a_name,
                                         double a_twisted_angle,
-                                        double a_end_inner_rad, 
-                                        double a_end_outer_rad, 
+                                        double a_end_inner_rad,
+                                        double a_end_outer_rad,
                                         double a_zlen,
                                         double a_phi) = 0;
   virtual _G4VSolid* create_cut_tubs(const std::string& a_name,
@@ -485,21 +485,21 @@ public:
     divide_lv(const std::string& a_name,
               _G4LogicalVolume* a_volume,
               _G4LogicalVolume* a_mother,
-              axis_type a_axis, 
-              unsigned int a_number, 
+              axis_type a_axis,
+              unsigned int a_number,
               double a_width,double a_offset) = 0;
   virtual std::pair<_G4VPhysicalVolume*,_G4VPhysicalVolume*>
     divide_lv(const std::string& a_name,
               _G4LogicalVolume* a_volume,
               _G4LogicalVolume* a_mother,
-              axis_type a_axis, 
-              unsigned int a_number, 
+              axis_type a_axis,
+              unsigned int a_number,
               double a_offset) = 0;
   virtual std::pair<_G4VPhysicalVolume*,_G4VPhysicalVolume*>
     divide_lv(const std::string& a_name,
               _G4LogicalVolume* a_volume,
               _G4LogicalVolume* a_mother,
-              axis_type a_axis, 
+              axis_type a_axis,
               double a_width,double a_offset) = 0;
   //xxxxxxx
 public:
@@ -513,7 +513,7 @@ public:
   virtual ~gdml(){}
 public:
   gdml(const gdml& a_from)
-  :m_ref_out(a_from.m_ref_out) 
+  :m_ref_out(a_from.m_ref_out)
   ,m_verbose(a_from.m_verbose)
   {}
   gdml& operator=(const gdml& a_from){
@@ -890,18 +890,18 @@ protected:
         if(coldim<=0) {
           m_ref_out << "inlib::xml::gdml::read_define :"
                 << " matrix : coldim <= 0. (" << coldim << ")."
-                << std::endl; 
+                << std::endl;
           return false;
         }
-       
+
         std::vector<double> ds;
         std::string sv;
         if(!atb_value(*_elem,s_values(),"",sv)) return false;
         if(!to_doubles(sv,ds," ")) {
           m_ref_out << "inlib::xml::gdml::read_define :"
                 << " matrix : problem to read values :"
-                << std::endl; 
-          m_ref_out << sv << std::endl; 
+                << std::endl;
+          m_ref_out << sv << std::endl;
           return false;
         }
 
@@ -915,7 +915,7 @@ protected:
                 << ", value# " << ds.size()
                 << ", rows " << rows
                 << ", cols " << cols << "."
-                << std::endl; 
+                << std::endl;
           return false;
         }
 
@@ -936,11 +936,11 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_define :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     atb_warn(a_tree);
     return true;
@@ -1097,11 +1097,11 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_material :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     mat_state state = mat_state_undefined;
    {std::string sv;
@@ -1124,7 +1124,7 @@ protected:
 
         m_ref_out << "inlib::xml::gdml::read_material :"
               << " no fraction, no composite and no Z found."
-              << std::endl; 
+              << std::endl;
 
         return false;
       }
@@ -1155,7 +1155,7 @@ protected:
         if(is.size()!=2) {
           m_ref_out << "inlib::xml::gdml::read_material :"
                 << " property : array not of dim 2."
-                << std::endl; 
+                << std::endl;
           return false;
         }
         unsigned int cols = is[0];
@@ -1166,16 +1166,16 @@ protected:
                 << " for material " << sout(name)
                 << " and property " << sout(pname)
                 << ", matrix has no rows."
-                << std::endl; 
+                << std::endl;
           return false;
         }
 
         if(cols==1) { // constant property assumed
-          
+
           array<double>::uints_t _is(2);
           double c;
-          _is[0] = 0;            
-          _is[1] = 0;            
+          _is[0] = 0;
+          _is[1] = 0;
           ar.value(_is,c);
 
           material_add_property(*material,pname,c);
@@ -1185,7 +1185,7 @@ protected:
                 << " for material " << sout(name)
                 << " and property " << sout(pname)
                 << ", referenced matrix should have two columns."
-                << std::endl; 
+                << std::endl;
           return false;
 
         } else { // build the material properties vector
@@ -1196,11 +1196,11 @@ protected:
           std::vector< std::pair<double,double> > vals;
 
           for(unsigned int i=0;i<rows;i++){
-            _is[0] = 0;            
-            _is[1] = i;            
+            _is[0] = 0;
+            _is[1] = i;
             ar.value(_is,c0);
-            _is[0] = 1;            
-            _is[1] = i;            
+            _is[0] = 1;
+            _is[1] = i;
             ar.value(_is,c1);
 
             vals.push_back(std::pair<double,double>(c0,c1));
@@ -1212,7 +1212,7 @@ protected:
 
       }
 
-    }}  
+    }}
 
     m_materials[name] = material;
 
@@ -1238,7 +1238,7 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_materials :"
               << " unknown tag " << sout(tag_name) << "."
-              << std::endl;        
+              << std::endl;
         return false;
       }
 
@@ -1262,11 +1262,11 @@ protected:
 
     vec3d pos;
     mat4d rot;
-    rot.set_identity(); 
+    rot.set_identity();
 
     vec3d fpos;
     mat4d frot;
-    frot.set_identity(); 
+    frot.set_identity();
 
     vec3d fvrot;
 
@@ -1326,31 +1326,31 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_boolean :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     if(!first_solid) {
       m_ref_out << "inlib::xml::gdml::read_boolean :"
             << " no first solid given."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
     if(!second_solid) {
       m_ref_out << "inlib::xml::gdml::read_boolean :"
             << " no second solid given."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
     if ( ((fvrot.x()!=0.0)||(fvrot.y()!=0.0)||(fvrot.z()!=0.0)) ||
-         ((fpos.x()!=0.0)||(fpos.y()!=0.0)||(fpos.z()!=0.0)) ){ 
+         ((fpos.x()!=0.0)||(fpos.y()!=0.0)||(fpos.z()!=0.0)) ){
 
       mat4d ftransform;
-      ftransform.set_identity(); 
+      ftransform.set_identity();
       ftransform.mul_translate(fpos.x(),fpos.y(),fpos.z());
       ftransform.mul_mtx(frot);
 
@@ -1361,7 +1361,7 @@ protected:
     }
 
     mat4d transform;
-    transform.set_identity(); 
+    transform.set_identity();
     transform.mul_translate(pos.x(),pos.y(),pos.z());
     transform.mul_mtx(rot);
 
@@ -1418,30 +1418,30 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_polycone :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     unsigned int numZPlanes = (unsigned int)zplaneList.size();
     if(!numZPlanes) {
       m_ref_out << "inlib::xml::gdml::read_polycone :"
             << " no zplane given."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
     double* z_array    = new double[numZPlanes];
     double* rmin_array = new double[numZPlanes];
     double* rmax_array = new double[numZPlanes];
-    for(unsigned int i=0;i<numZPlanes;i++) { 
+    for(unsigned int i=0;i<numZPlanes;i++) {
       z_array[i]    = zplaneList[i].z*lunit;
       rmin_array[i] = zplaneList[i].rmin*lunit;
       rmax_array[i] = zplaneList[i].rmax*lunit;
     }
 
-    m_solids[name] = 
+    m_solids[name] =
       create_polycone(name,startphi,deltaphi,numZPlanes,
                       z_array,rmin_array,rmax_array);
 
@@ -1502,30 +1502,30 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_polyhedra :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     unsigned int numZPlanes = (unsigned int)zplaneList.size();
     if(!numZPlanes) {
       m_ref_out << "inlib::xml::gdml::read_polyhedra :"
             << " no zplane given."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
     double* z_array    = new double[numZPlanes];
     double* rmin_array = new double[numZPlanes];
     double* rmax_array = new double[numZPlanes];
-    for(unsigned int i=0;i<numZPlanes;i++) { 
+    for(unsigned int i=0;i<numZPlanes;i++) {
       z_array[i]    = zplaneList[i].z*lunit;
       rmin_array[i] = zplaneList[i].rmin*lunit;
       rmax_array[i] = zplaneList[i].rmax*lunit;
     }
 
-    m_solids[name] = 
+    m_solids[name] =
       create_polyhedra(name,startphi,deltaphi,numsides,numZPlanes,
                        z_array,rmin_array,rmax_array);
 
@@ -1585,13 +1585,13 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_xtru :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
-    m_solids[name] = 
+    m_solids[name] =
       create_extruded_solid(name,twoDimVertexList,sectionList);
 
     atb_warn(a_tree);
@@ -1663,11 +1663,11 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_polyhedra :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     m_solids[name] = create_tessellated(name,tris,quads);
 
@@ -1720,19 +1720,19 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_divisionvol :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     width *= unit;
     offset *= unit;
 
-    if(!volume)  { 
+    if(!volume)  {
       m_ref_out << "inlib::xml::gdml::read_divisionvol :"
             << " no volume found."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
@@ -1878,7 +1878,7 @@ protected:
         by *= lunit;
         cz *= lunit;
         zcut1 *= lunit;
-        zcut2 *= lunit; 
+        zcut2 *= lunit;
 
         m_solids[name] = create_ellipsoid(name,ax,by,cz,zcut1,zcut2);
 
@@ -2132,7 +2132,7 @@ protected:
         vec3d vertex4;
         if(!_get_pos(*_elem,s_vertex4(),vertex4)) return false;
 
-        m_solids[name] = 
+        m_solids[name] =
           create_tet(name,
                     vertex1*lunit,vertex2*lunit,vertex3*lunit,vertex4*lunit);
 
@@ -2431,7 +2431,7 @@ protected:
         zlen *= 0.5*lunit;
         phi *= aunit;
 
-        m_solids[name] = 
+        m_solids[name] =
           create_twisted_tubs(name,
                               twistedangle,endinnerrad,endouterrad,zlen,phi);
 
@@ -2477,7 +2477,7 @@ protected:
         startphi *= aunit;
         deltaphi *= aunit;
 
-        m_solids[name] = 
+        m_solids[name] =
           create_cut_tubs(name,rmin,rmax,z,startphi,deltaphi,
                           lowX,lowY,lowZ,
                           highX,highY,highZ);
@@ -2517,7 +2517,7 @@ protected:
         double dz;
         if(!atb_value(*_elem,s_dz(),0,dz)) return false;
 
-        m_solids[name] = 
+        m_solids[name] =
           create_reflected_solid(name,solid,
                                  rx*aunit,ry*aunit,rz*aunit,
                                  dx*lunit,dy*lunit,dz*lunit,
@@ -2541,9 +2541,9 @@ protected:
         double value;
         if(!atb_value(*_elem,s_value(),0,value)) return false;
 
-        optical_surface_model model; 
+        optical_surface_model model;
         if ((smodel=="glisur") || (smodel=="0")) {
-          model = optical_surface_glisur; 
+          model = optical_surface_glisur;
         } else if ((smodel=="unified") || (smodel=="1")) {
           model = optical_surface_unified;
         } else {
@@ -2561,59 +2561,59 @@ protected:
           finish = optical_surface_ground;
         } else if ((sfinish=="groundfrontpainted") || (sfinish=="4")) {
           finish = optical_surface_groundfrontpainted;
-        } else if ((sfinish=="groundbackpainted") || (sfinish=="5")) { 
+        } else if ((sfinish=="groundbackpainted") || (sfinish=="5")) {
           finish = optical_surface_groundbackpainted;
-        } else if ((sfinish=="polishedlumirrorair") || (sfinish=="6")) { 
+        } else if ((sfinish=="polishedlumirrorair") || (sfinish=="6")) {
           finish = optical_surface_polishedlumirrorair;
-        } else if ((sfinish=="polishedlumirrorglue") || (sfinish=="7")) { 
+        } else if ((sfinish=="polishedlumirrorglue") || (sfinish=="7")) {
           finish = optical_surface_polishedlumirrorglue;
-        } else if ((sfinish=="polishedair") || (sfinish=="8")) { 
+        } else if ((sfinish=="polishedair") || (sfinish=="8")) {
           finish = optical_surface_polishedair;
-        } else if ((sfinish=="polishedteflonair") || (sfinish=="9")) { 
+        } else if ((sfinish=="polishedteflonair") || (sfinish=="9")) {
           finish = optical_surface_polishedteflonair;
-        } else if ((sfinish=="polishedtioair") || (sfinish=="10")) { 
+        } else if ((sfinish=="polishedtioair") || (sfinish=="10")) {
           finish = optical_surface_polishedtioair;
-        } else if ((sfinish=="polishedtyvekair") || (sfinish=="11")) { 
+        } else if ((sfinish=="polishedtyvekair") || (sfinish=="11")) {
           finish = optical_surface_polishedtyvekair;
-        } else if ((sfinish=="polishedvm2000air") || (sfinish=="12")) { 
+        } else if ((sfinish=="polishedvm2000air") || (sfinish=="12")) {
           finish = optical_surface_polishedvm2000air;
-        } else if ((sfinish=="polishedvm2000glue") || (sfinish=="13")) { 
+        } else if ((sfinish=="polishedvm2000glue") || (sfinish=="13")) {
           finish = optical_surface_polishedvm2000glue;
-        } else if ((sfinish=="etchedlumirrorair") || (sfinish=="14")) { 
+        } else if ((sfinish=="etchedlumirrorair") || (sfinish=="14")) {
           finish = optical_surface_etchedlumirrorair;
-        } else if ((sfinish=="etchedlumirrorglue") || (sfinish=="15")) { 
+        } else if ((sfinish=="etchedlumirrorglue") || (sfinish=="15")) {
           finish = optical_surface_etchedlumirrorglue;
-        } else if ((sfinish=="etchedair") || (sfinish=="16")) { 
+        } else if ((sfinish=="etchedair") || (sfinish=="16")) {
           finish = optical_surface_etchedair;
-        } else if ((sfinish=="etchedteflonair") || (sfinish=="17")) { 
+        } else if ((sfinish=="etchedteflonair") || (sfinish=="17")) {
           finish = optical_surface_etchedteflonair;
-        } else if ((sfinish=="etchedtioair") || (sfinish=="18")) { 
+        } else if ((sfinish=="etchedtioair") || (sfinish=="18")) {
           finish = optical_surface_etchedtioair;
-        } else if ((sfinish=="etchedtyvekair") || (sfinish=="19")) { 
+        } else if ((sfinish=="etchedtyvekair") || (sfinish=="19")) {
           finish = optical_surface_etchedtyvekair;
-        } else if ((sfinish=="etchedvm2000air") || (sfinish=="20")) { 
+        } else if ((sfinish=="etchedvm2000air") || (sfinish=="20")) {
           finish = optical_surface_etchedvm2000air;
-        } else if ((sfinish=="etchedvm2000glue") || (sfinish=="21")) { 
+        } else if ((sfinish=="etchedvm2000glue") || (sfinish=="21")) {
           finish = optical_surface_etchedvm2000glue;
-        } else if ((sfinish=="groundlumirrorair") || (sfinish=="22")) { 
+        } else if ((sfinish=="groundlumirrorair") || (sfinish=="22")) {
           finish = optical_surface_groundlumirrorair;
-        } else if ((sfinish=="groundlumirrorglue") || (sfinish=="23")) { 
+        } else if ((sfinish=="groundlumirrorglue") || (sfinish=="23")) {
           finish = optical_surface_groundlumirrorglue;
-        } else if ((sfinish=="groundair") || (sfinish=="24")) { 
+        } else if ((sfinish=="groundair") || (sfinish=="24")) {
           finish = optical_surface_groundair;
-        } else if ((sfinish=="groundteflonair") || (sfinish=="25")) { 
+        } else if ((sfinish=="groundteflonair") || (sfinish=="25")) {
           finish = optical_surface_groundteflonair;
-        } else if ((sfinish=="groundtioair") || (sfinish=="26")) { 
+        } else if ((sfinish=="groundtioair") || (sfinish=="26")) {
           finish = optical_surface_groundtioair;
-        } else if ((sfinish=="groundtyvekair") || (sfinish=="27")) { 
+        } else if ((sfinish=="groundtyvekair") || (sfinish=="27")) {
           finish = optical_surface_groundtyvekair;
         } else if ((sfinish=="groundvm2000air") || (sfinish=="28")) {
           finish = optical_surface_groundvm2000air;
         } else {
           finish = optical_surface_groundvm2000glue;
         }
-     
-        surface_type type;   
+
+        surface_type type;
         if ((stype=="dielectric_metal") || (stype=="0")){
           type = surface_dielectric_metal;
         } else if ((stype=="dielectric_dielectric") || (stype=="1")){
@@ -2625,7 +2625,7 @@ protected:
         } else {
           type = surface_x_ray;
         }
-     
+
         m_surfprops[name] =
           create_optical_surface(name,model,finish,type,value);
 
@@ -2634,7 +2634,7 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_solids :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
@@ -2659,7 +2659,7 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_solids :"
               << " unknown tag " << sout(tag_name) << "."
-              << std::endl;        
+              << std::endl;
         return false;
       }
 
@@ -2709,7 +2709,7 @@ protected:
           } else {
             map_volumes_const_iterator itv = m_volumes.find(sv);
             if(itv!=m_volumes.end()) {
-              a_volume = (*itv).second;        
+              a_volume = (*itv).second;
             }
           }
         }
@@ -2742,11 +2742,11 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::_read_physvol :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     return true;
   }
@@ -2790,7 +2790,7 @@ protected:
     } else {
       m_ref_out << "inlib::xml::gdml::read_physvol :"
             << " no assembly or volume found."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
@@ -2823,7 +2823,7 @@ protected:
     if(!volume) {
       m_ref_out << "inlib::xml::gdml::read_assembly_physvol :"
             << " no volume found."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
@@ -2862,7 +2862,7 @@ protected:
         if(!atb_value(*_elem,s_rho(),0,rho)) return false;
         double phi;
         if(!atb_value(*_elem,s_phi(),0,phi)) return false;
-        
+
         if(x==1.0)   a_axis = axis_XAxis;
         if(y==1.0)   a_axis = axis_YAxis;
         if(z==1.0)   a_axis = axis_ZAxis;
@@ -2876,7 +2876,7 @@ protected:
         if(!unit_value(*_elem,s_unit(),edep::millimeter,unit)) return false;
         if(!atb_value(*_elem,s_value(),0,a_width)) return false;
         a_width *= unit;
-         
+
         atb_warn(*_elem);
 
       } else if(prop_name==s_offset()) {
@@ -2884,17 +2884,17 @@ protected:
         if(!unit_value(*_elem,s_unit(),edep::millimeter,unit)) return false;
         if(!atb_value(*_elem,s_value(),0,a_offset)) return false;
         a_offset *= unit;
-         
+
         atb_warn(*_elem);
 
       } else {
         m_ref_out << "inlib::xml::gdml::read_replicate_along_axis :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     atb_warn(a_tree);
     return true;
@@ -2930,16 +2930,16 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_replica :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     if(!volume) {
       m_ref_out << "inlib::xml::gdml::read_replica :"
             << " no volume to replicate."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
@@ -2957,7 +2957,7 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_replica :"
               << " unknown tag " << sout(tag_name) << "."
-              << std::endl;        
+              << std::endl;
         return false;
       }
 
@@ -3051,11 +3051,11 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_parameter :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     a_tree.remove_attributes(s_number()); //to rm known warning.
 
@@ -3085,7 +3085,7 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_parameterised_position_size :"
               << " unknown tag " << sout(tag_name) << "."
-              << std::endl;        
+              << std::endl;
         return false;
       }
 
@@ -3115,16 +3115,16 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_paramvol :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     if(!volume) {
       m_ref_out << "inlib::xml::gdml::read_paramvol :"
             << " no volume to replicate."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
@@ -3143,7 +3143,7 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_paramvol :"
               << " unknown tag " << sout(tag_name) << "."
-              << std::endl;        
+              << std::endl;
         return false;
       }
 
@@ -3152,7 +3152,7 @@ protected:
     if(params.empty()) {
       m_ref_out << "inlib::xml::gdml::read_paramvol :"
             << " no parameters are defined in parameterised volume."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
@@ -3208,23 +3208,23 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_volume :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     if(!solid) {
       m_ref_out << "inlib::xml::gdml::read_volume :"
             << " no solid given."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
     if(!material) {
       m_ref_out << "inlib::xml::gdml::read_volume :"
             << " no material given."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
@@ -3251,7 +3251,7 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_volume :"
               << " unknown tag " << sout(tag_name) << "."
-              << std::endl;        
+              << std::endl;
         return false;
       }
 
@@ -3283,7 +3283,7 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_assembly :"
               << " unknown tag " << sout(tag_name) << "."
-              << std::endl;        
+              << std::endl;
         return false;
       }
 
@@ -3318,11 +3318,11 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_skinsurface :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     m_surfs[name] = create_logical_skin_surface(name,volume,prop);
 
@@ -3356,17 +3356,17 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_bordersurface :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     if(pvs.size()!=2) {
       m_ref_out << "inlib::xml::gdml::read_bordersurface :"
             << " two physical volumes expected."
             << ". (" << pvs.size() << ") given."
-            << std::endl; 
+            << std::endl;
       return false;
     }
 
@@ -3402,7 +3402,7 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_structure :"
               << " unknown tag " << sout(tag_name) << "."
-              << std::endl;        
+              << std::endl;
         return false;
       }
 
@@ -3438,15 +3438,15 @@ protected:
       } else {
         m_ref_out << "inlib::xml::gdml::read_solids :"
               << " unknown property " << sout(prop_name) << "."
-              << std::endl; 
+              << std::endl;
         return false;
       }
 
-    }}  
+    }}
 
     vec3d rot(0,0,0);
     vec3d pos(0,0,0);
-    
+
     volume_name(*volume,name);
     name += "_PV";
     a_pv = create_pv_placement(name,volume,0,rot,pos);
@@ -3639,7 +3639,7 @@ protected:
       msg_map(sv);
       return false;
     }
-    a_pos = (*it).second;        
+    a_pos = (*it).second;
     return true;
   }
 
@@ -3659,7 +3659,7 @@ protected:
       msg_map(sv);
       return false;
     }
-    a_v = (*it).second;        
+    a_v = (*it).second;
     return true;
   }
 
@@ -3677,7 +3677,7 @@ protected:
       msg_map(sv);
       return false;
     }
-    a_v = (*it).second;        
+    a_v = (*it).second;
     return true;
   }
 
@@ -3696,7 +3696,7 @@ protected:
       msg_map(sv);
       return false;
     }
-    a_volume = (*it).second;        
+    a_volume = (*it).second;
     return true;
   }
 
@@ -3714,7 +3714,7 @@ protected:
       msg_map(sv);
       return false;
     }
-    a_pv = (*it).second;        
+    a_pv = (*it).second;
     return true;
   }
 
@@ -3735,7 +3735,7 @@ protected:
       return false;
     }
     a_solid = (*it).second;
-    return true;  
+    return true;
   }
 
   bool get_material(element& a_prop,_G4Material*& a_mat){
@@ -3755,7 +3755,7 @@ protected:
       }
       return true;
     }
-    a_mat = (*it).second;        
+    a_mat = (*it).second;
     return true;
   }
 
@@ -3791,7 +3791,7 @@ protected:
       msg_map(sv);
       return false;
     }
-    a_p = (*it).second;        
+    a_p = (*it).second;
     return true;
   }
 
@@ -3811,7 +3811,7 @@ protected:
       msg_map(sv);
       return false;
     }
-    a_v = (*it).second;        
+    a_v = (*it).second;
     return true;
   }
 

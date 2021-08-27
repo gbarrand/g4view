@@ -11,10 +11,7 @@
 
 #include "geo_volume_cls"
 
-namespace inlib {
-namespace rroot {
-  class geo_volume;
-}}
+#include "geo_volume"
 
 namespace inlib {
 namespace rroot {
@@ -37,6 +34,8 @@ public: //iro
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_pattern_finder(*this);}
   virtual bool stream(buffer& a_buffer) {
+    _clear();
+
     unsigned int s, c;
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
@@ -52,21 +51,22 @@ public: //iro
     if(!a_buffer.read(m_div_index)) return false;
 
     ifac::args args;
-    if(!pointer_stream(a_buffer,m_fac,args,m_matrix)){
+    if(!pointer_stream(a_buffer,m_fac,args,m_matrix,m_matrix_created)){
       a_buffer.out() << "inlib::rroot::geo_pattern_finder::stream : "
                      << "can't read fMatrix."
                      << std::endl;
       return false;
     }
 
-    if(!pointer_stream(a_buffer,m_fac,args,geo_volume_cls(),m_volume)){
+    if(!pointer_stream(a_buffer,m_fac,args,geo_volume_cls(),m_volume,m_volume_created)){
       a_buffer.out() << "inlib::rroot::geo_pattern_finder::stream : "
                      << "can't read fVolume."
                      << std::endl;
+      _clear();
       return false;
     }
 
-    if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
+    if(!a_buffer.check_byte_count(s,c,s_store_class())) {_clear();return false;}
     return true;
   }
 
@@ -89,13 +89,16 @@ public:
   ,m_divisions(0)
   ,m_div_index(0)
   ,m_matrix(0) //not owner
+  ,m_matrix_created(false)
   ,m_volume(0) //not owner
+  ,m_volume_created(false)
   {
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
 #endif
   }
   virtual ~geo_pattern_finder(){
+    _clear();
 #ifdef INLIB_MEM
     mem::decrement(s_class().c_str());
 #endif
@@ -113,7 +116,9 @@ protected:
   ,m_divisions(a_from.m_divisions)
   ,m_div_index(a_from.m_div_index)
   ,m_matrix(a_from.m_matrix)
+  ,m_matrix_created(a_from.m_matrix_created)
   ,m_volume(a_from.m_volume)
+  ,m_volume_created(a_from.m_volume_created)
   {}
   geo_pattern_finder& operator=(const geo_pattern_finder& a_from){
     m_bits = a_from.m_bits;
@@ -124,7 +129,9 @@ protected:
     m_divisions = a_from.m_divisions;
     m_div_index = a_from.m_div_index;
     m_matrix = a_from.m_matrix;
+    m_matrix_created = a_from.m_matrix_created;
     m_volume = a_from.m_volume;
+    m_volume_created = a_from.m_volume_created;
     return *this;
   }
 public:
@@ -144,6 +151,12 @@ public:
   geo_matrix* matrix() {return m_matrix;}
   const geo_volume* volume() const {return m_volume;}
   geo_volume* volume() {return m_volume;}
+
+protected:
+  void _clear() {
+    if(m_matrix_created) {delete m_matrix;m_matrix = 0;m_matrix_created = false;}
+    if(m_volume_created) {delete m_volume;m_volume = 0;m_volume_created = false;}
+  }
 protected:
   ifac& m_fac;
 
@@ -156,7 +169,9 @@ protected:
   int    m_divisions;      // number of divisions
   int    m_div_index;      // index of first div. node
   geo_matrix* m_matrix;    // generic matrix
+  bool m_matrix_created;
   geo_volume* m_volume;    // volume to which applies
+  bool m_volume_created;
 };
 
 class geo_pattern_cyl_phi : public geo_pattern_finder {
@@ -788,7 +803,7 @@ template <class T>
 inline T* cast_pattern_finder(geo_pattern_finder& a_pf) {
   return id_cast<geo_pattern_finder,T>(a_pf);
 }
-  
+
 }}
 
 #endif

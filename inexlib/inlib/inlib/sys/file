@@ -56,7 +56,7 @@ inline bool tmpname(const std::string& a_dir,const std::string& a_prefix,const s
   snpf(spid,sizeof(spid),"%d",::getpid());
   head += spid;
   head += "_";
-  
+
   //needed to be large in case of wall/animation.
   // 1M = 11 hours of movie at 25 image/sec.
   for(unsigned int count=0;count<1000000;count++) {
@@ -70,7 +70,7 @@ inline bool tmpname(const std::string& a_dir,const std::string& a_prefix,const s
     if(::stat(tmpnm.c_str(),&finfo) < 0) {
       // No directory or file found :
       a_name = tmpnm; // Good file name.
-      return true; 
+      return true;
     }
   }
   // No good name found :

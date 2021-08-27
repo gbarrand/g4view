@@ -67,7 +67,7 @@ inline bool camera_type2s(camera_type& a_v,std::string& a_s) {
   }
   a_s.clear();
   return false;
-} 
+}
 */
 
 }}

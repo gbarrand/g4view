@@ -31,7 +31,7 @@ private:
 public:
   infos()
   :parent()
-  {  
+  {
     add_fields();
   }
   virtual ~infos(){}
@@ -58,7 +58,7 @@ public:
     for(it=vs.begin();it!=vs.end();it+=2) {
       if(*it==a_key) {
         it++;
-        if(it==vs.end()) {a_value=a_def;return false;}        
+        if(it==vs.end()) {a_value=a_def;return false;}
         a_value = *it;
         return true;
       }

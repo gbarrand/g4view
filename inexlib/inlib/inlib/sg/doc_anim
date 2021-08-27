@@ -12,9 +12,6 @@
 #include "../file_iterator"
 #include "../file_opener"
 
-//#include "../file"
-//#include "../sys/file"
-
 namespace inlib {
 namespace sg {
 
@@ -45,7 +42,7 @@ private:
 public: //base_anim
   virtual bool action(std::ostream& a_out,const atime& a_now) {
     if(!m_it.entries()) return true;
-  
+
     if(time_interval.value()) {
       unsigned int elaps = (unsigned int)atime::diff(a_now,m_prev).milli_seconds();
       if(elaps<=time_interval.value()) return false; //do not set m_prev.
@@ -58,7 +55,7 @@ public: //base_anim
     size_t sz;
     char* buffer;
     if(m_it.begin_buffer(sz,buffer)) {
-      if(sz && buffer) {        
+      if(sz && buffer) {
         bool done;
         if(!m_opener.open((unsigned int)sz,buffer,args(),done)) {
           a_out << "inlib::sg::doc_anim::action :"

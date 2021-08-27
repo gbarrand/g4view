@@ -146,7 +146,7 @@ public:
     double* pos = (double*)a_contour;
     for(size_t i=0;i<a_npt;i++,pos+=3) {
       ::gluTessVertex(m_tobj,pos,pos);
-    }    
+    }
     ::gluTessEndContour(m_tobj);
     a_prims.clear();
     m_prims = &a_prims;
@@ -156,7 +156,7 @@ public:
 
   void clear(){_clear();}
 protected:
-  
+
   typedef _GLUfuncptr Func;
 
   static void GLUAPIENTRY begin_cbk(GLUenum a_which,void* a_this) {
@@ -243,7 +243,7 @@ protected:
         pos += 3;
       }
       prim.m_coords.clear();
-      prim.m_norms.clear();   
+      prim.m_norms.clear();
     }
   }
 
@@ -301,11 +301,11 @@ protected:
                           float,float,float,float,float,float,float,float) {
       return false;
     }
-  
+
     virtual bool add_triangle(float a_p1x,float a_p1y,float a_p1z,float,
                               float a_p2x,float a_p2y,float a_p2z,float,
                               float a_p3x,float a_p3y,float a_p3z,float){
-  
+
       float vx = a_p2x-a_p1x;
       float vy = a_p2y-a_p1y;
       float vz = a_p2z-a_p1z;
@@ -319,7 +319,7 @@ protected:
       //  vz   wz
       float cx = vy*wz-vz*wy;
       float cy = vz*wx-vx*wz;
-      float cz = vx*wy-vy*wx; 
+      float cz = vx*wy-vy*wx;
 
       float len = (float)::sqrt(cx*cx + cy*cy + cz*cz);
       if(!len) {
@@ -331,7 +331,7 @@ protected:
         cz /= len;
       }
 
-      if(m_mode==gl::triangles()) {   
+      if(m_mode==gl::triangles()) {
 
         m_norms.push_back(cx);
         m_norms.push_back(cy);
@@ -340,13 +340,13 @@ protected:
         m_norms.push_back(cx);
         m_norms.push_back(cy);
         m_norms.push_back(cz);
- 
+
         m_norms.push_back(cx);
         m_norms.push_back(cy);
         m_norms.push_back(cz);
 
       } else if( (m_mode==gl::triangle_strip()) ||
-                 (m_mode==gl::triangle_fan())   ){   
+                 (m_mode==gl::triangle_fan())   ){
 
         if(m_norms.empty()) { //startup : three vertices.
           m_norms.push_back(cx);
@@ -356,7 +356,7 @@ protected:
           m_norms.push_back(cx);
           m_norms.push_back(cy);
           m_norms.push_back(cz);
- 
+
           m_norms.push_back(cx);
           m_norms.push_back(cy);
           m_norms.push_back(cz);
@@ -370,18 +370,102 @@ protected:
 
       return true;
     }
-  
+
     virtual bool add_triangle(float a_p1x,float a_p1y,float a_p1z,float a_p1w,
-                                float,float,float,float,
+                              float,float,float,float,
                               float a_p2x,float a_p2y,float a_p2z,float a_p2w,
-                                float,float,float,float,
+                              float,float,float,float,
                               float a_p3x,float a_p3y,float a_p3z,float a_p3w,
-                                float,float,float,float){
+                              float,float,float,float){
       return add_prm::add_triangle(a_p1x,a_p1y,a_p1z,a_p1w,
                                    a_p2x,a_p2y,a_p2z,a_p2w,
                                    a_p3x,a_p3y,a_p3z,a_p3w);
     }
-  
+
+    virtual bool project_normal(float& a_x,float& a_y,float& a_z) {
+      (void)a_x;(void)a_y;(void)a_z;
+      return true;
+    }
+    virtual bool add_point_normal(float a_x,float a_y,float a_z,float a_w,
+                                  float a_nx,float a_ny,float a_nz) {
+      (void)a_x;(void)a_y;(void)a_z;(void)a_w;
+      (void)a_nx;(void)a_ny;(void)a_nz;
+      return false;
+    }
+    virtual bool add_point_normal(float a_x,float a_y,float a_z,float a_w,
+                                  float a_nx,float a_ny,float a_nz,
+                                  float a_r,float a_g,float a_b,float a_a) {
+      (void)a_x;(void)a_y;(void)a_z;(void)a_w;
+      (void)a_nx;(void)a_ny;(void)a_nz;
+      (void)a_r;(void)a_g;(void)a_b;(void)a_a;
+      return false;
+    }
+    virtual bool add_line_normal(float a_bx,float a_by,float a_bz,float a_bw,
+                                 float a_bnx,float a_bny,float a_bnz,
+                                 float a_ex,float a_ey,float a_ez,float a_ew,
+                                 float a_enx,float a_eny,float a_enz) {
+      (void)a_bx;(void)a_by;(void)a_bz;(void)a_bw;
+      (void)a_bnx;(void)a_bny;(void)a_bnz;
+      (void)a_ex;(void)a_ey;(void)a_ez;(void)a_ew;
+      (void)a_enx;(void)a_eny;(void)a_enz;
+      return false;
+    }
+    virtual bool add_line_normal(float a_bx,float a_by,float a_bz,float a_bw,
+                                 float a_bnx,float a_bny,float a_bnz,
+                                 float a_br,float a_bg,float a_bb,float a_ba,
+                                 float a_ex,float a_ey,float a_ez,float a_ew,
+                                 float a_enx,float a_eny,float a_enz,
+                                 float a_er,float a_eg,float a_eb,float a_ea){
+      (void)a_bx;(void)a_by;(void)a_bz;(void)a_bw;
+      (void)a_bnx;(void)a_bny;(void)a_bnz;
+      (void)a_br;(void)a_bg;(void)a_bb;(void)a_ba;
+      (void)a_ex;(void)a_ey;(void)a_ez;(void)a_ew;
+      (void)a_enx;(void)a_eny;(void)a_enz;
+      (void)a_er;(void)a_eg;(void)a_eb;(void)a_ea;
+      return false;
+    }
+    virtual bool add_triangle_normal(
+      float a_p1x,float a_p1y,float a_p1z,float a_p1w,
+      float a_n1x,float a_n1y,float a_n1z,
+      float a_p2x,float a_p2y,float a_p2z,float a_p2w,
+      float a_n2x,float a_n2y,float a_n2z,
+      float a_p3x,float a_p3y,float a_p3z,float a_p3w,
+      float a_n3x,float a_n3y,float a_n3z) {
+      add_triangle(a_p1x,a_p1y,a_p1z,a_p1w,
+                   a_p2x,a_p2y,a_p2z,a_p2w,
+                   a_p3x,a_p3y,a_p3z,a_p3w);
+    //m_this.m_triangles.add_normal(a_n1x,a_n1y,a_n1z);
+    //m_this.m_triangles.add_normal(a_n2x,a_n2y,a_n2z);
+    //m_this.m_triangles.add_normal(a_n3x,a_n3y,a_n3z);
+      (void)a_n1x;(void)a_n1y;(void)a_n1z;
+      (void)a_n2x;(void)a_n2y;(void)a_n2z;
+      (void)a_n3x;(void)a_n3y;(void)a_n3z;
+      return true;
+    }
+    virtual bool add_triangle_normal(
+      float a_p1x,float a_p1y,float a_p1z,float a_p1w,
+      float a_n1x,float a_n1y,float a_n1z,
+      float a_r1,float a_g1,float a_b1,float a_a1,
+      float a_p2x,float a_p2y,float a_p2z,float a_p2w,
+      float a_n2x,float a_n2y,float a_n2z,
+      float a_r2,float a_g2,float a_b2,float a_a2,
+      float a_p3x,float a_p3y,float a_p3z,float a_p3w,
+      float a_n3x,float a_n3y,float a_n3z,
+      float a_r3,float a_g3,float a_b3,float a_a3){
+      add_triangle(a_p1x,a_p1y,a_p1z,a_p1w,
+                   a_r1,a_g1,a_b1,a_a1,
+                   a_p2x,a_p2y,a_p2z,a_p2w,
+                   a_r2,a_g2,a_b2,a_a2,
+                   a_p3x,a_p3y,a_p3z,a_p3w,
+                   a_r3,a_g3,a_b3,a_a3);
+    //m_this.m_triangles.add_normal(a_n1x,a_n1y,a_n1z);
+    //m_this.m_triangles.add_normal(a_n2x,a_n2y,a_n2z);
+    //m_this.m_triangles.add_normal(a_n3x,a_n3y,a_n3z);
+      (void)a_n1x;(void)a_n1y;(void)a_n1z;
+      (void)a_n2x;(void)a_n2y;(void)a_n2z;
+      (void)a_n3x;(void)a_n3y;(void)a_n3z;
+      return true;
+    }
   public:
     add_prm(std::ostream& a_out,std::vector<float>& a_norms)
     :m_out(a_out)
@@ -399,8 +483,8 @@ protected:
   public:
     std::vector<float>& m_norms;
   };
-  
-  
+
+
 protected:
   std::ostream& m_out;
   GLUtesselator* m_tobj;

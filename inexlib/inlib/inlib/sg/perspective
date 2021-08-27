@@ -95,6 +95,8 @@ protected:
   }
 };
 
+inline perspective* cast_perspective(base_camera& a_bcam) {return safe_cast<base_camera,perspective>(a_bcam);}
+
 }}
 
 #endif

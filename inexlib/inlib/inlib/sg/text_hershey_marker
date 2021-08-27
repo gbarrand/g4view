@@ -12,6 +12,8 @@ namespace sg {
 class text_hershey_marker : public text_hershey {
   INLIB_NODE(text_hershey_marker,inlib::sg::text_hershey_marker,text_hershey)
 public:
+  virtual bool draw_in_frame_buffer() const {return true;}
+
   virtual void render(render_action& a_action) {
     //Same logic as Inventor SoLightModel.model = BASE_COLOR.
     a_action.set_lighting(false);
@@ -38,7 +40,7 @@ public:
        *it += y;it++;
     }}
     a_action.draw_vertex_array_xy(gl::lines(),segs);
-         
+
     a_action.load_matrices_from_state();
 
     height.value_no_cmp(old_height);
@@ -71,7 +73,7 @@ public:
     }}
 
     a_action.add__lines_xy(*this,segs);
-         
+
     a_action.set_matrices_from_state();
 
     height.value_no_cmp(old_height);

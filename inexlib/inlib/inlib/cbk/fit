@@ -14,7 +14,7 @@
 
 #include "../f2cmn"
 
-#include "../sg/view_plots"
+#include "../sg/gui_viewer"
 
 //
 #define INLIB_CBK_FIT_EDVALOP
@@ -56,7 +56,7 @@ public:
 
       unsigned int refresh_rate = 0;
       if(animated) refresh_rate = device::slow_cpu()?2:1;
-      
+
       sg::plotter& plotter = m_plots->current_plotter();
 
       sg::base_ff* ff = 0;
@@ -97,11 +97,11 @@ public:
       } else {
         m_gv.pop_warn(m_popup,m_ex,m_ey,"not handled function");
         return sg::return_to_render;
-      }}      
+      }}
 #endif
 
       plotter.remove_todels<sg::base_ff>();
-      plotter.add_todel<sg::base_ff>(ff);    
+      plotter.add_todel<sg::base_ff>(ff);
 
       plotter.remove_plottables<sg::func1D>();
       plotter.remove_plottables<sg::fit2plot>();
@@ -118,7 +118,7 @@ public:
       inlib_vforcit(sg::base_ff::parameter,params,it) {
         node->add_double(s_start()+(*it).m_name,(*it).m_value);
         //node->add_double("step "+(*it).m_name,(*it).m_step);
-        double step = (*it).m_value*0.01;        
+        double step = (*it).m_value*0.01;
         node->add_double("step "+(*it).m_name,step?step:0.01);
         node->add_double("min "+(*it).m_name,0);
         node->add_double("max "+(*it).m_name,0);
@@ -131,7 +131,7 @@ public:
       _cbk->m_bff = ff;
       _cbk->m_animated = animated;
       node->add_callback(_cbk);
-  
+
       m_gv.show_widget(*this,node);
 
     } else if(m_action==action_fit()) {
@@ -149,19 +149,19 @@ public:
 
         if(!to<double>(vals[4*index+0],params[index].m_start)) {
           m_gv.pop_warn(m_popup,m_ex,m_ey,vals[4*index+0]+"not a number");
-          return sg::return_to_render;     
+          return sg::return_to_render;
         }
         if(!to<double>(vals[4*index+1],params[index].m_step)) {
           m_gv.pop_warn(m_popup,m_ex,m_ey,vals[4*index+1]+"not a number");
-          return sg::return_to_render;     
+          return sg::return_to_render;
         }
         if(!to<double>(vals[4*index+2],params[index].m_min)) {
           m_gv.pop_warn(m_popup,m_ex,m_ey,vals[4*index+2]+"not a number");
-          return sg::return_to_render;     
+          return sg::return_to_render;
         }
         if(!to<double>(vals[4*index+3],params[index].m_max)) {
           m_gv.pop_warn(m_popup,m_ex,m_ey,vals[4*index+3]+"not a number");
-          return sg::return_to_render;     
+          return sg::return_to_render;
         }
       }
 
@@ -189,28 +189,28 @@ public:
 
       std::vector<std::string> txt;
       if(file::read(m_minuit_file,txt)){
-        inlib_vforcit(std::string,txt,it) cmds.push_back(cmd(*it));      
-        
+        inlib_vforcit(std::string,txt,it) cmds.push_back(cmd(*it));
+
         if(!f2cmn::fit_1D<histo::h1d>(m_gv.out(),*m_histo,params,*m_bff,fit_out,cmds,false)){
           m_gv.pop_warn(m_popup,m_ex,m_ey,"fit failed");
-          return sg::return_to_render;     
+          return sg::return_to_render;
         }
 
       } else {
-      //cmds.push_back(cmd("SET PRI",1, 0)); //-1 no output, 0 minimum output. 
-        cmds.push_back(cmd("SET PRI",1,-1)); //-1 no output, 0 minimum output. 
+      //cmds.push_back(cmd("SET PRI",1, 0)); //-1 no output, 0 minimum output.
+        cmds.push_back(cmd("SET PRI",1,-1)); //-1 no output, 0 minimum output.
         cmds.push_back(cmd("MIGRAD"));
 
         if(!f2cmn::fit_1D<histo::h1d>(m_gv.out(),*m_histo,params,*m_bff,fit_out,cmds)){
           m_gv.pop_warn(m_popup,m_ex,m_ey,"fit failed");
-          return sg::return_to_render;     
+          return sg::return_to_render;
         }
       }
 
 
       if(fit_out.size()!=(2+params.size()*4) ){
         m_gv.pop_warn(m_popup,m_ex,m_ey,"bad number of fit output parameters");
-        return sg::return_to_render;     
+        return sg::return_to_render;
       }
 
       std::vector<std::string> names;
@@ -227,7 +227,7 @@ public:
       }
     }
 
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   virtual sg::bcbk* copy() const {return new fit(*this);}
 public:
@@ -342,7 +342,7 @@ inline sg::return_action action_fit(sg::gui_viewer& a_gv,const fit_data& a_data)
   // ask to choose a function :
   sg::entries* node = new sg::entries(a_gv.ttf());
   a_gv.set_style(*node);
-      
+
 #ifdef INLIB_CBK_FIT_EDVALOP
  {sg::edvalop& edvalop = node->edvalop();
   edvalop.edit_what = sg::edvalop::edit_ntuple;
@@ -379,14 +379,14 @@ inline sg::return_action action_fit(sg::gui_viewer& a_gv,const fit_data& a_data)
  {sg::file_chooser& fch = node->file_chooser();
   fch.exts.add(".minuit");
   fch.dirs.add(a_gv.res_dir());
-  fch.dirs.add(a_gv.data_dirs());
+  fch.dirs.add(a_gv.doc_dir());
   fch.initialize(a_gv.out());}
 
   fit* _cbk = new fit(a_gv,_plots,fit::action_set_params(),a_data.m_popup,a_data.m_ex,a_data.m_ey);
   _cbk->m_entries = node;
   _cbk->m_histo = histo;
   node->add_callback(_cbk);
-  
+
   a_gv.show_widget(a_data,node);
 
   return sg::return_to_render;

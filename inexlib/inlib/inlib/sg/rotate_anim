@@ -57,7 +57,7 @@ public:
   rotate_anim(const atime& a_start)
   :base_anim(a_start)
   ,parent()
-  
+
   ,axis(vec3f(0,0,1))     //rotate around z.
   ,omega(ftwo_pi()/1.0f)  // turn/s  (one turn per second).
   {

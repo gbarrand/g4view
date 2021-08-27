@@ -11,8 +11,8 @@
 #include "mem"
 #endif
 
-#include "vec3f"
-#include "mat4f"
+#include "lina/vec3f"
+#include "lina/mat4f"
 
 namespace inlib {
 

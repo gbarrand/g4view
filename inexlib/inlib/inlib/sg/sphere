@@ -5,7 +5,8 @@
 #define inlib_sg_sphere
 
 #include "node"
-#include "render_action"
+#include "render_gstos"
+
 #include "pick_action"
 #include "bbox_action"
 #include "sf_enum"
@@ -15,28 +16,19 @@
 namespace inlib {
 namespace sg {
 
-class sphere : public node {
+class sphere : public node, public render_gstos {
   INLIB_NODE(sphere,inlib::sg::sphere,node)
 public:
   sf<float> radius;
   sf<unsigned int> slices;
   sf<unsigned int> stacks;
-
-  enum draw_style {
-    draw_point = 0,
-    draw_line = 1,
-    draw_fill = 2
-  };
-  sf_enum<draw_style> style;
-
 public:
   virtual const desc_fields& node_desc_fields() const {
     INLIB_FIELD_DESC_NODE_CLASS(inlib::sg::sphere)
-    static const desc_fields s_v(parent::node_desc_fields(),4, //WARNING : take care of count.
+    static const desc_fields s_v(parent::node_desc_fields(),3, //WARNING : take care of count.
       INLIB_ARG_FIELD_DESC(radius),
       INLIB_ARG_FIELD_DESC(slices),
-      INLIB_ARG_FIELD_DESC(stacks),
-      INLIB_ARG_FIELD_DESC(style)
+      INLIB_ARG_FIELD_DESC(stacks)
     );
     return s_v;
   }
@@ -45,43 +37,46 @@ private:
     add_field(&radius);
     add_field(&slices);
     add_field(&stacks);
-    add_field(&style);
+  }
+protected: //render_gstos
+  virtual void visit(gstos_add& a_visitor,draw_type a_style) {
+    visit<gstos_add>(a_visitor,a_style);
   }
 public: //node
   virtual void render(render_action& a_action) {
+    if(gstos_render(a_action)) return;
+
+    // immediate rendering :
     const state& state = a_action.state();
-
     bool draw_edges = false;
-    if(style.value()==draw_fill) draw_edges = state.m_GL_LIGHTING?false:true;
-
+    if(state.m_draw_type==draw_filled) draw_edges = state.m_GL_LIGHTING?false:true;
     if(draw_edges) {
-      //a_action.set_lighting(false); //NOTE : we should do that if style==draw_fill !
+      //a_action.set_lighting(false); //NOTE : we should do that if draw_filled !
       a_action.color4f(0,0,0,1); //if lighten, then rendered grey.
       a_action.line_width(1);
-
-      visit(a_action,draw_line);
-
-      //pushes back the filled polygons to avoid z-fighting with lines
-      a_action.set_polygon_offset(true);
-
+      visit(a_action,draw_lines);
+      a_action.set_polygon_offset(true); //pushes back the filled polygons to avoid z-fighting with lines
       a_action.color4f(state.m_color);
       a_action.line_width(state.m_line_width);
       //a_action.set_lighting(state.m_GL_LIGHTING);
     }
 
-    visit(a_action,style.value());
-    a_action.set_polygon_offset(state.m_GL_POLYGON_OFFSET_FILL);
+    //if draw_filled and shade_flat, enforce "as triangles" to have same rendering as gsto mode :
+    bool as_triangles = state.m_shade_model==shade_flat?true:false;
+    visit(a_action,state.m_draw_type,as_triangles);
+    if(draw_edges) a_action.set_polygon_offset(state.m_GL_POLYGON_OFFSET_FILL);
   }
 
   virtual void pick(pick_action& a_action) {
+    const state& state = a_action.state();
     if(a_action.stop_at_first()){
-      visit(a_action,style.value());
+      visit(a_action,state.m_draw_type);
       if(a_action.done()) a_action.set_node(this);
     } else {
       a_action.set_done(false);
       a_action.zs().clear();
       a_action.ws().clear();
-      visit(a_action,style.value());
+      visit(a_action,state.m_draw_type);
       if(a_action.done()) {
         a_action.add_pick(*this,a_action.zs(),a_action.ws(),a_action.state());
         a_action.set_done(false);
@@ -89,17 +84,18 @@ public: //node
     }
   }
   virtual void bbox(bbox_action& a_action) {
-    visit(a_action,style.value());
+    const state& state = a_action.state();
+    visit(a_action,state.m_draw_type);
   }
+public:
+  virtual void clear_gstos() {gstos::clean_gstos();}
 public:
   sphere()
   :parent()
+  ,render_gstos()
   ,radius(1.0f)
   ,slices(30)
   ,stacks(30)
-  ,style(draw_fill)
-  //,style(draw_line)
-  //,style(draw_point)
   {
     add_fields();
   }
@@ -107,20 +103,20 @@ public:
 public:
   sphere(const sphere& a_from)
   :parent(a_from)
+  ,render_gstos(a_from)
   ,radius(a_from.radius)
   ,slices(a_from.slices)
   ,stacks(a_from.stacks)
-  ,style(a_from.style)
   {
     add_fields();
   }
   sphere& operator=(const sphere& a_from){
     parent::operator=(a_from);
+    render_gstos::operator=(a_from);
 
     radius = a_from.radius;
     slices = a_from.slices;
     stacks = a_from.stacks;
-    style = a_from.style;
 
     return *this;
   }
@@ -190,7 +186,7 @@ protected:
   }
 
   template <class T>
-  void visit(T& a_visitor,draw_style a_style){
+  void visit(T& a_visitor,draw_type a_style,bool a_as_triangles = false){
     float a_radius = radius.value();
     unsigned int a_slices = slices.value();
     unsigned int a_stacks = stacks.value();
@@ -206,11 +202,11 @@ protected:
     float nsign = 1; //OUTSIDE. -1 = INSIDE
 
     float* vts = 0;
-    unsigned int ivt = 0;       
+    unsigned int ivt = 0;
 
-    if(a_style==draw_fill) {
+    if(a_style==draw_filled) {
        float* nms = 0;
-       unsigned int inm = 0;       
+       unsigned int inm = 0;
 
        // draw +Z end as a triangle fan :
 
@@ -226,9 +222,9 @@ protected:
  	 _set(nms,inm, x*nsign, y*nsign, z*nsign );
  	 _set(vts,ivt, x*a_radius, y*a_radius, z*a_radius );
        }
-       a_visitor.add_triangle_fan(ivt,vts,nms);
+       a_visitor.add_triangle_fan_normal(ivt,vts,nms);
        _delete(nms,vts);}
- 
+
        // draw intermediate stacks as triangle strips :
        for (int i=1;i<int(a_stacks)-1;i++) {
          _new((a_slices+1)*2*3,nms,inm,vts,ivt);
@@ -248,10 +244,14 @@ protected:
  	    _set(nms,inm, x*nsign, y*nsign, z*nsign );
  	    _set(vts,ivt, x*a_radius, y*a_radius, z*a_radius );
  	 }
-         a_visitor.add_triangle_strip(ivt,vts,nms);
+	 if(a_as_triangles) {
+           a_visitor.add_triangle_strip_as_triangles(ivt,vts,nms);
+	 } else {
+           a_visitor.add_triangle_strip_normal(ivt,vts,nms);
+	 }
          _delete(nms,vts);
        }
- 
+
        // draw -Z end as a triangle fan :
       {_new((1+a_slices+1)*3,nms,inm,vts,ivt);
        _set(nms,inm, 0, 0, -1 );
@@ -265,10 +265,10 @@ protected:
  	 _set(nms,inm, x*nsign, y*nsign, z*nsign );
  	 _set(vts,ivt, x*a_radius, y*a_radius, z*a_radius );
        }
-       a_visitor.add_triangle_fan(ivt,vts,nms);
+       a_visitor.add_triangle_fan_normal(ivt,vts,nms);
        _delete(nms,vts);}
 
-    } else if(a_style==draw_line) {
+    } else if(a_style==draw_lines) {
 
        // draw stack lines :
       {for (int i=1;i<int(a_stacks)-1;i++) {
@@ -306,7 +306,7 @@ protected:
          _delete(vts);
        }}
 
-    } else if(a_style==draw_point) {
+    } else if(a_style==draw_points) {
        // top and bottom-most points :
        _new((2+a_stacks*a_slices)*3,vts,ivt);
 
@@ -314,7 +314,7 @@ protected:
        _set(vts,ivt, 0, 0, a_radius );
        //if(a_normals) _set(nms,inm, 0, 0, -nsign );
        _set(vts,ivt, 0, 0, -a_radius );
- 
+
        // loop over a_stacks :
        for (int i=1;i<int(a_stacks)-1;i++) {
          srho = m_srho[i];

@@ -19,7 +19,10 @@ public:
   virtual void win_render() = 0;
   //virtual bool get_time_now(atime&) const = 0;
 
-  virtual bool stop_works() {return false;}
+  //virtual bool stop_works() {return false;}
+
+  //virtual void set_to_render() {} //for Apple/Metal.
+
 public:
   ui():m_to_exit(false){}
   virtual ~ui(){clear();}
@@ -55,7 +58,7 @@ public:
     //          We avoid an iterator here :
     size_t num = m_cbks.size();
     for(size_t index=0;index<num;index++) {
-      bcbk* _cbk = m_cbks[index]; 
+      bcbk* _cbk = m_cbks[index];
       if(_cbk->is_valid()) {
         bool to_render = (_cbk->action()==return_to_render?true:false);
         if(to_render) {
@@ -71,7 +74,7 @@ public:
     for(it=m_cbks.begin();it!=m_cbks.end();) {
       bcbk* _cbk = *it;
       if(!_cbk->is_valid()) {
-        it = m_cbks.erase(it);        
+        it = m_cbks.erase(it);
         delete _cbk;
       } else {
         ++it;

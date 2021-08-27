@@ -26,7 +26,7 @@ namespace cbk {
 ////////////////////////////////////////////////////////////////////////////////
 inline sg::return_action viewer_popup_action_cancel(sg::gui_viewer& a_gv) {
   a_gv.hide_popup();
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 class pointer_data {
@@ -43,36 +43,42 @@ public:
 inline sg::return_action viewer_popup_action_move(sg::gui_viewer& a_gv,const pointer_data& a_data) {
   a_gv.hide_popup();
   sg::node* _node = (sg::node*)a_data.m_data;
-  move_manip::toggle_manip(a_gv,a_gv.out(),a_gv.scene(),*_node,a_gv.verbose());
-  return sg::return_to_render;     
+  float hcam;
+  a_gv.camera_height_at_focal(hcam);
+  move_manip::toggle_manip(a_gv,a_gv.out(),a_gv.scene(),*_node,hcam,a_gv.verbose());
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_reset(sg::gui_viewer& a_gv,const pointer_data& a_data) {
   a_gv.hide_popup();
   sg::node* _node = (sg::node*)a_data.m_data;
   move_manip::reset_maniped(a_gv,a_gv.out(),a_gv.scene(),*_node,a_gv.verbose());
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_up(sg::gui_viewer& a_gv,const pointer_data& a_data) {
   a_gv.hide_popup();
   sg::node* _node = (sg::node*)a_data.m_data;
-  move_manip::manip_up(a_gv,a_gv.out(),a_gv.scene(),*_node,a_gv.verbose());
-  return sg::return_to_render;     
+  float hcam;
+  a_gv.camera_height_at_focal(hcam);
+  move_manip::manip_up(a_gv,a_gv.out(),a_gv.scene(),*_node,hcam,a_gv.verbose());
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_top(sg::gui_viewer& a_gv,const pointer_data& a_data) {
   a_gv.hide_popup();
   sg::node* _node = (sg::node*)a_data.m_data;
-  move_manip::manip_top(a_gv,a_gv.out(),a_gv.scene(),*_node,a_gv.verbose());
-  return sg::return_to_render;     
+  float hcam;
+  a_gv.camera_height_at_focal(hcam);
+  move_manip::manip_top(a_gv,a_gv.out(),a_gv.scene(),*_node,hcam,a_gv.verbose());
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_delete(sg::gui_viewer& a_gv,const pointer_data& a_data) {
   a_gv.hide_popup();
   sg::node* _node = (sg::node*)a_data.m_data;
   move_manip::delete_maniped(a_gv,a_gv.out(),a_gv.scene(),_node,a_gv.verbose());
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline unsigned int viewer_popup_anim_stop()     {return 0;}
@@ -92,14 +98,14 @@ inline sg::return_action viewer_popup_action_do_anim(sg::gui_viewer& a_gv,const 
     if(banim_t* anim = safe_cast<node_t,banim_t>(a_data.m_node)) {
       anim->start();
       a_gv.enable_anim();
-      return sg::return_to_render;     
+      return sg::return_to_render;
     }
   }
 
   if(a_data.m_what==viewer_popup_anim_stop()){
     if(banim_t* anim = safe_cast<node_t,banim_t>(a_data.m_node)) {
       anim->stop();
-      //return sg::return_to_render;     
+      //return sg::return_to_render;
     }
   }
 
@@ -111,7 +117,7 @@ inline sg::return_action viewer_popup_action_do_anim(sg::gui_viewer& a_gv,const 
   int gidx;
   if(!sg::rfind<sg::matrix,sg::group>(_path,a_data.m_node,grp,_m,gidx)) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"matrix node not found");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }}
 
   if(a_data.m_what==viewer_popup_anim_stop()){
@@ -126,7 +132,7 @@ inline sg::return_action viewer_popup_action_do_anim(sg::gui_viewer& a_gv,const 
       if(!grp->replace(am,m,true)) {
         delete m;
         a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"replace in group failed");
-        return sg::return_to_render;     
+        return sg::return_to_render;
       }
     }
 
@@ -142,7 +148,7 @@ inline sg::return_action viewer_popup_action_do_anim(sg::gui_viewer& a_gv,const 
                  << " viewer.get_time_now() failed."
                  << std::endl;
       a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"can't get time");
-      return sg::return_to_render;     
+      return sg::return_to_render;
     }
 
     sg::rotate_anim* am = 0;
@@ -162,17 +168,17 @@ inline sg::return_action viewer_popup_action_do_anim(sg::gui_viewer& a_gv,const 
       am->axis.set_value(0,0,1);
       am->omega = omega;
     }
-        
+
     am->mtx = _m->mtx;
     if(!grp->replace(_m,am,true)) {
       delete am;
       a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"replace in group failed");
-      return sg::return_to_render;     
+      return sg::return_to_render;
     }
     a_gv.enable_anim();
   }
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_cam_curve(sg::gui_viewer& a_gv,const popup_data& a_data) {
@@ -185,7 +191,7 @@ inline sg::return_action viewer_popup_action_cam_curve(sg::gui_viewer& a_gv,cons
   curve* acurve = safe_cast<node_t,curve>(a_data.m_node);
   if(!acurve) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"node not a curve");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
 
   sg::get_matrix_action ma(a_gv.out(),0,0);
@@ -193,7 +199,7 @@ inline sg::return_action viewer_popup_action_cam_curve(sg::gui_viewer& a_gv,cons
   a_gv.scene().get_matrix(ma);
   if(!ma.done()) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"can't get model matrix");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
 
   a_gv.start_cam_move(sg::move_curve,a_gv.m_params.m_cycle_secs);
@@ -201,7 +207,7 @@ inline sg::return_action viewer_popup_action_cam_curve(sg::gui_viewer& a_gv,cons
   bc_t* cam = a_gv.scene_camera();
   if(!cam) return sg::return_to_render;
   sg::base_cam_anim* bcanim = safe_cast<node_t,sg::base_cam_anim>(*cam);
-  if(!bcanim) return sg::return_to_render;     
+  if(!bcanim) return sg::return_to_render;
 
   curve* _curve;
   acurve->copy(_curve);
@@ -212,7 +218,7 @@ inline sg::return_action viewer_popup_action_cam_curve(sg::gui_viewer& a_gv,cons
 
   bcanim->set_curve(_curve); //give ownership.
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_add_axes(sg::gui_viewer& a_gv,const pointer_data& a_data) {
@@ -302,13 +308,13 @@ inline sg::return_action viewer_popup_action_add_axes(sg::gui_viewer& a_gv,const
 
   _container->add(_axes);
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_edit_field_bool_true(sg::gui_viewer& a_gv,const popup_data& a_data) {
   if(!a_data.m_field_desc.editable()) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"not editable");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   sg::field& fd = a_data.m_node.field_from_desc(a_data.m_field_desc);
   if(sg::sf<bool>* _sfb = safe_cast<sg::field, sg::sf<bool> >(fd)) _sfb->value(true);
@@ -318,7 +324,7 @@ inline sg::return_action viewer_popup_action_edit_field_bool_true(sg::gui_viewer
 inline sg::return_action viewer_popup_action_edit_field_bool_false(sg::gui_viewer& a_gv,const popup_data& a_data) {
   if(!a_data.m_field_desc.editable()) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"not editable");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   sg::field& fd = a_data.m_node.field_from_desc(a_data.m_field_desc);
   if(sg::sf<bool>* _sfb = safe_cast<sg::field, sg::sf<bool> >(fd)) _sfb->value(false);
@@ -328,7 +334,7 @@ inline sg::return_action viewer_popup_action_edit_field_bool_false(sg::gui_viewe
 inline sg::return_action viewer_popup_action_edit_field_numeric(sg::gui_viewer& a_gv,sg::numeric& a_node,const popup_data& a_data) {
   if(!a_data.m_field_desc.editable()) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"not editable");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
 
   sg::field& fd = a_data.m_node.field_from_desc(a_data.m_field_desc);
@@ -337,7 +343,7 @@ inline sg::return_action viewer_popup_action_edit_field_numeric(sg::gui_viewer& 
     float v;
     if(!to<float>(a_node.value.value(),v)) {
       a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"not a number");
-      return sg::return_to_render;     
+      return sg::return_to_render;
     }
     _sff->value(v);
 
@@ -367,13 +373,13 @@ inline sg::return_action viewer_popup_action_edit_field_numeric(sg::gui_viewer& 
 
   }
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_edit_field_combo(sg::gui_viewer& a_gv,sg::entries& a_node,const popup_data& a_data) {
   if(!a_data.m_field_desc.editable()) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"not editable");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
 
   sg::field& fd = a_data.m_node.field_from_desc(a_data.m_field_desc);
@@ -384,13 +390,13 @@ inline sg::return_action viewer_popup_action_edit_field_combo(sg::gui_viewer& a_
     //}
   }
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_edit_field_keyboard(sg::gui_viewer& a_gv,sg::keyboard& a_node,const popup_data& a_data) {
   if(!a_data.m_field_desc.editable()) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"not editable");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
 
   sg::field& fd = a_data.m_node.field_from_desc(a_data.m_field_desc);
@@ -403,14 +409,14 @@ inline sg::return_action viewer_popup_action_edit_field_keyboard(sg::gui_viewer&
     _mfs->add(a_node.value.value());
   }
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_edit_field_color(sg::gui_viewer& a_gv,sg::colors& a_node,const popup_data& a_data) {
   //a_gv.hide_popup();
   if(!a_data.m_field_desc.editable()) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"not editable");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   sg::field& fd = a_data.m_node.field_from_desc(a_data.m_field_desc);
   if(sg::sf_vec<colorf,float>* _sfcolor = safe_cast<sg::field, sg::sf_vec<colorf,float> >(fd)) {
@@ -418,14 +424,14 @@ inline sg::return_action viewer_popup_action_edit_field_color(sg::gui_viewer& a_
     a_node.get_color(r,g,b,a);
     _sfcolor->value(colorf(r,g,b,a));
   }
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_edit_field_lut(sg::gui_viewer& a_gv,sg::entries& a_node,const popup_data& a_data) {
   //a_gv.hide_popup();
   if(!a_data.m_field_desc.editable()) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"not editable");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   sg::field& fd = a_data.m_node.field_from_desc(a_data.m_field_desc);
   if(sg::sf_lut<float>* _sflut = safe_cast<sg::field, sg::sf_lut<float> >(fd)) {
@@ -433,38 +439,38 @@ inline sg::return_action viewer_popup_action_edit_field_lut(sg::gui_viewer& a_gv
     float mn;
     if(!to<float>(vals[0],mn)) {
       a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"mn not a number");
-      return sg::return_to_render;     
+      return sg::return_to_render;
     }
     float mx;
     if(!to<float>(vals[1],mx)) {
       a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"mx not a number");
-      return sg::return_to_render;     
+      return sg::return_to_render;
     }
     unsigned int coln;
     if(!to<unsigned int>(vals[2],coln)) {
       a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"#colors not an uint");
-      return sg::return_to_render;     
+      return sg::return_to_render;
     }
 
     if(mn>=mx) {
       a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"min not < mx");
-      return sg::return_to_render;     
+      return sg::return_to_render;
     }
     if(coln<3) {
       a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"#colors not >= 3");
-      return sg::return_to_render;     
+      return sg::return_to_render;
     }
 
     _sflut->value(lut<float>(mn,mx,coln));
   }
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_edit_field_cmap(sg::gui_viewer& a_gv,const popup_data& a_data) {
   // exa sg::healpix::colors.
   if(!a_data.m_field_desc.editable()) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"not editable");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   sg::field& fd = a_data.m_node.field_from_desc(a_data.m_field_desc);
   if(sg::mf_vec<colorf,float>* _sfcmap = safe_cast<sg::field, sg::mf_vec<colorf,float> >(fd)) {
@@ -476,19 +482,19 @@ inline sg::return_action viewer_popup_action_edit_field_cmap(sg::gui_viewer& a_g
       _sfcmap->add(colorf(_col.r(),_col.g(),_col.b()));
     }}
   }
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_edit_field_enum(sg::gui_viewer& a_gv,const popup_data& a_data) {
   if(!a_data.m_field_desc.editable()) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"not editable");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   sg::field& fd = a_data.m_node.field_from_desc(a_data.m_field_desc);
   if(sg::bsf_enum* _sfenum = safe_cast<sg::field,sg::bsf_enum>(fd)) {
     _sfenum->set_value(a_data.m_what);
   }
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_edit_field(sg::gui_viewer& a_gv,const popup_data& a_data) {
@@ -545,7 +551,7 @@ inline sg::return_action viewer_popup_action_edit_field(sg::gui_viewer& a_gv,con
     std::vector<std::string> names;
     SOPI::all_names(names);
 
-    sg::add_item(a_gv,*list,"cancel",viewer_popup_action_cancel);      
+    sg::add_item(a_gv,*list,"cancel",viewer_popup_action_cancel);
     inlib_vforcit(std::string,names,it) {
       popup_data data(a_data);
       data.m_swhat = *it;
@@ -565,7 +571,7 @@ inline sg::return_action viewer_popup_action_edit_field(sg::gui_viewer& a_gv,con
     } else {
       sg::keyboard* node = new sg::keyboard(a_gv.ttf());
       a_gv.set_style(*node);
-      node->show_cancel = true;      
+      node->show_cancel = true;
       node->value = _sfs->value();
       popup_data _data(a_data);
       sg::add_callback(a_gv,*node,viewer_popup_action_edit_field_keyboard,_data);
@@ -593,11 +599,11 @@ inline sg::return_action viewer_popup_action_edit_field(sg::gui_viewer& a_gv,con
     sg::list* node = new sg::list(a_gv.ttf());
     a_gv.set_style(*node);
 
-    sg::add_item(a_gv,*node,"cancel",viewer_popup_action_cancel);      
+    sg::add_item(a_gv,*node,"cancel",viewer_popup_action_cancel);
     inlib_vforcit(sg::field_desc::enum_t,a_data.m_field_desc.enums(),it) {
       popup_data data(a_data);
       data.m_what = (*it).second;
-      sg::add_item(a_gv,*node,(*it).first,viewer_popup_action_edit_field_enum,data);      
+      sg::add_item(a_gv,*node,(*it).first,viewer_popup_action_edit_field_enum,data);
     }
 
     a_gv.show_widget(sg::pos_data(true,a_data.m_ex,a_data.m_ey),node);
@@ -648,7 +654,7 @@ inline sg::return_action viewer_popup_action_edit_field(sg::gui_viewer& a_gv,con
 
 #undef INLIB_POPUP_EDIT_FIELD
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_center(sg::gui_viewer& a_gv,const popup_data& a_data) {
@@ -664,7 +670,7 @@ inline sg::return_action viewer_popup_action_center(sg::gui_viewer& a_gv,const p
     a_gv.out() << "inlib::cbk::popup::action :"
                << " screen2pwc failed."
                << std::endl;
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   //now (x,y,z) is in the camera viewing plane in wc.
 
@@ -674,7 +680,7 @@ inline sg::return_action viewer_popup_action_center(sg::gui_viewer& a_gv,const p
                << " no camera found."
                << std::endl;
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"no camera found");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
 
   // set focal :
@@ -688,7 +694,7 @@ inline sg::return_action viewer_popup_action_center(sg::gui_viewer& a_gv,const p
     a_gv.out() << "inlib::cbk::popup::action :"
                << " can't convert screen to world coordinates."
                << std::endl;
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   float xpick = 0;
   float ypick = 0;
@@ -727,8 +733,8 @@ inline sg::return_action viewer_popup_action_center(sg::gui_viewer& a_gv,const p
       if(!pl.intersect(line,p)) {
         a_gv.out() << "inlib::cbk::popup::action :"
                    << " plane/line intersection failed."
-                   << std::endl;      
-        return sg::return_to_render;     
+                   << std::endl;
+        return sg::return_to_render;
       }
 
       cam->pane_to(p.x(),p.y(),p.z());
@@ -738,7 +744,7 @@ inline sg::return_action viewer_popup_action_center(sg::gui_viewer& a_gv,const p
     }
   }
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 /*
@@ -755,7 +761,7 @@ inline sg::return_action viewer_popup_action_cube_at_pos(sg::gui_viewer& a_gv,co
     a_gv.out() << "inlib::cbk::popup::action :"
                << " screen2pwc failed."
                << std::endl;
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   //now (x,y,z) is in the camera viewing plane in wc.
 
@@ -765,7 +771,7 @@ inline sg::return_action viewer_popup_action_cube_at_pos(sg::gui_viewer& a_gv,co
                << " no camera found."
                << std::endl;
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"no camera found");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
 
   // set focal :
@@ -779,7 +785,7 @@ inline sg::return_action viewer_popup_action_cube_at_pos(sg::gui_viewer& a_gv,co
     a_gv.out() << "inlib::cbk::popup::action :"
                << " can't convert screen to world coordinates."
                << std::endl;
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
   float xpick = 0;
   float ypick = 0;
@@ -818,8 +824,8 @@ inline sg::return_action viewer_popup_action_cube_at_pos(sg::gui_viewer& a_gv,co
       if(!pl.intersect(line,p)) {
         a_gv.out() << "inlib::cbk::popup::action :"
                    << " plane/line intersection failed."
-                   << std::endl;      
-        return sg::return_to_render;     
+                   << std::endl;
+        return sg::return_to_render;
       }
 
       cam->pane_to(p.x(),p.y(),p.z());
@@ -829,7 +835,7 @@ inline sg::return_action viewer_popup_action_cube_at_pos(sg::gui_viewer& a_gv,co
     }
   }
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 */
 
@@ -860,7 +866,7 @@ inline sg::return_action viewer_popup_action_anim(sg::gui_viewer& a_gv,const pop
 
   a_gv.show_widget(sg::pos_data(true,a_data.m_ex,a_data.m_ey),list);
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_edit(sg::gui_viewer& a_gv,const popup_data& a_data) {
@@ -879,7 +885,7 @@ inline sg::return_action viewer_popup_action_edit(sg::gui_viewer& a_gv,const pop
 
   a_gv.show_widget(sg::pos_data(true,a_data.m_ex,a_data.m_ey),list);
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_infos(sg::gui_viewer& a_gv,const popup_data& a_data) {
@@ -893,14 +899,14 @@ inline sg::return_action viewer_popup_action_infos(sg::gui_viewer& a_gv,const po
   int gidx;
   if(!sg::rfind<sg::infos,sg::group>(_path,a_data.m_node,grp,_infos,gidx)) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"infos node not found");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }}
 
   //_infos->strings.dump(a_gv.out());
 
   if(_infos->strings.size()!=2) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"bad format for infos");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
 
   sg::list* list = new sg::list(a_gv.ttf());
@@ -910,20 +916,111 @@ inline sg::return_action viewer_popup_action_infos(sg::gui_viewer& a_gv,const po
 
   if(!a_gv.exec_dumper(*list,_infos->strings[0],_infos->strings[1])) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"exec_dumper() failed");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }
 
   a_gv.show_widget(sg::pos_data(true,a_data.m_ex,a_data.m_ey),list);
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+inline sg::return_action viewer_popup_action_draw_style_points(sg::gui_viewer& a_gv,const popup_data& a_data) {
+  a_gv.hide_popup();
+  a_data.m_draw_style->style = sg::draw_points;
+  return sg::return_to_render;
+}
+inline sg::return_action viewer_popup_action_draw_style_lines(sg::gui_viewer& a_gv,const popup_data& a_data) {
+  a_gv.hide_popup();
+  a_data.m_draw_style->style = sg::draw_lines;
+  return sg::return_to_render;
+}
+inline sg::return_action viewer_popup_action_draw_style_filled(sg::gui_viewer& a_gv,const popup_data& a_data) {
+  a_gv.hide_popup();
+  a_data.m_draw_style->style = sg::draw_filled;
+  return sg::return_to_render;
+}
+
+inline sg::return_action viewer_popup_action_draw_style(sg::gui_viewer& a_gv,const popup_data& a_data) {
+  a_gv.hide_popup();
+
+  sg::draw_style* _draw_style;
+
+ {sg::search_action sa(a_gv.out());
+  const sg::path_t& _path = find_path(sa,a_gv.scene(),a_data.m_node,a_gv.verbose());
+  sg::group* grp;
+  int gidx;
+  if(!sg::rfind<sg::draw_style,sg::group>(_path,a_data.m_node,grp,_draw_style,gidx)) {
+    a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"draw_style node not found");
+    return sg::return_to_render;
+  }}
+
+  sg::list* list = new sg::list(a_gv.ttf());
+  a_gv.set_style(*list);
+
+  popup_data _data(a_data);
+  _data.m_draw_style = _draw_style;
+  sg::add_item(a_gv,*list,"draw_points" ,viewer_popup_action_draw_style_points,_data);
+  sg::add_item(a_gv,*list,"draw_lines"  ,viewer_popup_action_draw_style_lines,_data);
+  sg::add_item(a_gv,*list,"draw_filled" ,viewer_popup_action_draw_style_filled,_data);
+
+  a_gv.show_widget(sg::pos_data(true,a_data.m_ex,a_data.m_ey),list);
+
+  return sg::return_to_render;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+inline sg::return_action viewer_popup_action_shade_model_flat(sg::gui_viewer& a_gv,const popup_data& a_data) {
+  a_gv.hide_popup();
+  a_data.m_shade_model->model = sg::shade_flat;
+  return sg::return_to_render;
+}
+inline sg::return_action viewer_popup_action_shade_model_smooth(sg::gui_viewer& a_gv,const popup_data& a_data) {
+  a_gv.hide_popup();
+  a_data.m_shade_model->model= sg::shade_smooth;
+  return sg::return_to_render;
+}
+
+inline sg::return_action viewer_popup_action_shade_model(sg::gui_viewer& a_gv,const popup_data& a_data) {
+  a_gv.hide_popup();
+
+  sg::shade_model* _shade_model;
+
+ {sg::search_action sa(a_gv.out());
+  const sg::path_t& _path = find_path(sa,a_gv.scene(),a_data.m_node,a_gv.verbose());
+  sg::group* grp;
+  int gidx;
+  if(!sg::rfind<sg::shade_model,sg::group>(_path,a_data.m_node,grp,_shade_model,gidx)) {
+    a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"shade_model node not found");
+    return sg::return_to_render;
+  }}
+
+  sg::list* list = new sg::list(a_gv.ttf());
+  a_gv.set_style(*list);
+
+  popup_data _data(a_data);
+  _data.m_shade_model = _shade_model;
+  sg::add_item(a_gv,*list,"shade_flat"   ,viewer_popup_action_shade_model_flat,_data);
+  sg::add_item(a_gv,*list,"shade_smooth" ,viewer_popup_action_shade_model_smooth,_data);
+
+  a_gv.show_widget(sg::pos_data(true,a_data.m_ex,a_data.m_ey),list);
+
+  return sg::return_to_render;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 inline sg::return_action viewer_popup_action_ok_color(sg::gui_viewer& a_gv,sg::colors& a_node,const popup_data& a_data) {
   a_gv.hide_popup();
   float r,g,b,a;
   a_node.get_color(r,g,b,a);
   a_data.m_rgba->color.value().set_value(r,g,b,a);
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
 inline sg::return_action viewer_popup_action_color(sg::gui_viewer& a_gv,const popup_data& a_data) {
@@ -937,7 +1034,7 @@ inline sg::return_action viewer_popup_action_color(sg::gui_viewer& a_gv,const po
   int gidx;
   if(!sg::rfind<sg::rgba,sg::group>(_path,a_data.m_node,grp,_rgba,gidx)) {
     a_gv.popup_warn(a_data.m_ex,a_data.m_ey,"rgba node not found");
-    return sg::return_to_render;     
+    return sg::return_to_render;
   }}
 
   sg::colors* _colors = new sg::colors(a_gv.ttf());
@@ -949,9 +1046,12 @@ inline sg::return_action viewer_popup_action_color(sg::gui_viewer& a_gv,const po
 
   a_gv.show_widget(sg::pos_data(true,a_data.m_ex,a_data.m_ey),_colors);
 
-  return sg::return_to_render;     
+  return sg::return_to_render;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 inline sg::return_action viewer_popup_action_show(sg::gui_viewer& a_gv,sg::node& a_node,
                                                   const sg::event& a_event,sg::event_action& a_event_action,
                                                   float a_z,float a_w) {
@@ -965,20 +1065,27 @@ inline sg::return_action viewer_popup_action_show(sg::gui_viewer& a_gv,sg::node&
   /// add items ////////////////////////////////////////////
   //////////////////////////////////////////////////////////
   sg::add_item(a_gv,*list,a_node.s_cls(),viewer_popup_action_cancel);
-  sg::add_item(a_gv,*list,"edit field",viewer_popup_action_edit,popup_data(a_node,ex,ey));
+
+  if(!a_node.draw_in_frame_buffer()) {
+    popup_data data(a_node,ex,ey);
+    data.m_state = a_event_action.saved_state();
+    data.m_z = a_z;
+    data.m_w = a_w;
+    sg::add_item(a_gv,*list,"center",viewer_popup_action_center,data);
+  }
+
+  sg::add_item(a_gv,*list,"infos",viewer_popup_action_infos,popup_data(a_node,ex,ey));
+
   sg::add_item(a_gv,*list,"move",viewer_popup_action_move,pointer_data(&a_node));
   sg::add_item(a_gv,*list,"reset",viewer_popup_action_reset,pointer_data(&a_node));
   sg::add_item(a_gv,*list,"up",viewer_popup_action_up,pointer_data(&a_node));
   sg::add_item(a_gv,*list,"top",viewer_popup_action_top,pointer_data(&a_node));
 
- {popup_data data(a_node,ex,ey);
-  data.m_state = a_event_action.saved_state();
-  data.m_z = a_z;
-  data.m_w = a_w;
-  sg::add_item(a_gv,*list,"center",viewer_popup_action_center,data);}
+  sg::add_item(a_gv,*list,"edit field",viewer_popup_action_edit,popup_data(a_node,ex,ey));
 
-  sg::add_item(a_gv,*list,"infos",viewer_popup_action_infos,popup_data(a_node,ex,ey));
   sg::add_item(a_gv,*list,"color",viewer_popup_action_color,popup_data(a_node,ex,ey));
+  sg::add_item(a_gv,*list,"draw style",viewer_popup_action_draw_style,popup_data(a_node,ex,ey));
+  sg::add_item(a_gv,*list,"shade model",viewer_popup_action_shade_model,popup_data(a_node,ex,ey));
   sg::add_item(a_gv,*list,"axes",viewer_popup_action_add_axes,pointer_data(&a_node));
   sg::add_item(a_gv,*list,"anim",viewer_popup_action_anim,popup_data(a_node,ex,ey));
   sg::add_item(a_gv,*list,"cam curve",viewer_popup_action_cam_curve,popup_data(a_node,ex,ey));
@@ -986,10 +1093,10 @@ inline sg::return_action viewer_popup_action_show(sg::gui_viewer& a_gv,sg::node&
   // contextual items :
   popup::add_node_items(*list,a_gv.popup_cbks().callbacks(),a_node,ex,ey);
 
-  if(!list->has_item(sg::s_delete())){      
+  if(!list->has_item(sg::s_delete())){
     sg::add_item(a_gv,*list,sg::s_delete(),viewer_popup_action_delete,pointer_data(&a_node));
   }
-           
+
   a_gv.show_widget(sg::pos_data(true,ex,ey),list);
 
   a_event_action.set_done(true); //to render.

@@ -6,8 +6,8 @@
 
 // see (lengthy) doc and disclaimer at end.
 
-#include "../vec3d"
-#include "../rotd"
+#include "../lina/vec3d"
+#include "../lina/rotd"
 
 #ifdef INLIB_MEM
 #include "../mem"
@@ -814,18 +814,18 @@ private:
 namespace inlib {
 namespace hep {
 
-template <class TYPE>
-inline void tsf_polyhedron(polyhedron& a_ph,
-                           const mat4<TYPE>& a_matrix) {
+template <class MATRIX>
+inline void tsf_polyhedron(polyhedron& a_ph,const MATRIX& a_matrix) {
+  typedef typename MATRIX::elem_t T;                            
   int nvert = a_ph.GetNoVertices();
   hep::HVPoint3D* pV = a_ph.GetPV();
   if (nvert > 0) {
-    TYPE x,y,z;
+    T x,y,z;
     for (int i=1; i<=nvert; i++) { 
       hep::HVPoint3D& p = pV[i];
-      x = TYPE(p.x());
-      y = TYPE(p.y());
-      z = TYPE(p.z());
+      x = T(p.x());
+      y = T(p.y());
+      z = T(p.z());
       a_matrix.mul_3(x,y,z);
       p.set_value(x,y,z);
     }

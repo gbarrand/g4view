@@ -103,7 +103,7 @@ public: //iwbuf
 
   virtual bool write_vec(const std::vector<std::string>& a_v){
     if(!_write<uint32>(uint32(a_v.size()))) return false;
-    std::vector<std::string>::const_iterator it;    
+    std::vector<std::string>::const_iterator it;
     for(it=a_v.begin();it!=a_v.end();++it) {
       if(!_write<uint32>(uint32((*it).size()))) return false;
       if(!_write_cstr((*it).size(),(*it).c_str())) return false;

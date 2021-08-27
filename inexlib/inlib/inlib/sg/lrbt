@@ -118,6 +118,8 @@ protected:
   }
 };
 
+inline lrbt* cast_lrbt(base_camera& a_bcam) {return safe_cast<base_camera,lrbt>(a_bcam);}
+
 }}
 
 #endif

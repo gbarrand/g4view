@@ -37,6 +37,8 @@ public:
 public:
   virtual iro* copy() const {return new geo_polygon(*this);}
   virtual bool stream(buffer& a_buffer) {
+    _clear();
+
     unsigned int s, c;
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
@@ -52,14 +54,14 @@ public:
 
     //TObjArray* fDaughters;        // list of concave daughters
     ifac::args args;
-    if(!pointer_stream(a_buffer,m_fac,args,m_daughters)){
+    if(!pointer_stream(a_buffer,m_fac,args,m_daughters,m_daughters_created)){
       a_buffer.out() << "inlib::rroot::geo_polygon::stream : "
                      << "can't read fDaughters."
-                     << std::endl;	
+                     << std::endl;
       return false;
     }
 
-    if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
+    if(!a_buffer.check_byte_count(s,c,s_store_class())) {_clear();return false;}
     return true;
   }
 
@@ -71,12 +73,14 @@ public:
   ,m_inds(0)
   ,m_indcs(0)
   ,m_daughters(0) //not owner
+  ,m_daughters_created(false)
   {
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
 #endif
   }
   virtual ~geo_polygon(){
+    _clear();
     destroy(m_inds);
     destroy(m_indcs);
 #ifdef INLIB_MEM
@@ -92,7 +96,8 @@ protected:
   ,m_inds(0)
   ,m_indcs(0)
   ,m_daughters(a_from.m_daughters)
-  { 
+  ,m_daughters_created(a_from.m_daughters_created)
+  {
     carray_copy(m_inds,m_nvert,a_from.m_inds);
     carray_copy(m_indcs,m_nconvex,a_from.m_indcs);
   }
@@ -101,6 +106,7 @@ protected:
     m_nvert = a_from.m_nvert;
     m_nconvex = a_from.m_nconvex;
     m_daughters = a_from.m_daughters;
+    m_daughters_created = a_from.m_daughters_created;
     carray_copy(m_inds,m_nvert,a_from.m_inds);
     carray_copy(m_indcs,m_nconvex,a_from.m_indcs);
     return *this;
@@ -114,6 +120,10 @@ public:
   const iros* daughters() const {return m_daughters;}
   iros* daughters() {return m_daughters;}
 protected:
+  void _clear() {
+    if(m_daughters_created) {delete m_daughters;m_daughters = 0;m_daughters_created = false;}
+  }
+protected:
   ifac& m_fac;
 
   int m_nvert;   // number of vertices (must bezined clockwise in XY plane)
@@ -121,6 +131,7 @@ protected:
   int* m_inds;   //[fNvert] list of vertex indices
   int* m_indcs;  //[fNconvex] indices of vertices of the outscribed convex polygon
   iros* m_daughters; // list of concave daughters
+  bool m_daughters_created;
 };
 
 }}

@@ -14,8 +14,8 @@ namespace inlib {
 template <class T>
 inline bool entries_color(const std::string& a_s,T& a_r,T& a_g,T& a_b,T& a_a) {
   //s of the form : <real:r> <real:g> <real:b>
-  //s of the form : <real:r> <real:g> <real:b> <string:name> 
-  //s of the form : <real:r> <real:g> <real:b> <real:a> <string:name> 
+  //s of the form : <real:r> <real:g> <real:b> <string:name>
+  //s of the form : <real:r> <real:g> <real:b> <real:a> <string:name>
   std::vector<std::string> ws;
   words(a_s," ",false,ws);
   if(ws.size()==3){
@@ -41,7 +41,7 @@ inline bool entries_color(const std::string& a_s,T& a_r,T& a_g,T& a_b,T& a_a) {
     a_g = 0.5f;
     a_b = 0.5f;
     a_a = 1;
-    return true; //?
+    return false;
   }
 }
 

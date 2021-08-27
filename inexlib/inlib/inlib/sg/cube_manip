@@ -4,8 +4,9 @@
 #ifndef inlib_sg_cube_manip
 #define inlib_sg_cube_manip
 
-#include "matrix"
 #include "separator"
+#include "matrix"
+#include "draw_style"
 #include "noderef"
 #include "cube"
 //#include "_switch"
@@ -106,12 +107,12 @@ public:
   }
 
   virtual void search(sg::search_action& a_action) {
-    parent::search(a_action); //will do a node::search()
-    if(a_action.done()) return;
     if(touched()) {
       update_sg();
       reset_touched();
     }
+    parent::search(a_action); //will do a node::search()
+    if(a_action.done()) return;
     if(a_action.do_path()) a_action.path_push(this);
     m_sep.search(a_action);
     if(a_action.done()) return;
@@ -127,10 +128,10 @@ public:
 
     if(m_active) {
 
-      if(event_cast<sg::event,sg::move_event>(a_action.get_event())){
+      if(event_cast<sg::event,sg::mouse_move_event>(a_action.get_event())){
         ecbk::exec_event_cbks(m_move_cbks.callbacks(),a_action.get_event(),&a_action,this);
 
-      } else if(event_cast<sg::event,sg::up_event>(a_action.get_event())){
+      } else if(event_cast<sg::event,sg::mouse_up_event>(a_action.get_event())){
         set_active_node(0);
         a_action.set_done(true);
       }
@@ -158,7 +159,7 @@ public:
 
   ,m_move_cbks()
   ,m_active(0)
-  
+
   ,m_gidx(-1)
   {
     add_fields();
@@ -181,7 +182,7 @@ public:
 
   ,m_ref_matrix(0)
   ,m_delete_ref_matrix(false)
-  
+
   ,m_move_cbks(a_from.m_move_cbks)
   ,m_active(a_from.m_active)
   ,m_active_state(a_from.m_active_state)
@@ -219,7 +220,7 @@ public:
     m_delete_ref_matrix = a_delete_matrix;
   }
   void set_delete_ref_matrix(bool a_value) {m_delete_ref_matrix = a_value;}
-  
+
   const separator& container() const {return m_sep;} //must be consistent with pick().
 
   void set_active_node(cube* a_cb) {
@@ -311,6 +312,10 @@ protected:
     mx->set_translate(center.value());
     m_sep.add(mx);}
 
+   {draw_style* ds = new draw_style();
+    ds->style = draw_filled;
+    m_sep.add(ds);}
+
    {sg::rgba* mat = new sg::rgba();
     mat->color = color;
     m_sep.add(mat);}
@@ -327,7 +332,7 @@ protected:
      {float xsg[8] = {1,-1, 1, 1,-1,-1, 1,-1};
       float ysg[8] = {1, 1,-1, 1,-1, 1,-1,-1};
       float zsg[8] = {1, 1, 1,-1, 1,-1,-1,-1};
-  
+
       cube* cbs[8];
       cbs[0] = &m_111;
       cbs[1] = &m_011;
@@ -337,33 +342,33 @@ protected:
       cbs[5] = &m_010;
       cbs[6] = &m_100;
       cbs[7] = &m_000;
-  
+
       for(unsigned int index=0;index<8;index++){
         separator* _sep = new separator;
         m_sep.add(_sep);
-  
+
         sg::rgba* mat = new sg::rgba();
         mat->color = color;
         _sep->add(mat);
-  
+
         matrix* mx = new matrix();
         mx->set_translate
           (xsg[index]*w2,ysg[index]*h2,zsg[index]*d2);
         _sep->add(mx);
-  
+
         cube* cb = cbs[index];
         cb->width = width.value()*fcor;
         cb->height = height.value()*fcor;
         cb->depth = depth.value()*fcor;
         _sep->add(new noderef(*cb));
-  
+
         m_clrs[cb] = mat;
         m_mtxs[cb] = mx;
       }}
     }
-  
+
     float fedg = fcor*0.5f;
-  
+
     /////////////////////////////////
     /// edges : /////////////////////
     /////////////////////////////////
@@ -383,7 +388,7 @@ protected:
       _sep->add(new noderef(m_plus_z_top));
       m_clrs[&m_plus_z_top] = mat;
       m_mtxs[&m_plus_z_top] = mx;}
-  
+
       //+z bottom :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -400,7 +405,7 @@ protected:
       m_clrs[&m_plus_z_bottom] = mat;
       m_mtxs[&m_plus_z_bottom] = mx;}
     }
-  
+
     if(shape_mask.value() & shape_rotate_y()) {
       //+z left :
      {separator* _sep = new separator;
@@ -417,7 +422,7 @@ protected:
       _sep->add(new noderef(m_plus_z_left));
       m_clrs[&m_plus_z_left] = mat;
       m_mtxs[&m_plus_z_left] = mx;}
-  
+
       //+z right :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -434,7 +439,7 @@ protected:
       m_clrs[&m_plus_z_right] = mat;
       m_mtxs[&m_plus_z_right] = mx;}
     }
-   
+
     if(shape_mask.value() & shape_rotate_x()) {
       //-z top :
      {separator* _sep = new separator;
@@ -451,7 +456,7 @@ protected:
       _sep->add(new noderef(m_minus_z_top));
       m_clrs[&m_minus_z_top] = mat;
       m_mtxs[&m_minus_z_top] = mx;}
-  
+
       //-z bottom :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -468,7 +473,7 @@ protected:
       m_clrs[&m_minus_z_bottom] = mat;
       m_mtxs[&m_minus_z_bottom] = mx;}
     }
-  
+
     if(shape_mask.value() & shape_rotate_y()) {
       //-z left :
      {separator* _sep = new separator;
@@ -485,7 +490,7 @@ protected:
       _sep->add(new noderef(m_minus_z_left));
       m_clrs[&m_minus_z_left] = mat;
       m_mtxs[&m_minus_z_left] = mx;}
-  
+
       //-z right :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -502,7 +507,7 @@ protected:
       m_clrs[&m_minus_z_right] = mat;
       m_mtxs[&m_minus_z_right] = mx;}
    }
-  
+
     if(shape_mask.value() & shape_rotate_z()) {
       //+x top :
      {separator* _sep = new separator;
@@ -519,7 +524,7 @@ protected:
       _sep->add(new noderef(m_plus_x_top));
       m_clrs[&m_plus_x_top] = mat;
       m_mtxs[&m_plus_x_top] = mx;}
-  
+
       //+x bottom :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -535,7 +540,7 @@ protected:
       _sep->add(new noderef(m_plus_x_bottom));
       m_clrs[&m_plus_x_bottom] = mat;
       m_mtxs[&m_plus_x_bottom] = mx;}
-  
+
       //-x top :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -551,7 +556,7 @@ protected:
       _sep->add(new noderef(m_minus_x_top));
       m_clrs[&m_minus_x_top] = mat;
       m_mtxs[&m_minus_x_top] = mx;}
-  
+
       //-x bottom :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -567,7 +572,7 @@ protected:
       _sep->add(new noderef(m_minus_x_bottom));
       m_clrs[&m_minus_x_bottom] = mat;
       m_mtxs[&m_minus_x_bottom] = mx;}
-    }  
+    }
 
     ////////////////////////////////////////
     /// faces : ////////////////////////////
@@ -585,9 +590,9 @@ protected:
     float fface = 0.01f;
     float szf = 1.0f-fcor;
     szf *= fcor; //so that inside object still pickable.
-  
+
     if(shape_mask.value() & shape_translate_yz()) {
-  
+
       //-x :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -603,7 +608,7 @@ protected:
       _sep->add(new noderef(m_minus_x));
       m_clrs[&m_minus_x] = mat;
       m_mtxs[&m_minus_x] = mx;}
-  
+
       //+x :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -619,7 +624,7 @@ protected:
       _sep->add(new noderef(m_plus_x));
       m_clrs[&m_plus_x] = mat;
       m_mtxs[&m_plus_x] = mx;}
-    }  
+    }
 
     if(shape_mask.value() & shape_translate_zx()) {
       //-y :
@@ -637,7 +642,7 @@ protected:
       _sep->add(new noderef(m_minus_y));
       m_clrs[&m_minus_y] = mat;
       m_mtxs[&m_minus_y] = mx;}
-  
+
       //+y :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -653,7 +658,7 @@ protected:
       _sep->add(new noderef(m_plus_y));
       m_clrs[&m_plus_y] = mat;
       m_mtxs[&m_plus_y] = mx;}
-    }  
+    }
 
     if(shape_mask.value() & shape_translate_xy()) {
       //-z :
@@ -671,7 +676,7 @@ protected:
       _sep->add(new noderef(m_minus_z));
       m_clrs[&m_minus_z] = mat;
       m_mtxs[&m_minus_z] = mx;}
-  
+
       //+z :
      {separator* _sep = new separator;
       m_sep.add(_sep);
@@ -687,10 +692,10 @@ protected:
       _sep->add(new noderef(m_plus_z));
       m_clrs[&m_plus_z] = mat;
       m_mtxs[&m_plus_z] = mx;}
-    }  
+    }
   }
-  
-  sg::rgba& get_color(const cube& a_cube) {	
+
+  sg::rgba& get_color(const cube& a_cube) {
     std::map<cube*,sg::rgba*>::iterator it =
       m_clrs.find(const_cast<cube*>(&a_cube));
     return *((*it).second);
@@ -699,7 +704,7 @@ protected:
 protected:
   matrix* m_ref_matrix;
   bool m_delete_ref_matrix;
-  
+
   separator m_sep;
   cbks m_move_cbks;
 

@@ -118,6 +118,8 @@ protected:
   }
 };
 
+inline frustum* cast_frustum(base_camera& a_bcam) {return safe_cast<base_camera,frustum>(a_bcam);}
+
 }}
 
 #endif

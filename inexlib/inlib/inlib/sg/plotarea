@@ -7,21 +7,32 @@
 #include "gui_viewer"
 #include "plots"
 #include "event_dispatcher"
-//#include "holder"
 
 namespace inlib {
 namespace sg {
 
+enum adjust_type {
+  adjust_viewer = 1,
+  adjust_PAW = 2
+};
+
 class plotarea {
+
 public:
   INLIB_SCLASS(inlib::sg::plotarea)
 public:
+  static float default_trans_fac_x() {return 0.3f;}
+  static float default_trans_fac_y() {return 0.35f;}
+  static float default_scale_x()     {return 0.3f;}
+  static float default_scale_y()     {return 0.2f;}
+public:
   plotarea(gui_viewer& a_gv)
   :m_gv(a_gv)
-  ,m_plot_trans_fac_x(0.28f)
-  ,m_plot_trans_fac_y(-0.28f)
-  ,m_plot_scale_x(0.4f)
-  ,m_plot_scale_y(0.4f)
+  ,m_trans_fac_x(default_trans_fac_x())
+  ,m_trans_fac_y(default_trans_fac_y())
+  ,m_scale_x(default_scale_x())
+  ,m_scale_y(default_scale_y())
+  ,m_adjust_type(adjust_viewer)
   {
     create_sg();
   }
@@ -29,41 +40,68 @@ public:
 protected:
   plotarea(const plotarea& a_from)
   :m_gv(a_from.m_gv)
-  ,m_plot_trans_fac_x(a_from.m_plot_trans_fac_x)
-  ,m_plot_trans_fac_y(a_from.m_plot_trans_fac_y)
-  ,m_plot_scale_x(a_from.m_plot_scale_x)
-  ,m_plot_scale_y(a_from.m_plot_scale_y)
+  ,m_trans_fac_x(a_from.m_trans_fac_x)
+  ,m_trans_fac_y(a_from.m_trans_fac_y)
+  ,m_scale_x(a_from.m_scale_x)
+  ,m_scale_y(a_from.m_scale_y)
+  ,m_adjust_type(a_from.m_adjust_type)
   {
     create_sg();
   }
   plotarea& operator=(const plotarea& a_from){
-    m_plot_trans_fac_x = a_from.m_plot_trans_fac_x;
-    m_plot_trans_fac_y = a_from.m_plot_trans_fac_y;
-    m_plot_scale_x = a_from.m_plot_scale_x;
-    m_plot_scale_y = a_from.m_plot_scale_y;
+    m_trans_fac_x = a_from.m_trans_fac_x;
+    m_trans_fac_y = a_from.m_trans_fac_y;
+    m_scale_x = a_from.m_scale_x;
+    m_scale_y = a_from.m_scale_y;
+    m_adjust_type = a_from.m_adjust_type;
     return *this;
   }
 public:
+  const gui_viewer& gv() const {return m_gv;}
+  gui_viewer& gv() {return m_gv;}
+
   void add_plots_to_scene() {
     //m_gv.scene().add(new holder<plots_clearer>(new plots_clearer(m_sep)));
     m_gv.scene().add(new noderef(m_switch));
     set_plots_layout_from_window(m_gv.width(),m_gv.height());
   }
-  
+
   void set_layout_factors(float a_tx,float a_ty,float a_sx,float a_sy){
-    m_plot_trans_fac_x = a_tx;
-    m_plot_trans_fac_y = a_ty;
-    m_plot_scale_x = a_sx;
-    m_plot_scale_y = a_sy;
+    m_trans_fac_x = a_tx;
+    m_trans_fac_y = a_ty;
+    m_scale_x = a_sx;
+    m_scale_y = a_sy;
+  }
+  void layout_factors(float& a_tx,float& a_ty,float& a_sx,float& a_sy) const {
+    a_tx = m_trans_fac_x;
+    a_ty = m_trans_fac_y;
+    a_sx = m_scale_x;
+    a_sy = m_scale_y;
   }
 
-  plots& get_plots() {
-    plots* _plots = _get_plots(m_sep);
-    if(!_plots) {
-      m_gv.out() << "inlib::plotare::get_plots : no sg::plots! A crash is expected." << std::endl;
-    } //throw
-    return *_plots;
+  void reset_factors() {
+    m_trans_fac_x = default_trans_fac_x();
+    m_trans_fac_y = default_trans_fac_y();
+    m_scale_x     = default_scale_x();
+    m_scale_y     = default_scale_y();
   }
+
+  void set_adjust_type(adjust_type a_adjust_type) {m_adjust_type = a_adjust_type;}
+  sg::adjust_type adjust_type() const {return m_adjust_type;}
+  
+  void set_plots_layout_from_window(unsigned int a_ww,unsigned int a_wh) {
+    if(!a_ww||!a_wh) return;
+    plots* _plots = _get_plots(m_sep);
+    if(!_plots) return;
+    matrix* _plots_matrix = _get_matrix(m_sep);
+    if(!_plots_matrix) return;
+    _plots->adjust_size(a_ww,a_wh);
+    _plots_matrix->set_translate(_plots->width*m_trans_fac_x,_plots->height*m_trans_fac_y,0);
+    _plots_matrix->mul_scale(m_scale_x,m_scale_y,1);
+  }
+
+  plots* get_plots() {return _get_plots(m_sep);}
+  ortho* get_camera() {return _get_camera(m_sep);}
 
   void clear_plots() {
     plots* _plots = _get_plots(m_sep);
@@ -74,10 +112,12 @@ public:
   void show_hide()  {m_switch.which = m_switch.which.value()==0?1:0;} //SHOWN=0
   void hide_plots() {m_switch.which = 1;}
   void show_plots() {m_switch.which = 0;}
+  bool plots_hidden() const {return m_switch.which.value()==1?true:false;}
 
   node* create_plots_clearer_holder() { //see exlib/geant4/exas for an example.
     return new holder<plots_clearer>(new plots_clearer(m_sep));
-  }     
+  }
+
 protected:
   class cbk_data  {
   public:
@@ -89,42 +129,51 @@ protected:
   public:
     plotarea& m_this;
   };
-  
+
 public:
   static return_action action_plots_layout(gui_viewer&,const ecbk& a_cbk,event_dispatcher&,const cbk_data& a_data) {
     if(const size_event* sz_evt = event_cast<event,size_event>(*a_cbk.m_event)){
-      a_data.m_this.set_plots_layout_from_window(sz_evt->width(),sz_evt->height());
+      //a_data.m_this.set_plots_layout_from_window(sz_evt->width(),sz_evt->height());
+      plotarea& _this = a_data.m_this;
+      matrix* _matrix = _get_matrix(_this.m_sep);
+      plots* _plots = _get_plots(_this.m_sep);
+      if(_this.m_adjust_type==adjust_viewer) {
+        //_this.adjust_size(sz_evt->width(),sz_evt->height());
+        _this.set_plots_layout_from_window(sz_evt->width(),sz_evt->height());
+      } else if(_this.m_adjust_type==adjust_PAW) {
+        float aspect = float(sz_evt->width())/float(sz_evt->height());
+        const state& _state = a_cbk.m_event_action->state();
+        if(_state.m_camera_ortho) {
+          const vec4f& lrbt = _state.m_camera_lrbt;
+          float hcam = lrbt[3]-lrbt[2];
+          float wcam = lrbt[1]-lrbt[0];
+          if(aspect>=1) { //w>h
+            float scale = hcam/_plots->height.value();
+            _matrix->set_scale(scale,scale,scale);
+          } else {
+            float scale = wcam/_plots->width.value();
+            _matrix->set_scale(scale,scale,scale);
+          }
+        }
+      }
       a_cbk.m_event_action->set_done(true);
     }
     return return_to_render;
   }
-
-  static return_action action_hide_plots(gui_viewer& a_gv) {
-    plotarea* _this = safe_cast<viewer,plotarea>(a_gv);
-    if(!_this) return return_none;
-    _this->hide_plots();
-    a_gv.hide_main_menu();
-    return return_to_render;
-  }
-  static return_action action_show_plots(gui_viewer& a_gv) {
-    plotarea* _this = safe_cast<viewer,plotarea>(a_gv);
-    if(!_this) return return_none;
-    _this->show_plots();
-    a_gv.hide_main_menu();
-    return return_to_render;
-  }
-
-protected:
-  static unsigned int MATRIX()  {return 1;}
-  static unsigned int PLOTS()   {return 2;}
-  static matrix* _get_matrix(separator& a_sep) {
-    if(a_sep.size()<=MATRIX()) return 0;
-    return safe_cast<node,matrix>(*(a_sep[MATRIX()]));
-  }
-  static plots* _get_plots(separator& a_sep) {
-    if(a_sep.size()<=PLOTS()) return 0;
-    return safe_cast<node,plots>(*(a_sep[PLOTS()]));
-  }
+  //static return_action action_hide_plots(gui_viewer& a_gv) {
+  //  plotarea* _this = safe_cast<viewer,plotarea>(a_gv);
+  //  if(!_this) return return_none;
+  //  _this->hide_plots();
+  //  a_gv.hide_main_menu();
+  //  return return_to_render;
+  //}
+  //static return_action action_show_plots(gui_viewer& a_gv) {
+  //  plotarea* _this = safe_cast<viewer,plotarea>(a_gv);
+  //  if(!_this) return return_none;
+  //  _this->show_plots();
+  //  a_gv.hide_main_menu();
+  //  return return_to_render;
+  //}
   void create_sg(bool a_visible = true){
     m_switch.clear();
     m_sep.clear();
@@ -135,7 +184,7 @@ protected:
 
     float cam_height = 1;
 
-    m_sep.add(m_gv.create_2D_camera(cam_height));    //0
+    m_sep.add(m_gv.create_2D_camera(cam_height));    //0=CAMERA()  //WARNING: it must be an sg::ortho.
 
     m_sep.add(new matrix); //avoid noderef(matrix) to be able to popup/move. //1=MATRIX()
 
@@ -145,9 +194,13 @@ protected:
     _plots->cols = 1;
     _plots->rows = 1;
     _plots->view_border = false;
-    _plots->border_visible = true;
+
+/*  _plots->border_visible = true;
     _plots->border_width = 0.02f; //outside width,height square.
     _plots->border_height = 0.02f;
+  //_plots->border_scale = 1.001f; //cooking for offsreen to avoid seeing 1 pixel at left or top from border.
+*/
+
     m_sep.add(_plots); //2=PLOTS()
 
    {event_dispatcher* dpt = new event_dispatcher;
@@ -156,18 +209,23 @@ protected:
 
     //set_plots_layout_from_window(m_gv.width(),m_gv.height());
   }
-  
-  void set_plots_layout_from_window(unsigned int a_ww,unsigned int a_wh) {
-    if(!a_ww||!a_wh) return;
-    plots* _plots = _get_plots(m_sep);
-    if(!_plots) return;
-    matrix* _plots_matrix = _get_matrix(m_sep);
-    if(!_plots_matrix) return;
-    _plots->adjust_size(a_ww,a_wh);
-    _plots_matrix->set_translate(_plots->width*m_plot_trans_fac_x,_plots->height*m_plot_trans_fac_y,0);
-    _plots_matrix->mul_scale(m_plot_scale_x,m_plot_scale_y,1);
-  }  
 
+protected:
+  static unsigned int CAMERA()  {return 0;}
+  static unsigned int MATRIX()  {return 1;}
+  static unsigned int PLOTS()   {return 2;}
+  static ortho* _get_camera(separator& a_sep) {
+    if(a_sep.size()<=CAMERA()) return 0;
+    return safe_cast<node,ortho>(*(a_sep[CAMERA()]));
+  }
+  static matrix* _get_matrix(separator& a_sep) {
+    if(a_sep.size()<=MATRIX()) return 0;
+    return safe_cast<node,matrix>(*(a_sep[MATRIX()]));
+  }
+  static plots* _get_plots(separator& a_sep) {
+    if(a_sep.size()<=PLOTS()) return 0;
+    return safe_cast<node,plots>(*(a_sep[PLOTS()]));
+  }
 protected:
   class plots_clearer {
   public:
@@ -187,10 +245,11 @@ protected:
 protected:
   gui_viewer& m_gv;
 
-  float m_plot_trans_fac_x;
-  float m_plot_trans_fac_y;
-  float m_plot_scale_x;
-  float m_plot_scale_y;
+  float m_trans_fac_x;
+  float m_trans_fac_y;
+  float m_scale_x;
+  float m_scale_y;
+  sg::adjust_type m_adjust_type;
 
   _switch m_switch;
   separator m_sep;
@@ -198,6 +257,45 @@ protected:
 
 inline plotarea* cast_plotarea(viewer& a_viewer) {
   return safe_cast<viewer,plotarea>(a_viewer);
+}
+
+inline void paw_set_camera(gui_viewer& a_gv) {
+  plotarea* _plotarea = cast_plotarea(a_gv);
+  if(!_plotarea) {
+    a_gv.warn("viewer is not a sg::plotarea.");
+    return;
+  }
+  sg::plots* _plots = _plotarea->get_plots();
+  if(!_plots) {
+    a_gv.warn("sg::plots not found.");
+    return;
+  }
+  ortho* camera = _plotarea->get_camera();
+  if(!camera) {
+    a_gv.warn("plotarea camera not found.");
+    return;
+  }
+
+  plotter& plotter = _plots->current_plotter();
+
+  float YSIZ = 20;
+  float z = 10*plotter.depth.value(); //large to handle plotter::shape=xyz.
+  float aspect = float(a_gv.width())/float(a_gv.height());
+  if(aspect>=1) { //w>h
+    camera->height = YSIZ;
+  } else {
+    camera->height = YSIZ/aspect;
+  }
+  camera->position = inlib::vec3f(0,0,z);
+  camera->znear = 0.01f*z;
+  camera->zfar = 100*z;
+  camera->focal = z;
+
+  _plotarea->set_adjust_type(adjust_PAW);
+ // send a size_event to the plotarea:
+ {size_event e(0,0,a_gv.width(),a_gv.height());
+  event_action action(a_gv.out(),a_gv.width(),a_gv.height(),e);
+  a_gv.scene().event(action);}
 }
 
 }}

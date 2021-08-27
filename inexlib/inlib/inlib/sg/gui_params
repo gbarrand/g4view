@@ -8,7 +8,7 @@
 #include "../rcmp"
 #include "../tos_deprec"
 #include "../entries_color"
-#include "../rotf"
+#include "../lina/rotf"
 #include "../sqrot"
 #include "../num2s"
 #include "enum2s"
@@ -18,7 +18,7 @@ namespace inlib {
 namespace sg {
 
 class gui_params {
-public:   
+public:
   INLIB_CLASS_STRING(sliders_2b)
   INLIB_CLASS_STRING(sliders_2b_2l)
   INLIB_CLASS_STRING(sliders_bl)
@@ -32,7 +32,7 @@ public:
   INLIB_CLASS_STRING(gui_screen_color)
   INLIB_CLASS_STRING(gui_font)
   INLIB_CLASS_STRING(gui_font_modeling)
-  
+
   INLIB_CLASS_STRING(sliders_pos)
   INLIB_CLASS_STRING(list_visible_items)
   INLIB_CLASS_STRING(corner_radius)
@@ -41,6 +41,8 @@ public:
   INLIB_CLASS_STRING(plane_viewer)
   INLIB_CLASS_STRING(touch_move)
   INLIB_CLASS_STRING(light_on)
+  INLIB_CLASS_STRING(blend_on)
+  INLIB_CLASS_STRING(smooth_on)
   INLIB_CLASS_STRING(solid)
   INLIB_CLASS_STRING(reduced_wire_frame)
   INLIB_CLASS_STRING(max_depth)
@@ -50,6 +52,7 @@ public:
   INLIB_CLASS_STRING(node_height)
   INLIB_CLASS_STRING(node_color)
   INLIB_CLASS_STRING(time_interval)
+  INLIB_CLASS_STRING(anim_interval)
   INLIB_CLASS_STRING(cycle_secs)
   INLIB_CLASS_STRING(console_scale)
   INLIB_CLASS_STRING(console_width)
@@ -58,7 +61,7 @@ public:
   // camera :
   INLIB_CLASS_STRING(single_shoot)
   INLIB_CLASS_STRING(90)
-  INLIB_CLASS_STRING(anim_shift)
+  INLIB_CLASS_STRING(anim_mode)
 
   INLIB_CLASS_STRING_SVALUE(anim_around_focal,"anim around focal")
   INLIB_CLASS_STRING(viewing)
@@ -87,6 +90,7 @@ public:
   INLIB_CLASS_STRING(ortho)
   INLIB_CLASS_STRING(perspective)
 
+  INLIB_CLASS_STRING(anim_on)
 public:
   gui_params()
   :m_vr_mode(false)
@@ -97,8 +101,12 @@ public:
 //,m_gui_font(font_arialbd_ttf())         //antialiasing problem.
 //,m_gui_font(font_courbd_ttf())          //beurk
 //,m_gui_font(font_lucidagrandebd_ttf())  //Apple.
+#ifdef tools_sg_gui_params
+  ,m_gui_font(font_lato_bold_ttf())
+#else
   ,m_gui_font(font_helveticabd_ttf())     //I find this one nicer.
-  ,m_gui_font_modeling(font_pixmap)
+#endif  
+  ,m_gui_font_modeling(font_filled) //font_filled to be consistent with sg/[style,text_style,base_freetype] defaults.
   ,m_console_scale(1)
   ,m_console_width(0.3F)   //percent of gui width
   ,m_console_height(0.05F) //percent of gui height
@@ -111,22 +119,26 @@ public:
   ,m_corner_radius(0)
 
   ,m_light_on(false)
+  ,m_blend_on(false)
+  ,m_smooth_on(false)
   ,m_solid(false)
   ,m_reduced_wire_frame(true)
   ,m_max_depth(9999)
   ,m_use_gsto(false)
   ,m_gsto_mode(s_gsto_memory())
+  ,m_anim_on(false)
   ,m_image_expand(true)
   ,m_node_height(0)
   ,m_node_color() //empty string.
   ,m_time_interval(0)
+  ,m_anim_interval(16)
   ,m_cycle_secs(10)
 
   ,m_camera_type()
 
   ,m_single_shoot(false)
   ,m_90(false)
-  ,m_anim_shift(false)
+  ,m_anim_mode(anim_mode_0)
   ,m_anim_around_focal(true)
   ,m_viewing(true)
 
@@ -171,7 +183,7 @@ public:
   ,m_gui_label_back_color(a_from.m_gui_label_back_color)
   ,m_gui_font(a_from.m_gui_font)
   ,m_gui_font_modeling(a_from.m_gui_font_modeling)
-  
+
   ,m_console_scale(a_from.m_console_scale)
   ,m_console_width(a_from.m_console_width)
   ,m_console_height(a_from.m_console_height)
@@ -185,22 +197,26 @@ public:
   ,m_corner_radius(a_from.m_corner_radius)
 
   ,m_light_on(a_from.m_light_on)
+  ,m_blend_on(a_from.m_blend_on)
+  ,m_smooth_on(a_from.m_smooth_on)
   ,m_solid(a_from.m_solid)
   ,m_reduced_wire_frame(a_from.m_reduced_wire_frame)
   ,m_max_depth(a_from.m_max_depth)
   ,m_use_gsto(a_from.m_use_gsto)
   ,m_gsto_mode(a_from.m_gsto_mode)
+  ,m_anim_on(a_from.m_anim_on)
   ,m_image_expand(a_from.m_image_expand)
   ,m_node_height(a_from.m_node_height)
   ,m_node_color(a_from.m_node_color)
   ,m_time_interval(a_from.m_time_interval)
+  ,m_anim_interval(a_from.m_anim_interval)
   ,m_cycle_secs(a_from.m_cycle_secs)
 
   ,m_camera_type(a_from.m_camera_type)
 
   ,m_single_shoot(a_from.m_single_shoot)
   ,m_90(a_from.m_90)
-  ,m_anim_shift(a_from.m_anim_shift)
+  ,m_anim_mode(a_from.m_anim_mode)
   ,m_anim_around_focal(a_from.m_anim_around_focal)
   ,m_viewing(a_from.m_viewing)
 
@@ -255,22 +271,26 @@ public:
     m_corner_radius = a_from.m_corner_radius;
 
     m_light_on = a_from.m_light_on;
-    m_solid = a_from.m_solid; 
+    m_blend_on = a_from.m_blend_on;
+    m_smooth_on = a_from.m_smooth_on;
+    m_solid = a_from.m_solid;
     m_use_gsto = a_from.m_use_gsto;
     m_reduced_wire_frame = a_from.m_reduced_wire_frame;
     m_max_depth = a_from.m_max_depth;
     m_gsto_mode = a_from.m_gsto_mode;
+    m_anim_on = a_from.m_anim_on;
     m_image_expand = a_from.m_image_expand;
     m_node_height = a_from.m_node_height;
     m_node_color = a_from.m_node_color;
     m_time_interval = a_from.m_time_interval;
+    m_anim_interval = a_from.m_anim_interval;
     m_cycle_secs = a_from.m_cycle_secs;
 
     m_camera_type = a_from.m_camera_type;
 
     m_single_shoot = a_from.m_single_shoot;
     m_90 = a_from.m_90;
-    m_anim_shift = a_from.m_anim_shift;
+    m_anim_mode = a_from.m_anim_mode;
     m_anim_around_focal = a_from.m_anim_around_focal;
     m_viewing = a_from.m_viewing;
 
@@ -324,13 +344,14 @@ public:
     a_args.push_back(s_node_height());
     a_args.push_back(s_node_color());
     a_args.push_back(s_time_interval());
+    a_args.push_back(s_anim_interval());
     a_args.push_back(s_cycle_secs());
 
     a_args.push_back(s_camera_type());
 
     a_args.push_back(s_single_shoot());
     a_args.push_back(s_90());
-    a_args.push_back(s_anim_shift());
+    a_args.push_back(s_anim_mode());
     a_args.push_back(s_anim_around_focal());
     a_args.push_back(s_viewing());
 
@@ -353,7 +374,7 @@ public:
     a_args.push_back(s_gsto_mode());
   }
 
-  void get_in_args(std::vector<arg>& a_args){   
+  void get_in_args(std::vector<arg>& a_args){
     // used in wall/screen_dispatch.
     a_args.clear();
 
@@ -365,7 +386,7 @@ public:
     a_args.push_back(arg(s_scene_screen_color(),stmp));
     if(!nums2s<colorf>(m_gui_screen_color,stmp," ")){}
     a_args.push_back(arg(s_gui_screen_color(),stmp));
-    
+
     a_args.push_back(arg(s_gui_font(),m_gui_font));
     a_args.push_back(arg(s_gui_font_modeling(),tos(m_gui_font_modeling)));
 
@@ -382,6 +403,8 @@ public:
     a_args.push_back(arg(s_corner_radius(),tos(m_corner_radius)));
 
     a_args.push_back(arg(s_light_on(),tos(m_light_on)));
+    a_args.push_back(arg(s_blend_on(),tos(m_blend_on)));
+    a_args.push_back(arg(s_smooth_on(),tos(m_smooth_on)));
     a_args.push_back(arg(s_solid(),tos(m_solid)));
     a_args.push_back(arg(s_reduced_wire_frame(),tos(m_reduced_wire_frame)));
     a_args.push_back(arg(s_max_depth(),tos(m_max_depth)));
@@ -389,13 +412,14 @@ public:
     a_args.push_back(arg(s_node_height(),tos(m_node_height)));
     a_args.push_back(arg(s_node_color(),m_node_color));
     a_args.push_back(arg(s_time_interval(),tos(m_time_interval)));
+    a_args.push_back(arg(s_anim_interval(),tos(m_anim_interval)));
     a_args.push_back(arg(s_cycle_secs(),tos(m_cycle_secs)));
 
     a_args.push_back(arg(s_camera_type(),m_camera_type));
 
     a_args.push_back(arg(s_single_shoot(),tos(m_single_shoot)));
     a_args.push_back(arg(s_90(),tos(m_90)));
-    a_args.push_back(arg(s_anim_shift(),tos(m_anim_shift)));
+    a_args.push_back(arg(s_anim_mode(),tos(m_anim_mode)));
     a_args.push_back(arg(s_anim_around_focal(),tos(m_anim_around_focal)));
     a_args.push_back(arg(s_viewing(),tos(m_viewing)));
 
@@ -420,6 +444,7 @@ public:
     a_args.push_back(arg(s_plot_row(),tos(m_plot_row)));
 
     a_args.push_back(arg(s_gsto_mode(),m_gsto_mode));
+    a_args.push_back(arg(s_anim_on(),tos(m_anim_on)));
   }
 
   bool set_from_args(const std::vector<arg>& a_args){
@@ -464,11 +489,11 @@ public:
 
       } else if(rcmp(lab,s_console_scale())) {
         bool changed;
-        if(!to<float>(m_console_scale,val,changed)) status = false;     
+        if(!to<float>(m_console_scale,val,changed)) status = false;
 
       } else if(rcmp(lab,s_console_width())) {
         bool changed;
-        if(!to<float>(m_console_width,val,changed)) status = false;     
+        if(!to<float>(m_console_width,val,changed)) status = false;
 
       } else if(rcmp(lab,s_console_height())) {
         bool changed;
@@ -476,50 +501,62 @@ public:
 
       } else if(rcmp(lab,s_image_buttons())) {
         bool changed;
-        if(!to<bool>(m_image_buttons,val,changed)) status = false;     
+        if(!to<bool>(m_image_buttons,val,changed)) status = false;
 
       } else if(rcmp(lab,s_plane_viewer())) {
         bool changed;
-        if(!to<bool>(m_plane_viewer,val,changed)) status = false;     
+        if(!to<bool>(m_plane_viewer,val,changed)) status = false;
 
       } else if(rcmp(lab,s_touch_move())) {
         bool changed;
-        if(!to<bool>(m_touch_move,val,changed)) status = false;     
+        if(!to<bool>(m_touch_move,val,changed)) status = false;
 
       } else if(rcmp(lab,s_sliders_pos())) {
         m_sliders_pos = val;
 
       } else if(rcmp(lab,s_list_visible_items())) {
         bool changed;
-        if(!to<unsigned int>(m_list_visible_items,val,changed)) status = false;     
+        if(!to<unsigned int>(m_list_visible_items,val,changed)) status = false;
 
       } else if(rcmp(lab,s_corner_radius())) {
         bool changed;
-        if(!to<float>(m_corner_radius,val,changed)) status = false;     
+        if(!to<float>(m_corner_radius,val,changed)) status = false;
 
       } else if(rcmp(lab,s_light_on())) {
         bool changed;
-        if(!to<bool>(m_light_on,val,changed)) status = false;     
+        if(!to<bool>(m_light_on,val,changed)) status = false;
+
+      } else if(rcmp(lab,s_blend_on())) {
+        bool changed;
+        if(!to<bool>(m_blend_on,val,changed)) status = false;
+
+      } else if(rcmp(lab,s_smooth_on())) {
+        bool changed;
+        if(!to<bool>(m_smooth_on,val,changed)) status = false;
+
+      } else if(rcmp(lab,s_anim_on())) {
+        bool changed;
+        if(!to<bool>(m_anim_on,val,changed)) status = false;
 
       } else if(rcmp(lab,s_solid())) {
         bool changed;
-        if(!to<bool>(m_solid,val,changed)) status = false;     
+        if(!to<bool>(m_solid,val,changed)) status = false;
 
       } else if(rcmp(lab,s_reduced_wire_frame())) {
         bool changed;
-        if(!to<bool>(m_reduced_wire_frame,val,changed)) status = false;     
+        if(!to<bool>(m_reduced_wire_frame,val,changed)) status = false;
 
       } else if(rcmp(lab,s_max_depth())) {
         bool changed;
-        if(!to<unsigned int>(m_max_depth,val,changed)) status = false;     
+        if(!to<unsigned int>(m_max_depth,val,changed)) status = false;
 
       } else if(rcmp(lab,s_image_expand())) {
         bool changed;
-        if(!to<bool>(m_image_expand,val,changed)) status = false;     
+        if(!to<bool>(m_image_expand,val,changed)) status = false;
 
       } else if(rcmp(lab,s_node_height())) {
         bool changed;
-        if(!to<float>(m_node_height,val,changed)) status = false;     
+        if(!to<float>(m_node_height,val,changed)) status = false;
 
       } else if(rcmp(lab,s_node_color())) {
         m_node_color = val;
@@ -527,6 +564,11 @@ public:
       } else if(rcmp(lab,s_time_interval())) {
         bool changed;
         if(!to<unsigned int>(m_time_interval,val,changed))
+          status = false;
+
+      } else if(rcmp(lab,s_anim_interval())) {
+        bool changed;
+        if(!to<unsigned int>(m_anim_interval,val,changed))
           status = false;
 
       } else if(rcmp(lab,s_cycle_secs())) {
@@ -539,15 +581,19 @@ public:
       // camera :
       } else if(rcmp(lab,s_single_shoot())) {
         bool changed;
-        if(!to<bool>(m_single_shoot,val,changed)) status = false;     
+        if(!to<bool>(m_single_shoot,val,changed)) status = false;
 
       } else if(rcmp(lab,s_90())) {
         bool changed;
-        if(!to<bool>(m_90,val,changed)) status = false;     
+        if(!to<bool>(m_90,val,changed)) status = false;
 
-      } else if(rcmp(lab,s_anim_shift())) {
-        bool changed;
-        if(!to<bool>(m_anim_shift,val,changed)) status = false;     
+      } else if(rcmp(lab,s_anim_mode())) {
+             if(val==s_anim_mode_0()) m_anim_mode = anim_mode_0;
+        else if(val==s_anim_mode_1()) m_anim_mode = anim_mode_1;
+        else if(val==s_anim_mode_2()) m_anim_mode = anim_mode_2;
+        else if(val==s_anim_mode_3()) m_anim_mode = anim_mode_3;
+        else if(val==s_anim_mode_4()) m_anim_mode = anim_mode_4;
+        else {status = false;}
 
       } else if(rcmp(lab,s_anim_around_focal())) {
         bool changed;
@@ -603,7 +649,7 @@ public:
       // wall :
       } else if(rcmp(lab,s_camera_tiled())) {
         bool changed;
-        if(!to<bool>(m_cam_tiled,val,changed)) status = false;     
+        if(!to<bool>(m_cam_tiled,val,changed)) status = false;
 
       } else if(rcmp(lab,s_plot_col())) {
         bool changed;
@@ -617,10 +663,10 @@ public:
         m_gsto_mode = val;
 
       } else {
-        status = false;     
+        status = false;
       }
     }
-    return status;     
+    return status;
   }
 
   static void sliders_poss(std::vector<std::string>& a_v){
@@ -690,8 +736,12 @@ public:
     // used (for exa in exlib/geant4/viewer) in case of having no style file.
 
     m_gui_screen_color = colorf(0.9f,0.9f,0.9f);
+#ifdef tools_sg_gui_params
+    m_gui_font = font_lato_bold_ttf();
+#else
     m_gui_font = font_helveticabd_ttf();
-    m_gui_font_modeling = font_pixmap;
+#endif
+    m_gui_font_modeling = font_filled;
     m_gui_back_color = colorf_white();
     m_gui_front_color = colorf_black();
     m_gui_dir_color = colorf(0.95f,0.95f,0.95f);
@@ -746,17 +796,21 @@ public:
 
   // scene :
   bool m_light_on;
+  bool m_blend_on;
+  bool m_smooth_on;
   bool m_solid;
   bool m_reduced_wire_frame;
   unsigned int m_max_depth;
   bool m_use_gsto;
 
   std::string m_gsto_mode;
+  bool m_anim_on;
 
   bool m_image_expand;
   float m_node_height;
   std::string m_node_color;
   unsigned int m_time_interval;
+  unsigned int m_anim_interval;
   unsigned int m_cycle_secs;
 
   std::string m_camera_type;
@@ -764,7 +818,7 @@ public:
   // camera panel :
   bool m_single_shoot;
   bool m_90;
-  bool m_anim_shift;
+  anim_mode m_anim_mode;
   bool m_anim_around_focal;
   bool m_viewing;
 

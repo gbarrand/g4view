@@ -25,7 +25,7 @@ public:
   //sf<bool> horizontal;
 
   sf_vec<colorf,float> color;
-  sf<bool> back_visible;  
+  sf<bool> back_visible;
 public:
   virtual const desc_fields& node_desc_fields() const {
     INLIB_FIELD_DESC_NODE_CLASS(inlib::sg::slider)
@@ -65,12 +65,12 @@ public:
   }
 
   virtual void search(search_action& a_action) {
-    node::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg();
       reset_touched();
     }
+    node::search(a_action);
+    if(a_action.done()) return;
     if(back_visible.value()) {
       m_back_sep.search(a_action);
       if(a_action.done()) return;
@@ -153,9 +153,9 @@ public:
     m_ends.clear();
   }
 
-  bool set_value(const state& a_state,const move_event& a_event) {
+  bool set_value(const state& a_state,const mouse_move_event& a_event) {
     float ox,oy,oz;
-    if(!a_state.screen2wc(a_event.ox(),a_event.oy(),ox,oy,oz)) return false; 
+    if(!a_state.screen2wc(a_event.ox(),a_event.oy(),ox,oy,oz)) return false;
     float x,y,z;
     if(!a_state.screen2wc(a_event.x(),a_event.y(),x,y,z)) return false;
     float dx = x-ox; // "delta touch" in slider local coords :
@@ -220,7 +220,7 @@ protected:
     m_sep.add(mat);
 
     draw_style* ds = new draw_style;
-    ds->style = draw_style::lines;
+    ds->style = draw_lines;
     ds->line_width = 1;
     m_sep.add(ds);
 

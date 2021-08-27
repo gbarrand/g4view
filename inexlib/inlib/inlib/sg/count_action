@@ -10,7 +10,7 @@ namespace inlib {
 namespace sg {
 
 class count_action : public bbox_action {
-  typedef bbox_action parent;
+  INLIB_ACTION(count_action,inlib::sg::count_action,bbox_action)
 protected:
   virtual bool add_point(float,float,float,float) {
     m_number_of_points++;

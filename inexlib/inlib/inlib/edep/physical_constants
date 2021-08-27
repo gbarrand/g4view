@@ -9,22 +9,22 @@
 // This file is a mere copy of the CLHEP/Units/PhysicalConstants.h one.
 //
 // The basic units are :
-//  		millimeter  
-// 		nanosecond  
-// 		Mega electron Volt  
-// 		positon charge 
+//  		millimeter
+// 		nanosecond
+// 		Mega electron Volt
+// 		positon charge
 // 		degree Kelvin
 //              amount of substance (mole)
 //              luminous intensity (candela)
-// 		radian  
-//              steradian 
+// 		radian
+//              steradian
 //
 // Below is a non exhaustive list of Physical CONSTANTS,
 // computed in the Internal HEP System Of Units.
 //
 // Most of them are extracted from the Particle Data Book :
 //        Phys. Rev. D  volume 50 3-1 (1994) page 1233
-// 
+//
 //        ...with a meaningful (?) name ...
 //
 // You can add your own constants.
@@ -54,51 +54,53 @@ static const double halfpi  = pi/2;
 static const double     pi2 = pi*pi;
 
 //
-// 
 //
-static const double avogadro = 6.02214179e+23/mole;
+//
+static const double avogadro = 6.02214179e+23/mole;  //0.6022 yotta/mole
 
 //
 // c   = 299.792458 mm/ns
-// c^2 = 898.7404 (mm/ns)^2 
+// c^2 = 898.7404 (mm/ns)^2
 //
-static const double c_light   = 2.99792458e+8 * m/s;
-static const double c_squared = c_light * c_light;
+static const double c_light   = 2.99792458e+8*m/s; //299.792
+static const double c_squared = c_light*c_light;
 
 //
 // h     = 4.13566e-12 MeV*ns
 // hbar  = 6.58212e-13 MeV*ns
 // hbarc = 197.32705e-12 MeV*mm
 //
-static const double h_Planck      = 6.62606896e-34 * joule*s;
+static const double h_Planck      = 6.62606896e-34*joule*s;
 static const double hbar_Planck   = h_Planck/twopi;
-static const double hbarc         = hbar_Planck * c_light;
-static const double hbarc_squared = hbarc * hbarc;
+static const double hbarc         = hbar_Planck*c_light;
+static const double hbarc_squared = hbarc*hbarc;
 
 //
 //
 //
-static const double electron_charge = - eplus; // see SystemOfUnits.h
-static const double e_squared = eplus * eplus;
+static const double electron_charge = -eplus; // see SystemOfUnits.h
+static const double e_squared = eplus*eplus;
+
+static const double eplus_coulomb = eplus/coulomb; //1.602176487e-19. G.Barrand.
 
 //
 // amu_c2 - atomic equivalent mass unit
 //        - AKA, unified atomic mass unit (u)
 // amu    - atomic mass unit
 //
-static const double electron_mass_c2 =    0.510998910 * MeV;
-static const double   proton_mass_c2 =  938.272013    * MeV;
-static const double  neutron_mass_c2 =  939.56536     * MeV;
-static const double     muon_mass_c2 =  105.6583745   * MeV; //GB
-static const double      tau_mass_c2 = 1776.82        * MeV; //GB
-static const double           amu_c2 = 931.494028     * MeV;
+static const double electron_mass_c2 =    0.510998910*MeV;
+static const double   proton_mass_c2 =     938.272013*MeV;
+static const double  neutron_mass_c2 =      939.56536*MeV;
+static const double     muon_mass_c2 =    105.6583745*MeV; //GB
+static const double      tau_mass_c2 =        1776.82*MeV; //GB
+static const double           amu_c2 =     931.494028*MeV;
 static const double              amu = amu_c2/c_squared;
 
 //
 // permeability of free space mu0    = 2.01334e-16 Mev*(ns*eplus)^2/mm
-// permittivity of free space epsil0 = 5.52636e+10 eplus^2/(MeV*mm)
+// permittivity of free space epsil0 = 5.52636e+10 eplus^2/(MeV*mm)     = 8.854187817e−12 farad/m
 //
-static const double mu0      = 4*pi*1.e-7 * henry/m;
+static const double mu0      = 4*pi*1.e-7*henry/m;
 static const double epsilon0 = 1./(c_squared*mu0);
 
 //
@@ -110,19 +112,16 @@ static const double classic_electr_radius  = elm_coupling/electron_mass_c2;
 static const double electron_Compton_length = hbarc/electron_mass_c2;
 static const double Bohr_radius = electron_Compton_length/fine_structure_const;
 
+static const double em_coupling  = 1.0/(4*pi*epsilon0); //similar to grav_coupling.  [] = E*L/Q2 = M*L3/(T2*Q2). 1.43996e-12.
 static const double Bohr_magneton =  0.5*eplus*hbar_Planck/(electron_mass_c2/c_squared); //G.Barrand.
 
-static const double alpha_rcl2 = fine_structure_const
-                                   *classic_electr_radius
-                                   *classic_electr_radius;
+static const double alpha_rcl2 = fine_structure_const*classic_electr_radius*classic_electr_radius;
 
-static const double twopi_mc2_rcl2 = twopi*electron_mass_c2
-                                             *classic_electr_radius
-                                             *classic_electr_radius;
+static const double twopi_mc2_rcl2 = twopi*electron_mass_c2*classic_electr_radius*classic_electr_radius;
 //
 //
 //
-static const double k_Boltzmann = 8.617343e-11 * MeV/kelvin;
+static const double k_Boltzmann = 8.617343e-11*MeV/kelvin;
 
 //
 //
@@ -136,9 +135,35 @@ static const double gas_threshold   = 10.*mg/cm3;
 //
 static const double universe_mean_density = 1.e-25*g/cm3;
 
-
 // G.Barrand (from Wikipedia) :
-static const double G = 6.67384e-11 * m3/(kg*s*s);
+static const double grav_coupling = 6.67384e-11*m3/(kg*s*s); //1.06927e-44
+
+static const double electron_mass = electron_mass_c2/c_squared;
+
+// CGS (G.Barrand) :
+static const double coulomb_CGS         = 10*c_light/(m/s);          // 2.99792458e+9
+static const double eplus_CGS           = eplus_coulomb*coulomb_CGS; // 4.80320425e-10. WARNING [eplus_CGS] is NOT statC.
+
+static const double hbar_Planck_CGS     = hbar_Planck/(gram*cm*cm/second);
+static const double c_light_CGS         = c_light/(cm/second);
+static const double grav_coupling_CGS   = grav_coupling/(cm3/(gram*second*second));
+static const double electron_mass_CGS   = electron_mass/gram;   //9.10938e-28
+
+static const double em_coupling_CGS     = 1;
+
+// checked in utest/edep.cpp :
+// em_coupling_CGS = fine_structure_const*hbar_Planck_CGS*c_light_CGS/(eplus_CGS*eplus_CGS) = 1
+// coulomb_CGS = em_avogadro*sqrt(fine_structure_const*hbar_Planck_CGS*c_light_CGS)
+
+//static const double mass_g4 = MeV/c_squared;   //G4 mass unit.
+//static const double charge_g4_squared = mass_g4*mm3/(ns*ns);
+//static const double mass_g4_CGS = mass_g4/gram; // 1.78266e-27 * gram
+
+// SI (G.Barrand) (SI = MKS) :
+static const double h_Planck_SI = h_Planck/(kilogram*meter*meter/second);
+static const double electron_mass_SI = electron_mass/kilogram;
+static const double c_light_SI = c_light/(meter/second);
+//e_SI defined in units.
 
 }}
 

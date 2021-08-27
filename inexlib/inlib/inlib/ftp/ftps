@@ -8,7 +8,7 @@
 
 #include "../forit"
 #include "../b2s"
-#include "../file"
+#include "../file_write"
 #include "../xml/tree"
 
 namespace inlib {
@@ -27,11 +27,11 @@ public:
            const std::string& a_pass,const std::string& a_dir,bool a_active){
     //look if already in the list :
     inlib_vforcit(client,*this,it) {
-      if( ((*it).host()==a_host) && 
+      if( ((*it).host()==a_host) &&
           ((*it).user()==a_user) &&
           ((*it).pass()==a_pass) &&
           ((*it).dir()==a_dir)   &&
-          ((*it).active()==a_active) 
+          ((*it).active()==a_active)
         ) return;
     }
     parent::push_back(client(a_host,a_user,a_pass,a_dir,a_active));
@@ -49,7 +49,7 @@ public:
       b2s((*it).active(),stmp);
       lines.push_back("    <active>"+stmp+"</active>");
       lines.push_back("  </ftp>");
-    }    
+    }
     lines.push_back("</ftps>");
     return file::write(a_path,lines);
   }
@@ -58,19 +58,19 @@ public:
   bool scan_tree(const xml::tree& a_tree) {
     const std::string& tag = a_tree.tag_name();
     if(tag=="ftps") {
-    } else if(tag=="ftp") {   
+    } else if(tag=="ftp") {
       load(a_tree);
     }
-  
+
     // scan children :
    {xml::looper _for(a_tree);
     while(xml::tree* _tree = _for.next_tree()) {
       if(!scan_tree(*_tree)) return false;
     }}
-  
+
     return true;
   }
-  
+
   void load(const xml::tree& a_tree) {
     std::string host,user,pass,dir;
     bool active = true;
@@ -92,7 +92,7 @@ public:
         }
       }
 
-    }}  
+    }}
 
     if(host.size() && user.size() && dir.size()) add(host,user,pass,dir,active);
   }

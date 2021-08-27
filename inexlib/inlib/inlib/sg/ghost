@@ -12,7 +12,7 @@
 
 #include "pick_action"
 #include "sf"
-#include "../mat4f"
+#include "../lina/mat4f"
 
 namespace inlib {
 namespace sg {

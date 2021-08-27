@@ -33,12 +33,13 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
     std::string name;
-    std::string title;  
+    std::string title;
     if(!Named_stream(a_buffer,name,title)) return false;
     if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
     return true;
   }
-
+public:
+  virtual void dump(std::ostream&,const std::string& = std::string()) const {}
 public:
   static cid id_class() {return geo_matrix_cid();}
   virtual void* cast(cid a_class) const {
@@ -80,7 +81,7 @@ template <class T>
 inline T* cast_matrix(geo_matrix& a_matrix) {
   return id_cast<geo_matrix,T>(a_matrix);
 }
-  
+
 }}
 
 #endif

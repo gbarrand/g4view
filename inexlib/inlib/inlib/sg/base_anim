@@ -24,7 +24,7 @@ public:
   // return false = m_prev handled in action().
   virtual bool action(std::ostream&,const atime& a_now) = 0;
   virtual void begin_anim() {}
-  virtual void end_anim() {}
+  virtual bool end_anim() {return true;}
 public:
   sf<float> delay;
 public:
@@ -87,7 +87,7 @@ protected:
         _e->set_some_found(true);
 
       } else { //finished.
-        end_anim();
+        if(!end_anim()) _e->set_some_found(true);
       }
 
     }

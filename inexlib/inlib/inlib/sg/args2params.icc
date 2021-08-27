@@ -10,7 +10,7 @@
             status = false; /*not fatal.*/\
           }\
         } else if(changed)
-      
+
 #define INLIB_ARGS2PARAMS_UINT(a__name) \
         bool changed;\
         if(!to<unsigned int>(m_params.m_##a__name,val,changed)) {\
@@ -22,7 +22,7 @@
             status = false; /*not fatal.*/\
           }\
         } else if(changed)
-      
+
 #define INLIB_ARGS2PARAMS_FLOAT(a__name) \
         bool changed;\
         if(!to<float>(m_params.m_##a__name,val,changed)) {\
@@ -34,10 +34,10 @@
             status = false; /*not fatal.*/\
           }\
         } else if(changed)
-      
+
   typedef std::pair<std::string,std::string> arg;
   bool args2params(const std::vector<arg>& a_args,bool a_warn){
-    // WARNING : used in for wall/screen_dispatch rwc_set_params protocol.    
+    // WARNING : used in for wall/screen_dispatch rwc_set_params protocol.
     bool status = true;
 
     for(unsigned int index=0;index<a_args.size();index++) {
@@ -47,9 +47,9 @@
       if(rcmp(label,gui_params::s_vr_mode())) {
         INLIB_ARGS2PARAMS_BOOL(vr_mode) {
           m_vr_mode = m_params.m_vr_mode;
-          ask_to_rebuild_gui();	 
+          ask_to_rebuild_gui();
         }
-	
+
       } else if(rcmp(label,gui_params::s_auto_hide_scene())) {
         INLIB_ARGS2PARAMS_BOOL(auto_hide_scene) {
           //we just click on the "param ok button", then ui is mapped.
@@ -60,7 +60,7 @@
 	    m_scene_switch.which = SHOWN();
           }
         }
-      
+
       } else if(rcmp(label,gui_params::s_scene_screen_color())) {
         float r,g,b,a;
         if(!entries_color(val,r,g,b,a)) {
@@ -96,6 +96,16 @@
           set_scene_light_on(m_params.m_light_on);
         }
 
+      } else if(rcmp(label,gui_params::s_blend_on())) {
+        INLIB_ARGS2PARAMS_BOOL(blend_on) {
+          set_scene_blend_on(m_params.m_blend_on);
+        }
+
+      } else if(rcmp(label,gui_params::s_smooth_on())) {
+        INLIB_ARGS2PARAMS_BOOL(smooth_on) {
+          set_scene_smooth_on(m_params.m_smooth_on);
+        }
+
       } else if(rcmp(label,gui_params::s_solid())) {
         INLIB_ARGS2PARAMS_BOOL(solid) {
           // should force update_sg ?
@@ -109,7 +119,7 @@
       } else if(rcmp(label,gui_params::s_max_depth())) {
         INLIB_ARGS2PARAMS_UINT(max_depth) {
         }
-	
+
       } else if(rcmp(label,gui_params::s_use_gsto()) ||
                 rcmp(label,gui_params::s_use_vbo())  ){ // old apps -> wall.
         INLIB_ARGS2PARAMS_BOOL(use_gsto) {
@@ -173,6 +183,10 @@
         INLIB_ARGS2PARAMS_UINT(time_interval) {
         }
 
+      } else if(rcmp(label,gui_params::s_anim_interval())) {
+        INLIB_ARGS2PARAMS_UINT(anim_interval) {
+        }
+
       } else if(rcmp(label,gui_params::s_cycle_secs())) {
         INLIB_ARGS2PARAMS_UINT(cycle_secs) {
         }
@@ -211,24 +225,24 @@
         //FIXME : should check that val is a font name.
         bool changed = val!=m_params.m_gui_font;
         m_params.m_gui_font = val;
-        if(changed) ask_to_rebuild_gui();	 
-	
+        if(changed) ask_to_rebuild_gui();
+
       } else if(rcmp(label,gui_params::s_gui_font_modeling())) {
              if(val==s_font_outline()) {
           bool changed = m_params.m_gui_font_modeling!=font_outline;
           m_params.m_gui_font_modeling = font_outline;
-          if(changed) ask_to_rebuild_gui();	 
-	  
+          if(changed) ask_to_rebuild_gui();
+
         } else if(val==s_font_filled())  {
           bool changed = m_params.m_gui_font_modeling!=font_filled;
           m_params.m_gui_font_modeling = font_filled;
-          if(changed) ask_to_rebuild_gui();	 
+          if(changed) ask_to_rebuild_gui();
 
         } else if(val==s_font_pixmap())  {
           bool changed = m_params.m_gui_font_modeling!=font_pixmap;
           m_params.m_gui_font_modeling = font_pixmap;
-          if(changed) ask_to_rebuild_gui();	 
-	  
+          if(changed) ask_to_rebuild_gui();
+
         } else {
           m_out << "inlib::sg::gui_viewer::args2params : not a font_modeling enum." << std::endl;
           status = false; /*not fatal.*/
@@ -244,7 +258,7 @@
         }
       }
     }
-    return status;     
+    return status;
   }
 
 #undef INLIB_ARGS2PARAMS_BOOL

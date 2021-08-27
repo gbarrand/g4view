@@ -4,7 +4,7 @@
 #ifndef inlib_colord
 #define inlib_colord
 
-#include "vec4d"
+#include "lina/vec4d"
 
 namespace inlib {
 

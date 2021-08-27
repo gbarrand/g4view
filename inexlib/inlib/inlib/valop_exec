@@ -143,121 +143,121 @@ public:
   virtual bool func_1(const valop& a_f,const valop& a_1) {
     if(a_f.m_function->number_of_arguments()!=1) return false;
     std::vector<value> args;
-  
+
     valop_exec v1(m_input,m_error);
     if(!v1.visit(a_1)) {m_return.set_none();return false;}
     args.push_back(v1.m_return);
-  
+
     return a_f.m_function->eval(args,m_return,m_error);
   }
   virtual bool func_2(const valop& a_f,const valop& a_1,const valop& a_2) {
     if(a_f.m_function->number_of_arguments()!=2) return false;
     std::vector<value> args;
-  
+
     valop_exec v1(m_input,m_error);
     if(!v1.visit(a_1)) {m_return.set_none();return false;}
     args.push_back(v1.m_return);
-  
+
     valop_exec v2(m_input,m_error);
     if(!v2.visit(a_2)) {m_return.set_none();return false;}
     args.push_back(v2.m_return);
-  
+
     return a_f.m_function->eval(args,m_return,m_error);
   }
   virtual bool func_3(const valop& a_f,const valop& a_1,const valop& a_2,const valop& a_3) {
     if(a_f.m_function->number_of_arguments()!=3) return false;
     std::vector<value> args;
-  
+
     valop_exec v1(m_input,m_error);
     if(!v1.visit(a_1)) {m_return.set_none();return false;}
     args.push_back(v1.m_return);
-  
+
     valop_exec v2(m_input,m_error);
     if(!v2.visit(a_2)) {m_return.set_none();return false;}
     args.push_back(v2.m_return);
-  
+
     valop_exec v3(m_input,m_error);
     if(!v3.visit(a_3)) {m_return.set_none();return false;}
     args.push_back(v3.m_return);
-  
+
     return a_f.m_function->eval(args,m_return,m_error);
   }
   virtual bool func_4(const valop& a_f,const valop& a_1,const valop& a_2,const valop& a_3,const valop& a_4) {
     if(a_f.m_function->number_of_arguments()!=4) return false;
     std::vector<value> args;
-  
+
     valop_exec v1(m_input,m_error);
     if(!v1.visit(a_1)) {m_return.set_none();return false;}
     args.push_back(v1.m_return);
-  
+
     valop_exec v2(m_input,m_error);
     if(!v2.visit(a_2)) {m_return.set_none();return false;}
     args.push_back(v2.m_return);
-  
+
     valop_exec v3(m_input,m_error);
     if(!v3.visit(a_3)) {m_return.set_none();return false;}
     args.push_back(v3.m_return);
-  
+
     valop_exec v4(m_input,m_error);
     if(!v4.visit(a_4)) {m_return.set_none();return false;}
     args.push_back(v4.m_return);
-  
+
     return a_f.m_function->eval(args,m_return,m_error);
   }
   virtual bool func_5(const valop& a_f,const valop& a_1,const valop& a_2,const valop& a_3,const valop& a_4,const valop& a_5) {
     if(a_f.m_function->number_of_arguments()!=5) return false;
     std::vector<value> args;
-  
+
     valop_exec v1(m_input,m_error);
     if(!v1.visit(a_1)) {m_return.set_none();return false;}
     args.push_back(v1.m_return);
-  
+
     valop_exec v2(m_input,m_error);
     if(!v2.visit(a_2)) {m_return.set_none();return false;}
     args.push_back(v2.m_return);
-  
+
     valop_exec v3(m_input,m_error);
     if(!v3.visit(a_3)) {m_return.set_none();return false;}
     args.push_back(v3.m_return);
-  
+
     valop_exec v4(m_input,m_error);
     if(!v4.visit(a_4)) {m_return.set_none();return false;}
     args.push_back(v4.m_return);
-  
+
     valop_exec v5(m_input,m_error);
     if(!v5.visit(a_5)) {m_return.set_none();return false;}
     args.push_back(v5.m_return);
-  
+
     return a_f.m_function->eval(args,m_return,m_error);
   }
   virtual bool func_6(const valop& a_f,const valop& a_1,const valop& a_2,const valop& a_3,const valop& a_4,const valop& a_5,const valop& a_6) {
     if(a_f.m_function->number_of_arguments()!=6) return false;
     std::vector<value> args;
-  
+
     valop_exec v1(m_input,m_error);
     if(!v1.visit(a_1)) {m_return.set_none();return false;}
     args.push_back(v1.m_return);
-  
+
     valop_exec v2(m_input,m_error);
     if(!v2.visit(a_2)) {m_return.set_none();return false;}
     args.push_back(v2.m_return);
-  
+
     valop_exec v3(m_input,m_error);
     if(!v3.visit(a_3)) {m_return.set_none();return false;}
     args.push_back(v3.m_return);
-  
+
     valop_exec v4(m_input,m_error);
     if(!v4.visit(a_4)) {m_return.set_none();return false;}
     args.push_back(v4.m_return);
-  
+
     valop_exec v5(m_input,m_error);
     if(!v5.visit(a_5)) {m_return.set_none();return false;}
     args.push_back(v5.m_return);
-  
+
     valop_exec v6(m_input,m_error);
     if(!v6.visit(a_6)) {m_return.set_none();return false;}
     args.push_back(v6.m_return);
-  
+
     return a_f.m_function->eval(args,m_return,m_error);
   }
 public:
@@ -300,7 +300,7 @@ protected:
       if(!EXEC(m_B,aInput,a_error)) return false;
       value& va = m_A->ret();
       value& vb = m_B->ret();
-      if( (m_A->m_type==NAME) && 
+      if( (m_A->m_type==NAME) &&
           (va.type()==value::STRING) &&
           (vb.type()==value::STRING) ){
         m_return.set(match(va.get_string(),vb.get_string()));
@@ -319,7 +319,7 @@ protected:
       if(!EXEC(m_B,aInput,a_error)) return false;
       value& va = m_A->ret();
       value& vb = m_B->ret();
-      if( (m_A->m_type==NAME) && 
+      if( (m_A->m_type==NAME) &&
           (va.type()==value::STRING) &&
           (vb.type()==value::STRING) ){
         m_return.set(match(va.get_string(),vb.get_string())?false:true);
@@ -368,10 +368,10 @@ protected:
         return false;
       }
      {std::vector<value> args;
-  
+
       if(!EXEC(m_A,aInput,a_error)) return false;
       args.push_back(m_A->ret());
-  
+
       unsigned int argn = m_function->number_of_arguments();
       if(argn==1) {
       } else if(argn==2) {

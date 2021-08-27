@@ -26,13 +26,15 @@ public:
     for(unsigned int index=0;index<num;index++) {
       list_item item;
       if(!item.read(a_buffer)) return false;
-      add(item);      
+      add(item);
     }
     return true;
   }
   virtual bool dump(std::ostream&) {
     return true;
   }
+  virtual bool s_value(std::string& a_s) const {a_s.clear();return false;}
+  virtual bool s2value(const std::string&) {return false;}
 public:
   mf_list_item():parent(){}
   virtual ~mf_list_item(){}

@@ -42,12 +42,12 @@ public:
     m_back_sep.render(a_action);
   }
   virtual void search(search_action& a_action) {
-    node::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       back_area::update_sg();
       reset_touched();
     }
+    node::search(a_action);
+    if(a_action.done()) return;
     m_back_sep.search(a_action);
     if(a_action.done()) return;
   }

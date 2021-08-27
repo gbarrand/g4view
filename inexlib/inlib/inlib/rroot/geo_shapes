@@ -11,6 +11,8 @@ namespace inlib {
 namespace rroot {
 
 class geo_tube : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoTube");
     return s_v;
@@ -23,7 +25,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_tube>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_tube(*this);}
@@ -32,27 +34,42 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read(m_rmin)) return false;
     if(!a_buffer.read(m_rmax)) return false;
     if(!a_buffer.read(m_dz)) return false;
 
     if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
+/*
+    a_buffer.out() << "debug : geo_tube::stream :"
+                   << " rmin " << m_rmin
+                   << " rmax " << m_rmax
+                   << " dz " << m_dz
+                   << std::endl;
+*/
     return true;
   }
 
+  virtual void dump(std::ostream& a_out,const std::string& a_indent = std::string()) const {
+    parent::dump(a_out,a_indent);
+    a_out << a_indent << "tube :"
+          << " rmin " << m_rmin
+          << ", rmax " << m_rmax
+          << ", dz " << m_dz
+          << std::endl;
+  }
 public:
   static cid id_class() {return geo_tube_cid();}
   virtual void* cast(cid a_class) const {
     if(void* p = cmp_cast<geo_tube>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    else return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
   geo_tube(ifac& a_fac)
-  :geo_bbox(a_fac)
+  :parent(a_fac)
   ,m_rmin(0)
   ,m_rmax(0)
   ,m_dz(0)
@@ -69,13 +86,13 @@ public:
 protected:
   geo_tube(const geo_tube& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   ,m_rmin(a_from.m_rmin)
   ,m_rmax(a_from.m_rmax)
   ,m_dz(a_from.m_dz)
   {}
   geo_tube& operator=(const geo_tube& a_from){
-    geo_bbox::operator=(a_from);
+    parent::operator=(a_from);
     m_rmin = a_from.m_rmin;
     m_rmax = a_from.m_rmax;
     m_dz = a_from.m_dz;
@@ -89,13 +106,6 @@ public:
   void set_rmin(double a_v) {m_rmin = a_v;}
   void set_rmax(double a_v) {m_rmax = a_v;}
   void set_dz(double a_v) {m_dz = a_v;}
-
-  virtual void dump(std::ostream& a_out) const {
-    a_out << " rmin=" << m_rmin
-          << " rmax=" << m_rmax
-          << " dz=" << m_dz
-          << std::endl;
-  }
 protected:
   double m_rmin;
   double m_rmax;
@@ -177,8 +187,8 @@ public:
   void set_phi1(double a_v) {m_phi1 = a_v;}
   void set_phi2(double a_v) {m_phi2 = a_v;}
 protected:
-  double m_phi1;  // first phi limit 
-  double m_phi2;  // second phi limit 
+  double m_phi1;  // first phi limit
+  double m_phi2;  // second phi limit
 };
 
 class geo_hype : public geo_tube {
@@ -286,10 +296,10 @@ protected:
   double m_tinsq;  // Squared tangent of stereo angle for inner surface
   double m_toutsq; // Squared tangent of stereo angle for outer surface
 ///////////////////////////////////////////////////////////////////////////////
-//                                                                        
+//
 // TGeoHype - Hyperboloid class defined by 5 parameters. Bounded by:
 //            - Two z planes at z=+/-dz
-//            - Inner and outer lateral surfaces. These represent the surfaces 
+//            - Inner and outer lateral surfaces. These represent the surfaces
 //              described by the revolution of 2 hyperbolas about the Z axis:
 //               r^2 - (t*z)^2 = a^2
 //
@@ -299,8 +309,8 @@ protected:
 //            a = distance between hyperbola and Z axis at z=0
 //
 //          The inner hyperbolic surface is described by:
-//              r^2 - (tin*z)^2 = rin^2 
-//           - absence of the inner surface (filled hyperboloid can be forced 
+//              r^2 - (tin*z)^2 = rin^2
+//           - absence of the inner surface (filled hyperboloid can be forced
 //             by rin=0 and sin=0
 //          The outer hyperbolic surface is described by:
 //              r^2 - (tout*z)^2 = rout^2
@@ -309,7 +319,7 @@ protected:
 //           - rin < rout
 //           - rout > 0
 //           - rin^2 + (tin*dz)^2 > rout^2 + (tout*dz)^2
-//                                                                        
+//
 ///////////////////////////////////////////////////////////////////////////////
 };
 
@@ -471,8 +481,8 @@ protected:
   //   point (0,0,-dZ)                                           //
   // -  x,y,z components of the normal to the +dZ cut plane in   //
   //   point (0,0,dZ)                                            //
-  double m_low[3];  // normal to lower cut plane 
-  double m_high[3]; // normal to highet cut plane 
+  double m_low[3];  // normal to lower cut plane
+  double m_high[3]; // normal to highet cut plane
 };
 
 class geo_cone : public geo_bbox {
@@ -648,11 +658,13 @@ public:
   void set_phi1(double a_v) {m_phi1 = a_v;}
   void set_phi2(double a_v) {m_phi2 = a_v;}
 protected:
-  double m_phi1;  // first phi limit 
-  double m_phi2;  // second phi limit 
+  double m_phi1;  // first phi limit
+  double m_phi2;  // second phi limit
 };
 
 class geo_trd1 : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoTrd1");
     return s_v;
@@ -665,7 +677,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_trd1>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_trd1(*this);}
@@ -674,7 +686,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read(m_dx1)) return false;
     if(!a_buffer.read(m_dx2)) return false;
@@ -685,17 +697,23 @@ public: //iro
     return true;
   }
 
+
+  virtual void dump(std::ostream& a_out,const std::string& a_indent = std::string()) const {
+    parent::dump(a_out,a_indent);
+    a_out << a_indent << "trd1 :"
+          << " dx1 " << m_dx1 << ", dx2 " << m_dx2 << ", dy " << m_dy << ", dz " << m_dz << std::endl;
+  }
 public:
   static cid id_class() {return geo_trd1_cid();}
   virtual void* cast(cid a_class) const {
     if(void* p = cmp_cast<geo_trd1>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    else return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
   geo_trd1(ifac& a_fac)
-  :geo_bbox(a_fac)
+  :parent(a_fac)
   ,m_dx1(0)
   ,m_dx2(0)
   ,m_dy(0)
@@ -713,14 +731,14 @@ public:
 protected:
   geo_trd1(const geo_trd1& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   ,m_dx1(a_from.m_dx1)
   ,m_dx2(a_from.m_dx2)
   ,m_dy(a_from.m_dy)
   ,m_dz(a_from.m_dz)
   {}
   geo_trd1& operator=(const geo_trd1& a_from){
-    geo_bbox::operator=(a_from);
+    parent::operator=(a_from);
     m_dx1 = a_from.m_dx1;
     m_dx2 = a_from.m_dx2;
     m_dy = a_from.m_dy;
@@ -745,6 +763,8 @@ protected:
 };
 
 class geo_trd2 : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoTrd2");
     return s_v;
@@ -757,7 +777,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_trd2>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_trd2(*this);}
@@ -766,7 +786,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read(m_dx1)) return false;
     if(!a_buffer.read(m_dx2)) return false;
@@ -777,18 +797,24 @@ public: //iro
     if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
     return true;
   }
-
+public:
+  virtual void dump(std::ostream& a_out,const std::string& a_indent = std::string()) const {
+    parent::dump(a_out,a_indent);
+    a_out << a_indent << "trd1 :"
+          << " dx1 " << m_dx1 << ", dx2 " << m_dx2 << ", dy1 " << m_dy1 << ", dy2 " << m_dy2
+          << ", dz " << m_dz << std::endl;
+  }
 public:
   static cid id_class() {return geo_trd2_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_trd2>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    if(void* p = cmp_cast<geo_trd2>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
   geo_trd2(ifac& a_fac)
-  :geo_bbox(a_fac)
+  :parent(a_fac)
   ,m_dx1(0)
   ,m_dx2(0)
   ,m_dy1(0)
@@ -807,7 +833,7 @@ public:
 protected:
   geo_trd2(const geo_trd2& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   ,m_dx1(a_from.m_dx1)
   ,m_dx2(a_from.m_dx2)
   ,m_dy1(a_from.m_dy1)
@@ -815,7 +841,7 @@ protected:
   ,m_dz(a_from.m_dz)
   {}
   geo_trd2& operator=(const geo_trd2& a_from){
-    geo_bbox::operator=(a_from);
+    parent::operator=(a_from);
     m_dx1 = a_from.m_dx1;
     m_dx2 = a_from.m_dx2;
     m_dy1 = a_from.m_dy1;
@@ -844,6 +870,8 @@ protected:
 };
 
 class geo_sphere : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoSphere");
     return s_v;
@@ -856,7 +884,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_sphere>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_sphere(*this);}
@@ -865,7 +893,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read(m_nz)) return false;
     if(!a_buffer.read(m_nseg)) return false;
@@ -883,14 +911,14 @@ public: //iro
 public:
   static cid id_class() {return geo_sphere_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_sphere>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    if(void* p = cmp_cast<geo_sphere>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
   geo_sphere(ifac& a_fac)
-  :geo_bbox(a_fac)
+  :parent(a_fac)
   ,m_nz(0)
   ,m_nseg(0)
   ,m_rmin(0)
@@ -912,7 +940,7 @@ public:
 protected:
   geo_sphere(const geo_sphere& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   ,m_nz(a_from.m_nz)
   ,m_nseg(a_from.m_nseg)
   ,m_rmin(a_from.m_rmin)
@@ -923,7 +951,7 @@ protected:
   ,m_phi2(a_from.m_phi2)
   {}
   geo_sphere& operator=(const geo_sphere& a_from){
-    geo_bbox::operator=(a_from); 
+    parent::operator=(a_from);
     m_nz = a_from.m_nz;
     m_nseg = a_from.m_nseg;
     m_rmin = a_from.m_rmin;
@@ -964,6 +992,8 @@ protected:
 };
 
 class geo_pcon : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoPcon");
     return s_v;
@@ -976,7 +1006,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_pcon>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_pcon(*this);}
@@ -985,7 +1015,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read(m_nz)) return false;
     if(!a_buffer.read(m_phi1)) return false;
@@ -1001,14 +1031,14 @@ public: //iro
 public:
   static cid id_class() {return geo_pcon_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_pcon>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    if(void* p = cmp_cast<geo_pcon>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
   geo_pcon(ifac& a_fac)
-  :geo_bbox(a_fac)
+  :parent(a_fac)
   ,m_nz(0)
   ,m_phi1(0)
   ,m_dphi(0)
@@ -1031,7 +1061,7 @@ public:
 protected:
   geo_pcon(const geo_pcon& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   ,m_nz(a_from.m_nz)
   ,m_phi1(a_from.m_phi1)
   ,m_dphi(a_from.m_dphi)
@@ -1044,7 +1074,7 @@ protected:
     carray_copy(m_z,m_nz,a_from.m_z);
   }
   geo_pcon& operator=(const geo_pcon& a_from){
-    geo_bbox::operator=(a_from);
+    parent::operator=(a_from);
 
     if(&a_from==this) return *this;
 
@@ -1069,7 +1099,7 @@ public:
   int m_nz;    // number of z planes (at least two)
   double m_phi1;  // lower phi limit
   double m_dphi;  // phi range
-  double* m_rmin;  //[fNz] pointer to array of inner radii 
+  double* m_rmin;  //[fNz] pointer to array of inner radii
   double* m_rmax;  //[fNz] pointer to array of outer radii
   double* m_z;     //[fNz] pointer to array of Z planes positions
 };
@@ -1130,6 +1160,8 @@ protected:
 };
 
 class geo_arb8 : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoArb8");
     return s_v;
@@ -1142,7 +1174,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_arb8>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_arb8(*this);}
@@ -1151,7 +1183,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read(m_dz)) return false;
     if(!a_buffer.read_fast_array(m_xy,16)) return false;
@@ -1163,19 +1195,19 @@ public: //iro
 public:
   static cid id_class() {return geo_arb8_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_arb8>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    if(void* p = cmp_cast<geo_arb8>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
   geo_arb8(ifac& a_fac)
-  :geo_bbox(a_fac)
+  :parent(a_fac)
   ,m_dz(0)
   {
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
-#endif 
+#endif
     for(unsigned int i=0;i<16;i++) m_xy[i] = 0;
   }
   virtual ~geo_arb8(){
@@ -1186,13 +1218,13 @@ public:
 protected:
   geo_arb8(const geo_arb8& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   ,m_dz(a_from.m_dz)
   {
     for(unsigned int i=0;i<16;i++) m_xy[i] = a_from.m_xy[i];
   }
   geo_arb8& operator=(const geo_arb8& a_from){
-    geo_bbox::operator=(a_from);
+    parent::operator=(a_from);
     m_dz = a_from.m_dz;
     for(unsigned int i=0;i<16;i++) m_xy[i] = a_from.m_xy[i];
     return *this;
@@ -1412,6 +1444,8 @@ protected:
 };
 
 class geo_para : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoPara");
     return s_v;
@@ -1424,7 +1458,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_para>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_para(*this);}
@@ -1433,7 +1467,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read(m_dx)) return false;
     if(!a_buffer.read(m_dy)) return false;
@@ -1452,14 +1486,14 @@ public: //iro
 public:
   static cid id_class() {return geo_para_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_para>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    if(void* p = cmp_cast<geo_para>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
   geo_para(ifac& a_fac)
-  :geo_bbox(a_fac)
+  :parent(a_fac)
   ,m_dx(0)
   ,m_dy(0)
   ,m_dz(0)
@@ -1482,7 +1516,7 @@ public:
 public:
   geo_para(const geo_para& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   ,m_dx(a_from.m_dx)
   ,m_dy(a_from.m_dy)
   ,m_dz(a_from.m_dz)
@@ -1494,7 +1528,7 @@ public:
   ,m_tyz(a_from.m_tyz)
   {}
   geo_para& operator=(const geo_para& a_from){
-    geo_bbox::operator=(a_from);
+    parent::operator=(a_from);
     m_dx = a_from.m_dx;
     m_dy = a_from.m_dy;
     m_dz = a_from.m_dz;
@@ -1531,14 +1565,16 @@ protected:
   double m_dy;        // Y half-length
   double m_dz;        // Z half-length
   double m_alpha;  // angle w.r.t Y from the center of low Y to the hihg Y
-  double m_theta;  // polar angle of segment between low and hi Z surfaces    
-  double m_phi;  // azimuthal angle of segment between low and hi Z surfaces 
+  double m_theta;  // polar angle of segment between low and hi Z surfaces
+  double m_phi;  // azimuthal angle of segment between low and hi Z surfaces
   double m_txy;       // tangent of XY section angle
   double m_txz;       // tangent of XZ section angle
   double m_tyz;       // tangent of XZ section angle
 };
 
 class geo_torus : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoTorus");
     return s_v;
@@ -1551,7 +1587,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_torus>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_torus(*this);}
@@ -1560,7 +1596,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read(m_r)) return false;
     if(!a_buffer.read(m_rmin)) return false;
@@ -1575,14 +1611,14 @@ public: //iro
 public:
   static cid id_class() {return geo_torus_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_torus>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    if(void* p = cmp_cast<geo_torus>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
   geo_torus(ifac& a_fac)
-  :geo_bbox(a_fac)
+  :parent(a_fac)
   ,m_r(0)
   ,m_rmin(0)
   ,m_rmax(0)
@@ -1601,7 +1637,7 @@ public:
 protected:
   geo_torus(const geo_torus& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   ,m_r(a_from.m_r)
   ,m_rmin(a_from.m_rmin)
   ,m_rmax(a_from.m_rmax)
@@ -1609,7 +1645,7 @@ protected:
   ,m_dphi(a_from.m_dphi)
   {}
   geo_torus& operator=(const geo_torus& a_from){
-    geo_bbox::operator=(a_from);
+    parent::operator=(a_from);
     m_r = a_from.m_r;
     m_rmin = a_from.m_rmin;
     m_rmax = a_from.m_rmax;
@@ -1638,6 +1674,8 @@ protected:
 };
 
 class geo_half_space : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoHalfSpace");
     return s_v;
@@ -1650,7 +1688,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_half_space>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_half_space(*this);}
@@ -1659,7 +1697,7 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     double fP[3];
     if(!a_buffer.read_fast_array(fP,3)) return false;
@@ -1674,13 +1712,13 @@ public: //iro
 public:
   static cid id_class() {return geo_half_space_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_half_space>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    if(void* p = cmp_cast<geo_half_space>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
-  geo_half_space(ifac& a_fac):geo_bbox(a_fac){
+  geo_half_space(ifac& a_fac):parent(a_fac){
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
 #endif
@@ -1693,7 +1731,7 @@ public:
 protected:
   geo_half_space(const geo_half_space& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   {}
   geo_half_space& operator=(const geo_half_space&){
     return *this;
@@ -1701,6 +1739,8 @@ protected:
 };
 
 class geo_shape_assembly : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoShapeAssembly");
     return s_v;
@@ -1713,7 +1753,7 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_shape_assembly>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_shape_assembly(*this);}
@@ -1722,10 +1762,10 @@ public: //iro
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     //TGeoVolumeAssembly   *fVolume;   // assembly volume
-    if(!dummy_TXxx_pointer_stream(a_buffer,m_fac,false)) {
+    if(!dummy_TXxx_pointer_stream(a_buffer,m_fac)) {
       a_buffer.out() << "inlib::rroot::geo_shape_assembly::stream : "
                      << "can't read fVolume."
                      << std::endl;
@@ -1739,13 +1779,13 @@ public: //iro
 public:
   static cid id_class() {return geo_shape_assembly_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_shape_assembly>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    if(void* p = cmp_cast<geo_shape_assembly>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
-  geo_shape_assembly(ifac& a_fac):geo_bbox(a_fac){
+  geo_shape_assembly(ifac& a_fac):parent(a_fac){
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
 #endif
@@ -1758,7 +1798,7 @@ public:
 protected:
   geo_shape_assembly(const geo_shape_assembly& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   {}
   geo_shape_assembly& operator=(const geo_shape_assembly&){
     return *this;

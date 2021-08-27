@@ -23,7 +23,7 @@ public:
     return parent::cast(a_class);
   }
 public:
-  sf<bool> back_visible;  
+  sf<bool> back_visible;
   sf_vec<colorf,float> color;
   //sf<float> transparency;
   sf_img<inlib::byte> img;
@@ -74,12 +74,12 @@ public:
     //m_sep.pick(a_action);
   }
   virtual void search(search_action& a_action) {
-    node::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg();
       reset_touched();
     }
+    parent::search(a_action);
+    if(a_action.done()) return;
     if(back_visible.value()) {
       m_back_sep.search(a_action);
       if(a_action.done()) return;

@@ -41,14 +41,56 @@ public:
 #ifdef INLIB_MEM
     mem::increment(s_class().c_str());
 #endif
-  }  
+  }
   c2d2plot_cp& operator=(const c2d2plot_cp& a_from){
-    c2d2plot::operator=(a_from);    
+    c2d2plot::operator=(a_from);
     m_cp = a_from.m_cp;
     return *this;
   }
 protected:
   histo::c2d m_cp;
+};
+
+class c3d2plot_cp : public c3d2plot {
+public:
+  INLIB_SCLASS(inlib::sg::c3d2plot_cp)
+public:
+  virtual void* cast(const std::string& a_class) const {
+    if(void* p = cmp_cast<c3d2plot_cp>(this,a_class)) {return p;}
+    return c3d2plot::cast(a_class);
+  }
+public:
+  virtual plottable* copy() const {return new c3d2plot_cp(*this);}
+public:
+  c3d2plot_cp(const histo::c3d& a_data)
+  :c3d2plot(m_cp)
+  ,m_cp(a_data)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~c3d2plot_cp(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  c3d2plot_cp(const c3d2plot_cp& a_from)
+  :plottable(a_from),points3D(a_from),c3d2plot(m_cp)
+  ,m_cp(a_from.m_cp)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  c3d2plot_cp& operator=(const c3d2plot_cp& a_from){
+    c3d2plot::operator=(a_from);
+    m_cp = a_from.m_cp;
+    return *this;
+  }
+protected:
+  histo::c3d m_cp;
 };
 
 }}

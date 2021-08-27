@@ -12,6 +12,8 @@ namespace inlib {
 namespace rroot {
 
 class geo_xtru : public geo_bbox {
+  typedef geo_bbox parent;
+private:
   static const std::string& s_store_class() {
     static const std::string s_v("TGeoXtru");
     return s_v;
@@ -24,16 +26,18 @@ public:
 public: //iro
   virtual void* cast(const std::string& a_class) const {
     if(void* p = cmp_cast<geo_xtru>(this,a_class)) return p;
-    return geo_bbox::cast(a_class);
+    return parent::cast(a_class);
   }
   virtual const std::string& s_cls() const {return s_class();}
   virtual iro* copy() const {return new geo_xtru(*this);}
   virtual bool stream(buffer& a_buffer) {
+    _clear();
+
     unsigned int s, c;
     short v;
     if(!a_buffer.read_version(v,s,c)) return false;
 
-    if(!geo_bbox::stream(a_buffer)) return false;
+    if(!parent::stream(a_buffer)) return false;
 
     if(!a_buffer.read(m_nvert)) return false;
     if(!a_buffer.read(m_nz)) return false;
@@ -41,104 +45,70 @@ public: //iro
 
     //TGeoPolygon* fPoly;  // polygon defining section shape
     ifac::args args;
-    if(!pointer_stream(a_buffer,m_fac,args,m_poly)) {
+    if(!pointer_stream(a_buffer,m_fac,args,m_poly,m_poly_created)) {
       a_buffer.out() << "inlib::rroot::geo_xtru::stream : "
                      << "can't read fPoly."
                      << std::endl;
       return false;
     }
 
-    if(!fixed_array_stream<double>(a_buffer,m_nvert,m_xs)) return false;
-    if(!fixed_array_stream<double>(a_buffer,m_nvert,m_ys)) return false;
-    if(!fixed_array_stream<double>(a_buffer,m_nvert,m_xcs)) return false;
-    if(!fixed_array_stream<double>(a_buffer,m_nvert,m_ycs)) return false;
+    if(!fixed_array_stream<double>(a_buffer,m_nvert,m_xs)) {_clear();return false;}
+    if(!fixed_array_stream<double>(a_buffer,m_nvert,m_ys)) {_clear();return false;}
+    if(!fixed_array_stream<double>(a_buffer,m_nvert,m_xcs)) {_clear();return false;}
+    if(!fixed_array_stream<double>(a_buffer,m_nvert,m_ycs)) {_clear();return false;}
 
-    if(!fixed_array_stream<double>(a_buffer,m_nz,m_zs)) return false;
-    if(!fixed_array_stream<double>(a_buffer,m_nz,m_scales)) return false;
-    if(!fixed_array_stream<double>(a_buffer,m_nz,m_x0s)) return false;
-    if(!fixed_array_stream<double>(a_buffer,m_nz,m_y0s)) return false;
+    if(!fixed_array_stream<double>(a_buffer,m_nz,m_zs)) {_clear();return false;}
+    if(!fixed_array_stream<double>(a_buffer,m_nz,m_scales)) {_clear();return false;}
+    if(!fixed_array_stream<double>(a_buffer,m_nz,m_x0s)) {_clear();return false;}
+    if(!fixed_array_stream<double>(a_buffer,m_nz,m_y0s)) {_clear();return false;}
 
-    if(!a_buffer.check_byte_count(s,c,s_store_class())) return false;
+    if(!a_buffer.check_byte_count(s,c,s_store_class())) {_clear();return false;}
     return true;
   }
 
 public:
   static cid id_class() {return geo_xtru_cid();}
   virtual void* cast(cid a_class) const {
-    if(void* p = cmp_cast<geo_xtru>(this,a_class)) {return p;}
-    else return geo_bbox::cast(a_class);
+    if(void* p = cmp_cast<geo_xtru>(this,a_class)) return p;
+    return parent::cast(a_class);
   }
   virtual cid id_cls() const {return id_class();}
 
 public:
-  virtual void dump(std::ostream& a_out) const {
-    bool dump_4_rshape = true;
-    if(dump_4_rshape) {
+  virtual void dump(std::ostream& a_out,const std::string& a_indent = std::string()) const {
+    a_out << a_indent << "xtru :"
+          << " nvert " << m_nvert
+          << ", nz " << m_nz
+          << ", has_polygon " << (m_poly?"true":"false")
+          << std::endl;
 
-      a_out << "      shape->set_nvert(" << m_nvert << ");" << std::endl
-            << "      double xs["        << m_nvert << "];" << std::endl
-            << "      double ys["        << m_nvert << "];" << std::endl
+    a_out << a_indent << "xs, ys (%d) :" << m_nvert << std::endl;
+   {for(int i=0;i<m_nvert;i++) {
+      a_out << a_indent << i << " : " << m_xs[i] << " " << m_ys[i] << std::endl;
+    }}
+
+    a_out << a_indent << " zs, scales, x0s, y0s (%d) :" << m_nz << std::endl;
+   {for(int i=0;i<m_nz;i++) {
+      a_out << a_indent
+            << i << " :"
+            << " " << m_zs[i]
+            << " " << m_scales[i]
+            << " " << m_x0s[i]
+            << " " << m_y0s[i]
             << std::endl;
-
-     {for(int i=0;i<m_nvert;i++) {        
-        a_out << "      "
-              << "xs["  << i << "] = " << m_xs[i]
-              << ";ys[" << i << "] = " << m_ys[i]
-              << ";" << std::endl;
-      }}
-  
-      a_out << "      shape->set_nz(" << m_nz << ");" << std::endl
-            << "      double zs[" << m_nz << "];" << std::endl
-            << "      double scales[" << m_nz << "];" << std::endl
-            << "      double x0s[" << m_nz << "];" << std::endl
-            << "      double y0s[" << m_nz << "];" << std::endl
-            << std::endl;
-
-     {for(int i=0;i<m_nz;i++) {        
-        a_out << "      "
-              << "zs["      << i << "] = " << m_zs[i]
-              << ";scales[" << i << "] = " << m_scales[i]
-              << ";x0s["    << i << "] = " << m_x0s[i]
-              << ";y0s["    << i << "] = " << m_y0s[i]
-              << ";" << std::endl;
-      }}
-
-    } else {
-
-      a_out << "geo_xtru :"
-            << " nvert " << m_nvert
-            << ", nz " << m_nz
-            << ", has_polygon " << (m_poly?"true":"false")
-            << std::endl;
-  
-      a_out << " xs, ys (%d) :" << m_nvert << std::endl;
-     {for(int i=0;i<m_nvert;i++) {        
-        a_out << "  " << i << " : " << m_xs[i] << " " << m_ys[i] << std::endl;
-      }}
-  
-      a_out << " zs, scales, x0s, y0s (%d) :" << m_nz << std::endl;
-     {for(int i=0;i<m_nz;i++) {        
-        a_out << "  " << i << " :"
-              << " " << m_zs[i]
-              << " " << m_scales[i]
-              << " " << m_x0s[i]
-              << " " << m_y0s[i]
-              << std::endl;
-      }}
-
-    } 
+    }}
 
     if(m_poly) {
       int indn = m_poly->nvert();
       int* inds = m_poly->inds();
       if(indn!=m_nvert) {
-        a_out << "  there is a geo_polygon with indn (" << indn
+        a_out << a_indent << "there is a geo_polygon with indn (" << indn
               << ") not the same than nvert (" << m_nvert << ")."
               << std::endl;
       } else {
-        for(int i=0;i<m_nvert;i++) {        
+        for(int i=0;i<m_nvert;i++) {
           if(inds[i]!=i) {
-            a_out << "  there is a geo_polygon with not default indexing."
+            a_out << a_indent << "there is a geo_polygon with not default indexing."
                   << std::endl;
             break;
           }
@@ -148,11 +118,12 @@ public:
   }
 public:
   geo_xtru(ifac& a_fac)
-  :geo_bbox(a_fac)
+  :parent(a_fac)
   ,m_nvert(0)
   ,m_nz(0)
   ,m_zcurrent(0)
   ,m_poly(0)
+  ,m_poly_created(false)
 
   ,m_xs(0)
   ,m_ys(0)
@@ -168,6 +139,7 @@ public:
 #endif
   }
   virtual ~geo_xtru(){
+    _clear();
     destroy(m_xs);
     destroy(m_ys);
     destroy(m_xcs);
@@ -183,11 +155,12 @@ public:
 protected:
   geo_xtru(const geo_xtru& a_from)
   :iro(a_from)
-  ,geo_bbox(a_from)
+  ,parent(a_from)
   ,m_nvert(a_from.m_nvert)
   ,m_nz(a_from.m_nz)
   ,m_zcurrent(a_from.m_zcurrent)
   ,m_poly(a_from.m_poly)
+  ,m_poly_created(a_from.m_poly_created)
 
   ,m_xs(0)
   ,m_ys(0)
@@ -214,6 +187,7 @@ protected:
     m_nz = a_from.m_nz;
     m_zcurrent = a_from.m_zcurrent;
     m_poly = a_from.m_poly;
+    m_poly_created = a_from.m_poly_created;
 
     carray_copy(m_xs,m_nvert,a_from.m_xs);
     carray_copy(m_ys,m_nvert,a_from.m_ys);
@@ -253,11 +227,63 @@ public:
   void set_x0s(const double a_v[]) {carray_copy(m_x0s,m_nz,a_v);}
   void set_y0s(const double a_v[]) {carray_copy(m_y0s,m_nz,a_v);}
 
+  void dump_4_rshape(std::ostream& a_out) const {
+    a_out << "      shape->set_nvert(" << m_nvert << ");" << std::endl
+          << "      double xs["        << m_nvert << "];" << std::endl
+          << "      double ys["        << m_nvert << "];" << std::endl
+          << std::endl;
+
+   {for(int i=0;i<m_nvert;i++) {
+      a_out << "      "
+            << "xs["  << i << "] = " << m_xs[i]
+            << ";ys[" << i << "] = " << m_ys[i]
+            << ";" << std::endl;
+    }}
+
+    a_out << "      shape->set_nz(" << m_nz << ");" << std::endl
+          << "      double zs[" << m_nz << "];" << std::endl
+          << "      double scales[" << m_nz << "];" << std::endl
+          << "      double x0s[" << m_nz << "];" << std::endl
+          << "      double y0s[" << m_nz << "];" << std::endl
+          << std::endl;
+
+   {for(int i=0;i<m_nz;i++) {
+      a_out << "      "
+            << "zs["      << i << "] = " << m_zs[i]
+            << ";scales[" << i << "] = " << m_scales[i]
+            << ";x0s["    << i << "] = " << m_x0s[i]
+            << ";y0s["    << i << "] = " << m_y0s[i]
+            << ";" << std::endl;
+    }}
+
+    if(m_poly) {
+      int indn = m_poly->nvert();
+      int* inds = m_poly->inds();
+      if(indn!=m_nvert) {
+        a_out << "  there is a geo_polygon with indn (" << indn
+              << ") not the same than nvert (" << m_nvert << ")."
+              << std::endl;
+      } else {
+        for(int i=0;i<m_nvert;i++) {
+          if(inds[i]!=i) {
+            a_out << "  there is a geo_polygon with not default indexing."
+                  << std::endl;
+            break;
+          }
+        }
+      }
+    }
+  }
+protected:
+  void _clear() {
+    if(m_poly_created) {delete m_poly;m_poly = 0;m_poly_created = false;}
+  }
 protected:
   int m_nvert;           // number of vertices of the 2D polygon (at least 3)
   int m_nz;              // number of z planes (at least two)
   double m_zcurrent;     // current Z position
   geo_polygon* m_poly;   // polygon defining section shape
+  bool m_poly_created;
 
   // xs, ys are assumed to clockwise.
   double* m_xs;          //[fNvert] X positions for polygon vertices
@@ -266,7 +292,7 @@ protected:
   double* m_ycs;         //[fNvert] current Y positions for polygon vertices
 
   // NOTE : zs are assumed to go from - to +.
-  double* m_zs;          //[fNz] array of Z planes positions 
+  double* m_zs;          //[fNz] array of Z planes positions
   double* m_scales;      //[fNz] array of scale factors (for each Z)
   double* m_x0s;         //[fNz] array of X offsets (for each Z)
   double* m_y0s;         //[fNz] array of Y offsets (for each Z)

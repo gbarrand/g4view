@@ -10,14 +10,14 @@ namespace inlib {
 template <class T,class UINT>
 inline T power(const T& a_x,UINT a_n) {
   T v = T(1);
-  for(UINT i=UINT(0);i<a_n;i++) v *= a_x; 
+  for(UINT i=UINT(0);i<a_n;i++) v *= a_x;
   return v;
 }
 
 template <class UINT,class T>
 inline T factorial(UINT a_n) {
   T v = T(1);
-  for(UINT i=UINT(1);i<=a_n;i++) v *= T(i); 
+  for(UINT i=UINT(1);i<=a_n;i++) v *= T(i);
   return v;
 }
 */
@@ -25,13 +25,13 @@ inline T factorial(UINT a_n) {
 template <class T,class UINT>
 inline void power(const T& a_x,UINT a_n,T& a_value) { // without return copy :
   a_value = T(1);
-  for(UINT i=UINT(0);i<a_n;i++) a_value *= a_x; 
+  for(UINT i=UINT(0);i<a_n;i++) a_value *= a_x;
 }
 
 template <class UINT,class T>
 inline void factorial(UINT a_n,T& a_value) { // without return copy :
   a_value = T(1);
-  for(UINT i=UINT(1);i<=a_n;i++) a_value *= T(i); 
+  for(UINT i=UINT(1);i<=a_n;i++) a_value *= T(i);
 }
 
 template <class UINT,class T>

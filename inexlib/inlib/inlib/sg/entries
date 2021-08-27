@@ -24,7 +24,11 @@ namespace inlib {
 namespace sg {
 
 class entries : public base_list {
-  INLIB_CLASS_STRING(User)
+//INLIB_CLASS_STRING_VALUE(enter,)
+  static const std::string& s_enter() {
+    static const std::string s_v;
+    return s_v;
+  }
 public:
   INLIB_NODE(entries,inlib::sg::entries,base_list)
 public:
@@ -98,7 +102,7 @@ public:
       INLIB_ARG_FIELD_DESC(list_visible_items),
       INLIB_ARG_FIELD_DESC(entry_label_result_factor),
       INLIB_ARG_FIELD_DESC(labels_back_color),
-      INLIB_ARG_FIELD_DESC(shown_label_color)      
+      INLIB_ARG_FIELD_DESC(shown_label_color)
     );
     return s_v;
   }
@@ -145,12 +149,12 @@ public:
     if(a_action.done()) return;
   }
   virtual void search(search_action& a_action) {
-    node::search(a_action);
-    if(a_action.done()) return;
     if(touched()) {
       update_sg(a_action.out());
       reset_touched();
     }
+    node::search(a_action);
+    if(a_action.done()) return;
     if(a_action.do_path()) a_action.path_push(this);
     m_switch.search(a_action);
     if(a_action.done()) return;
@@ -195,6 +199,7 @@ public:
   ,m_file_chooser(a_ttf)
 
   ,m_active_index(-1)
+  ,m_etc()
   {
     add_fields();
     m_switch.which = WHICH_PANEL();
@@ -216,7 +221,7 @@ public:
   ,keyboard_width(a_from.keyboard_width)
   ,keyboard_height(a_from.keyboard_height)
   ,colors_width(a_from.colors_width)
-  ,colors_height(a_from.colors_height) 
+  ,colors_height(a_from.colors_height)
   ,edvalop_width(a_from.edvalop_width)
   ,edvalop_height(a_from.edvalop_height)
   ,file_chooser_width(a_from.file_chooser_width)
@@ -241,6 +246,7 @@ public:
 
   ,m_active_index(a_from.m_active_index)
   ,m_valops(a_from.m_valops)
+  ,m_etc(a_from.m_etc)
   {
     add_fields();
     m_switch.which = a_from.m_switch.which;
@@ -278,6 +284,7 @@ public:
     m_active_index = a_from.m_active_index;
 
     m_valops = a_from.m_valops;
+    m_etc = a_from.m_etc;
 
     return *this;
   }
@@ -480,6 +487,13 @@ public:
     opts.add(std::vector<std::string>());
     m_valops.push_back(valop::def());
   }
+  void add_ip(const std::string& a_label,const std::string& a_default){
+    labels.add(a_label);
+    types.add(entry_ip);
+    values.add(a_default);
+    opts.add(std::vector<std::string>());
+    m_valops.push_back(valop::def());
+  }
 
   template <class T>
   bool get_color(unsigned int a_index,T& a_r,T& a_g,T& a_b,T& a_a) {
@@ -493,6 +507,10 @@ public:
 public:
   sg::edvalop& edvalop() {return m_edvalop;}
   sg::file_chooser& file_chooser() {return m_file_chooser;}
+  const sg::numeric& numeric() const {return m_numeric;}
+public:
+  const std::vector<std::string>& etc() const {return m_etc;}
+  std::vector<std::string>& etc() {return m_etc;}
 protected:
   typedef std::vector<std::string> opts_t;
 
@@ -553,7 +571,7 @@ protected:
 
   static return_action action_hide_combo(entries& a_this,std::ostream& a_out,unsigned int a_index,
                                                const bcbk& a_cbk,list& a_list,const opts_t& a_opts) {
-    if(a_opts.size()&&(a_opts[0]==s_User())) {
+    if(a_opts.size()&&(a_opts[0]==s_enter())) {
       std::vector<std::string> opts;
       return action_show_numeric(a_this,a_out,a_index,a_cbk,a_this.m_numeric,opts);
     } else {
@@ -562,8 +580,8 @@ protected:
   }
 
   static return_action action_hide_combo_string(entries& a_this,std::ostream& a_out,unsigned int a_index,
-                                                      const bcbk& a_cbk,list& a_list,const opts_t& a_opts) {
-    if(a_opts.size()&&(a_opts[0]==s_User())) {
+                                                const bcbk& a_cbk,list& a_list,const opts_t& a_opts) {
+    if(a_opts.size()&&(a_opts[0]==s_enter())) {
       std::vector<std::string> opts;
       return action_show_keyboard(a_this,a_out,a_index,a_cbk,a_this.m_keyboard,opts);
     } else {
@@ -572,7 +590,7 @@ protected:
   }
 
   static return_action action_show_numeric(entries& a_this,std::ostream& a_out,unsigned int a_index,
-                                           const bcbk&,numeric& a_widget,const opts_t&) {
+                                           const bcbk&,sg::numeric& a_widget,const opts_t&) {
     a_this.label_back_color = a_this.shown_label_color;
     entry_type type;
     if(!a_this.types.get_value(a_index,type)) type = entry_real;
@@ -605,25 +623,19 @@ protected:
     } else { //just in case :
       a_widget.number_type = sg::number_real;
     }
-    //as long as we can edit the result area it makes no sense
-    //to set a default value in numeric.
-    //a_widget->value = a_this.values[a_index];
 
-    a_widget.value = "";
+    a_widget.value = a_this.values[a_index];  //set default.
     a_widget.clear_cbks();
-    a_widget.add_callback(new __cbk<numeric>(a_this,a_out,a_index,a_widget,action_hide_widget<numeric>));
+    a_widget.add_callback(new __cbk<sg::numeric>(a_this,a_out,a_index,a_widget,action_hide_widget<sg::numeric>));
     a_this.m_switch.which = WHICH_NUMERIC();
     a_this.m_active_index = a_index;
     return return_to_render;
   }
 
   static return_action action_show_keyboard(entries& a_this,std::ostream& a_out,unsigned int a_index,
-                                                  const bcbk&,keyboard& a_widget,const opts_t&) {
+                                            const bcbk&,keyboard& a_widget,const opts_t&) {
     a_this.label_back_color = a_this.shown_label_color;
-    //as long as we can edit the result area it makes no sense
-    //to set a default value in keyboard.
-    //a_widget.value = a_this.values[a_index];
-    a_widget.value = "";
+    a_widget.value = a_this.values[a_index];  //set default.
     a_widget.clear_cbks();
     a_widget.add_callback(new __cbk<keyboard>(a_this,a_out,a_index,a_widget,action_hide_widget<keyboard>));
     a_this.m_switch.which = WHICH_KEYBOARD();
@@ -634,7 +646,7 @@ protected:
   static return_action action_show_colors(entries& a_this,std::ostream& a_out,unsigned int a_index,
                                                 const bcbk&,colors& a_widget,const opts_t&) {
     a_this.label_back_color = a_this.shown_label_color;
-    a_widget.value = "";
+    a_widget.value = a_this.values[a_index];  //set default.
     a_widget.clear_cbks();
     a_widget.add_callback(new __cbk<colors>(a_this,a_out,a_index,a_widget,action_hide_widget<colors>));
     a_this.m_switch.which = WHICH_COLORS();
@@ -657,7 +669,7 @@ protected:
                                                       const bcbk&,sg::file_chooser& a_widget,const opts_t&) {
     a_this.label_back_color = a_this.shown_label_color;
 
-    a_widget.value = ""; //default ?
+    a_widget.value = a_this.values[a_index];  //set default.
     a_widget.clear_cbks();
     a_widget.add_callback(new __cbk<sg::file_chooser>(a_this,a_out,a_index,a_widget,action_hide_widget<sg::file_chooser>));
     a_widget.initialize(a_out);
@@ -687,11 +699,11 @@ protected:
     list->scroll_width = a_this.list_scroll_width;
     list->text_common_height = true;
     list->visible_items = a_this.list_visible_items;
-    
+
     list->font = a_this.font;
     list->font_modeling = a_this.font_modeling;
     //a_gv.set_style(*list);
-    
+
     list->back_color = a_this.back_color;
     list->border_color = a_this.border_color;
     list->front_color = a_this.front_color;
@@ -956,7 +968,7 @@ protected:
       entry_type type;
       if(!types.get_value(m_active_index,type)) {
         type = entry_real;
-      }        
+      }
       if(type==entry_real) {
         m_numeric.number_type = number_real;
       } else if(type==entry_range) {
@@ -984,7 +996,7 @@ protected:
       }
       m_numeric.value = old_numeric_value;
       m_numeric.clear_cbks();
-      m_numeric.add_callback(new __cbk<numeric>(*this,a_out,m_active_index,m_numeric,action_hide_widget<numeric>));
+      m_numeric.add_callback(new __cbk<sg::numeric>(*this,a_out,m_active_index,m_numeric,action_hide_widget<sg::numeric>));
 
     } else if(m_switch.which==WHICH_KEYBOARD()) { //keyboard is shown.
       m_keyboard.value = old_keyboard_value;
@@ -1036,7 +1048,7 @@ protected:
         (type==entry_range)  ||
         (type==entry_ip)     ||
         (type==entry_radec)  ){
-      entry->add_callback(new __cbk<numeric>(*this,a_out,a_index,m_numeric,action_show_numeric));
+      entry->add_callback(new __cbk<sg::numeric>(*this,a_out,a_index,m_numeric,action_show_numeric));
 
     } else if(type==entry_string) {
       entry->add_callback(new __cbk<keyboard>(*this,a_out,a_index,m_keyboard,action_show_keyboard));
@@ -1064,13 +1076,13 @@ protected:
     } else if(type==entry_combo) {
       std::vector<std::string> _opts;
       if(a_index<opts.size()) _opts = opts.values()[a_index];
-      _opts.insert(_opts.begin(),s_User());
+      _opts.insert(_opts.begin(),s_enter());
       entry->add_callback(new __cbk<sg::entry>(*this,a_out,a_index,*entry,action_show_combo,_opts));
 
     } else if(type==entry_combo_string) {
       std::vector<std::string> _opts;
       if(a_index<opts.size()) _opts = opts.values()[a_index];
-      _opts.insert(_opts.begin(),s_User());
+      _opts.insert(_opts.begin(),s_enter());
       entry->add_callback(new __cbk<sg::entry>(*this,a_out,a_index,*entry,action_show_combo_string,_opts));
 
     } else { //not_editable
@@ -1095,7 +1107,7 @@ protected:
     b->arm_color = arm_color;
     b->wmargin_factor = text_wmargin_factor;
     b->hmargin_factor = text_hmargin_factor;
-    	
+
     b->hjust = center;
 
     b->corner_radius = corner_radius;
@@ -1117,7 +1129,7 @@ protected:
   sg::cbks m_cbks;
   _switch m_switch;
 
-  numeric m_numeric;
+  sg::numeric m_numeric;
   keyboard m_keyboard;
   colors m_colors;
   sg::edvalop m_edvalop;
@@ -1126,6 +1138,8 @@ protected:
   int m_active_index;
   std::vector<valop> m_valops;
   std::map<unsigned int,entry*> m_entries;
+
+  std::vector<std::string> m_etc;
 };
 
 }}

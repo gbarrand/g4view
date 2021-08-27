@@ -8,8 +8,8 @@
 // in order to have a stand alone C++ version of the Minuit package.
 //
 //  The usage of TString has been replaced by the usage of std::string
-// The reference to TNamed, TObject and TMethods has been removed. 
-// In "the ROOT of everything" it could be reintroduced through a 
+// The reference to TNamed, TObject and TMethods has been removed.
+// In "the ROOT of everything" it could be reintroduced through a
 // class TMinuit that could inherit the f2cmn::fitter one (we can
 // dream no ?).
 //
@@ -277,12 +277,12 @@ namespace f2cmn {
 template <class T>
 inline T TMath_Min(const T& a,const T& b) {
   return (a<b?a:b);
-}    
+}
 
 template <class T>
 inline T TMath_Max(const T& a,const T& b) {
   return (a>b?a:b);
-}    
+}
 
 
 inline double TMath_Log(double a){return ::log(a);}
@@ -751,7 +751,7 @@ void fitter::mncntr(int ke1, int ke2, int &ierrf)
 	unext = fU[ke2-1] - bwidy;
 //*-*-                prepare this line background pattern for contour
 	chln = " ";
-// TH	
+// TH
 	chln.resize(nx+1);
 	chln[ixmid-1] = '*';
 	if (ixzero != 0) chln[ixzero-1] = ':';
@@ -1251,9 +1251,9 @@ L150:
 L250:
     iend = ipos - 1;
     ++ielmnt;
-    if (iend >= ibegin) 
+    if (iend >= ibegin)
       celmnt[ielmnt-1] = msubstr(crdbuf,ibegin-1, iend-ibegin+1);
-    else                
+    else
       celmnt[ielmnt-1] = cnull;
     lelmnt[ielmnt-1] = iend - ibegin + 1;
     if (lelmnt[ielmnt-1] > 19) {
@@ -1285,7 +1285,7 @@ L300:
     for (ielmnt = 1; ielmnt <= nelmnt; ++ielmnt) {
 	if ( celmnt[ielmnt-1] == cnull) goto L450;
 	for (ic = 1; ic <= 13; ++ic) {
-	    if (msubstr(celmnt[ielmnt-1],0,1) == 
+	    if (msubstr(celmnt[ielmnt-1],0,1) ==
 		msubstr(cnumer,ic-1,1)) goto L450;
 	}
 	if (kcmnd >= maxcwd) continue;
@@ -2437,11 +2437,11 @@ L400:
     return;
 //*-*-                                       . . . . . . . . . . minos
 L500:
-    //GB : NT/cl.exe gives a warning about << and precedence 
+    //GB : NT/cl.exe gives a warning about << and precedence
     //     in the below original code :
 //GB    nsuper = fNfcn + (fNpar + 1 << 1)*fNfcnmx;
     //GB : I have change for the below. The precedence had been tested
-    //     on a Linux/gxx, MacOSX/gxx and OSF1/cxx.
+    //     on a Linux/gxx, macOS/gxx and OSF1/cxx.
     nsuper = fNfcn + ((fNpar + 1) << 1)*fNfcnmx; //GB
 //*-*-         possible loop over new minima
     fEpsi = fUp*.1;
@@ -7580,7 +7580,7 @@ void fitter::mnwerr()
     }
 } /* mnwerr_ */
 
-}} 
+}}
 
 #endif //INLIB_TAKE_CODE
 
@@ -7609,8 +7609,8 @@ public:
   }
 public:
   std::vector<double> m_coords;
-  double m_value;  
-  double m_error;  
+  double m_value;
+  double m_error;
 };
 
 class parameter {
@@ -7634,11 +7634,11 @@ public:
     return *this;
   }
 public:
-  std::string m_name;  
-  double m_start;  
-  double m_step;  
-  double m_min;  
-  double m_max;  
+  std::string m_name;
+  double m_start;
+  double m_step;
+  double m_min;
+  double m_max;
 };
 
 class command {
@@ -7697,7 +7697,7 @@ public:
   size_t argn() const {return m_argn;}
   const double* args() const {return m_args;}
 private:
-  std::string m_name;  
+  std::string m_name;
   size_t m_argn;
   double m_args[30];
 };
@@ -7730,7 +7730,8 @@ public:
      {inlib_vforcit(point,_data,itd){
         const point& _dp = *itd; //data point.
 
-        double _value = _func.value(_dp.m_coords);
+        double _value;
+        if(!_func.value(_dp.m_coords,_value)) {a_value = 0;return false;}
         double chinew = (_dp.m_value - _value)/_dp.m_error;
         m_chi2 += (chinew * chinew);
       }}
@@ -7770,14 +7771,14 @@ public:
                   const std::vector<command>& a_cmds = std::vector<command>(1,command("MIGRAD")),
                   bool a_mnexcm = true){
 
-    //NOTE : the size of a_output is : 
+    //NOTE : the size of a_output is :
     //         2 + a_params.size() * 4
     //       with :
     //         a_output[0] = chi2
     //         a_output[1] = number of degree of freedom
 
     //exa cmd : MINIMIZE, MINOS
-  
+
     a_output.clear();
 
     func_fitter _func(a_dfs);
@@ -7834,7 +7835,7 @@ public:
       a_output.push_back(bmax);
     }
 
-    return true;  
+    return true;
   }
 
   static bool fit(std::ostream& a_out,
@@ -7860,10 +7861,9 @@ inline bool fit_data(std::ostream& a_out,
                      const std::vector< f2cmn::parameter >& a_params,
                      fit_func& a_func,
                      std::vector<double>& a_output,
-                     const std::vector<command>& a_cmds =
-                       std::vector<command>(1,command("MIGRAD"))){
+                     const std::vector<command>& a_cmds = std::vector<command>(1,command("MIGRAD"))){
 
-  //NOTE : the size of a_output is : 
+  //NOTE : the size of a_output is :
   //         2 + a_params.size() * 4
   //       with :
   //         a_output[0] = chi2
@@ -7897,7 +7897,7 @@ inline bool fit_1D(std::ostream& a_out,
                      std::vector<command>(1,command("MIGRAD")),
                    bool a_mnexcm = true){
 
-  //NOTE : the size of a_output is : 
+  //NOTE : the size of a_output is :
   //         2 + a_params.size() * 4
   //       with :
   //         a_output[0] = chi2
@@ -7920,18 +7920,18 @@ inline bool fit_1D(std::ostream& a_out,
 
   std::vector< f2cmn::point > data;
 
-  for(int index=0;index<nbin;index++) { 
+  for(int index=0;index<nbin;index++) {
     int nent = a_histo.bin_entries(index);
     if(nent==0) continue;  // Do not take bin without entry.
     // Take middle of bin.
-    double xx = 
+    double xx =
       (a_histo.axis().bin_lower_edge(index)+
        a_histo.axis().bin_upper_edge(index))/2.;
     double val = a_histo.bin_height(index);
     double err = ::sqrt(::fabs(val)); // Take statistical error.
-    if(err==0.) { 
+    if(err==0.) {
       a_out << "inlib::f2cmn::fit_1D :"
-          << " null error for bin " << index 
+          << " null error for bin " << index
           << " x " << xx << " value " << val
           << ". Set error to 0.01."
           << std::endl;
@@ -7943,7 +7943,7 @@ inline bool fit_1D(std::ostream& a_out,
     fpt.m_coords[0] = xx;
     fpt.m_value = val;
     fpt.m_error = err;
-    data.push_back(fpt); 
+    data.push_back(fpt);
   }
   if(data.empty()) {
     a_out << "inlib::f2cmn::fit_1D :"
@@ -7974,7 +7974,7 @@ inline bool fit_xve(std::ostream& a_out,
                      std::vector<command>(1,command("MIGRAD")),
                    bool a_mnexcm = true){
 
-  //NOTE : the size of a_output is : 
+  //NOTE : the size of a_output is :
   //         2 + a_params.size() * 4
   //       with :
   //         a_output[0] = chi2
@@ -7986,25 +7986,25 @@ inline bool fit_xve(std::ostream& a_out,
           << std::endl;
     return false;
   }
-  
+
   if(a_es.size() != a_xs.size() ) {
     a_out << "inlib::f2cmn::fit_xve :"
           << " coordinate and error vectors have different sizes."
           << std::endl;
     return false;
   }
-  
+
   int nbin = a_xs.size();
 
   std::vector< f2cmn::point > data;
 
-  for(int index=0;index<nbin;index++) {     
+  for(int index=0;index<nbin;index++) {
     f2cmn::point fpt;
     fpt.m_coords.resize(1);
     fpt.m_coords[0] = a_xs[index];
     fpt.m_value = a_vs[index];
     fpt.m_error = a_es[index];
-    data.push_back(fpt); 
+    data.push_back(fpt);
   }
   if(data.empty()) {
     a_out << "inlib::f2cmn::fit_xve :"

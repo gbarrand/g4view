@@ -40,7 +40,9 @@ public: //ival_func
     const inlib::value& arg = a_args[0];
     if(arg.type()!=inlib::value::DOUBLE) return false;
     sg::plot_func* pf = static_cast<sg::plot_func*>(this);
-    a_return.set(pf->value(arg.get_double()));
+    double dv;
+    if(!pf->value(arg.get_double(),dv)) {a_return.set_none();return false;}
+    a_return.set(dv);
     return true;
   }
 public: //sg::plot_func
@@ -48,6 +50,7 @@ public: //sg::plot_func
   virtual double xdomain_min() const {return -1;}
   virtual double xdomain_max() const {return 1;}
   virtual unsigned int ydomain_number_of_steps() const {return 100;}
+  virtual bool value(double,double,double& a_value) const {a_value=0;return false;}
   virtual double ydomain_min() const {return -1;}
   virtual double ydomain_max() const {return 1;}
 public:
@@ -67,8 +70,8 @@ public:
       return *this;
     }
   public:
-    std::string m_name;  
-    double m_value;  
+    std::string m_name;
+    double m_value;
   };
 
 public:
@@ -105,19 +108,20 @@ public:
 public:
   const std::vector<parameter>& params() const {return m_params;}
 protected:
-  std::vector<parameter> m_params;  
+  std::vector<parameter> m_params;
   std::string m_name;
 };
 
 template <class T>
 class fit_plot_func : public base_ff {
 public:  //fit_func :
-  virtual double value(const fit_func::point& a_pt) const {
-    return m_T.value(a_pt[0]);
+  virtual bool value(const fit_func::point& a_pt,double& a_value) const {
+    return m_T.value(a_pt[0],a_value);
   }
 public: //sg::plot_func :
-  virtual bool in_domain(double) const {return true;}
-  virtual double value(double a_x) const {return m_T.value(a_x);}
+  virtual bool value(double a_x,double& a_value) const {
+    return m_T.value(a_x,a_value);
+  }
 public:
   fit_plot_func():base_ff(){}
   virtual ~fit_plot_func(){}
@@ -175,15 +179,15 @@ public:
       if(i*m_refresh_rate==m_refresh_count) {
         m_plotter.touch();
         m_gv.win_render();
-        if(m_gv.stop_works()) return false;
+      //if(m_gv.stop_works()) return false;
       }
       m_refresh_count++;
     }
     return true;
   }
 public:
-  sg::ui& m_gv;  
-  sg::plotter& m_plotter;  
+  sg::ui& m_gv;
+  sg::plotter& m_plotter;
   unsigned int m_refresh_rate;
   unsigned int m_refresh_count;
 };
@@ -214,11 +218,11 @@ public:
     base_ff::m_name = "gaussian";
     base_ff::m_params.resize(3);
     base_ff::m_params[0].m_name = "amplitude"; //AIDA naming.
-    base_ff::m_params[0].m_value = m_T.scale();            
-    base_ff::m_params[1].m_name = "mean";      
+    base_ff::m_params[0].m_value = m_T.scale();
+    base_ff::m_params[1].m_name = "mean";
     base_ff::m_params[1].m_value = m_T.mean();
     base_ff::m_params[2].m_name = "sigma";
-    base_ff::m_params[2].m_value = m_T.sigma(); 
+    base_ff::m_params[2].m_value = m_T.sigma();
   }
   virtual ~gauss_fpf(){}
 public:
@@ -237,7 +241,7 @@ public:
 };
 
 class bw_fpf
-:public fit_plot_func<func::bw> 
+:public fit_plot_func<func::bw>
 ,public anim_func {
 public: //fit_func
   virtual bool set(const double a_params[])  {
@@ -254,8 +258,8 @@ public:
     base_ff::m_name = "breit_wigner";
     base_ff::m_params.resize(3);
     base_ff::m_params[0].m_name = "amplitude"; //AIDA naming
-    base_ff::m_params[0].m_value = m_T.height();            
-    base_ff::m_params[1].m_name = "origin";      
+    base_ff::m_params[0].m_value = m_T.height();
+    base_ff::m_params[1].m_name = "origin";
     base_ff::m_params[1].m_value = m_T.center();
     base_ff::m_params[2].m_name = "width";
     base_ff::m_params[2].m_value = m_T.width();
@@ -277,7 +281,7 @@ public:
 };
 
 class exp_hbook_fpf
-:public fit_plot_func<func::expo> 
+:public fit_plot_func<func::expo>
 ,public anim_func {
 public: //fit_func
   virtual bool set(const double a_params[])  {
@@ -296,8 +300,8 @@ public:
     //   AIDA : par[0] * exp(par[1]*x)
     base_ff::m_params.resize(2);
     base_ff::m_params[0].m_name = "A";
-    base_ff::m_params[0].m_value = m_T.a();            
-    base_ff::m_params[1].m_name = "B";      
+    base_ff::m_params[0].m_value = m_T.a();
+    base_ff::m_params[1].m_name = "B";
     base_ff::m_params[1].m_value = m_T.b();
   }
   virtual ~exp_hbook_fpf(){}
@@ -317,7 +321,7 @@ public:
 };
 
 class exp_aida_fpf
-:public fit_plot_func<func::expa> 
+:public fit_plot_func<func::expa>
 ,public anim_func {
 public: //fit_func
   virtual bool set(const double a_params[])  {
@@ -336,8 +340,8 @@ public:
     //   AIDA : par[0] * exp(par[1]*x)
     base_ff::m_params.resize(2);
     base_ff::m_params[0].m_name = "amplitude";
-    base_ff::m_params[0].m_value = m_T.a();            
-    base_ff::m_params[1].m_name = "exponent";      
+    base_ff::m_params[0].m_value = m_T.a();
+    base_ff::m_params[1].m_name = "exponent";
     base_ff::m_params[1].m_value = m_T.b();
   }
   virtual ~exp_aida_fpf(){}
@@ -357,7 +361,7 @@ public:
 };
 
 class polynomial_fpf
-:public fit_plot_func<func::polynomial> 
+:public fit_plot_func<func::polynomial>
 ,public anim_func {
 public: //fit_func
   virtual bool set(const double a_params[])  {
@@ -493,17 +497,13 @@ namespace sg {
 
 class valop_fpf : public base_ff,public anim_func {
 public:  //fit_func :
-  virtual double value(const fit_func::point& a_pt) const {
-    return value(a_pt[0]);
+  virtual bool value(const fit_func::point& a_pt,double& a_value) const {
+    return value(a_pt[0],a_value);
   }
 public: //sg::plot_func :
-  virtual bool in_domain(double) const {
-    //FIXME : to be implemented properly.
-    return true;
-  }
-  virtual double value(double a_x) const {
+  virtual bool value(double a_x,double& a_value) const {
     valop_fpf& self = const_cast<valop_fpf&>(*this);
-    return self._value(a_x);
+    return self._value(a_x,a_value);
   }
 public: //fit_func
   virtual bool set(const double a_params[])  {
@@ -511,7 +511,7 @@ public: //fit_func
     std::vector<base_ff*>::iterator it;
     for(it=m_ffs.begin();it!=m_ffs.end();++it){
       const std::vector<parameter>& pms = (*it)->params();
-      (*it)->set(pos);      
+      (*it)->set(pos);
       pos += pms.size();
     }
     return anim_func::update();
@@ -532,7 +532,7 @@ public:
 
     _get_funcs();
 
-    m_params.clear();    
+    m_params.clear();
     std::vector<base_ff*>::const_iterator it;
     for(it=m_ffs.begin();it!=m_ffs.end();++it){
       const std::vector<parameter>& pms = (*it)->params();
@@ -570,19 +570,20 @@ public:
     return *this;
   }
 protected:
-  double _value(double a_x) {
+  bool _value(double a_x,double& a_value) {
     m_input[0].set(a_x);
     m_serror.clear();
-    if(!m_exec.visit(m_valop)) return 0;
-    double rval;      
+    if(!m_exec.visit(m_valop)) {a_value = 0;return false;}
+    double rval;
     m_exec.ret().to_double(rval);
     //::printf("debug : %g %g\n",a_x,rval);
-    return rval;
+    a_value = rval;
+    return true;
   }
   bool _get_funcs() {
     get_funcs v;
     v.m_nodes.clear();
-    v.visit(m_valop);  
+    v.visit(m_valop);
     m_ffs.clear();
     std::vector<valop*>::const_iterator it;
     for(it=v.m_nodes.begin();it!=v.m_nodes.end();++it){

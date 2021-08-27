@@ -12,20 +12,6 @@
 namespace inlib {
 namespace sg {
 
-/*
-template <class T>
-class ref_data {
-public:
-  ref_data(T& a_data):m_data(a_data){}
-  virtual ~ref_data(){}
-public:
-  ref_data(const ref_data& a_from):m_data(a_from.m_data){}
-  ref_data& operator=(const ref_data&){return *this;}
-public:
-  T& m_data;
-};
-*/
-
 class pos_data {
 #ifdef INLIB_MEM
   INLIB_SCLASS(inlib::sg::pos_data)

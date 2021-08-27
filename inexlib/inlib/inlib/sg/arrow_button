@@ -74,12 +74,12 @@ public:
     //}
   }
   virtual void search(search_action& a_action) {
-    node::search(a_action);
-    if(a_action.done()) return;   
     if(touched()) {
       update_sg();
       reset_touched();
     }
+    node::search(a_action);
+    if(a_action.done()) return;
     if(a_action.do_path()) a_action.path_push(this);
     m_back_sep.search(a_action);
     if(a_action.done()) return;
@@ -184,7 +184,7 @@ protected:
       vtxs->add(xb,yb,zz);
       vtxs->add(xe,(yb+ye)*0.5f,zz);
       vtxs->add(xb,ye,zz);
-    } 
+    }
 
   }
 protected:

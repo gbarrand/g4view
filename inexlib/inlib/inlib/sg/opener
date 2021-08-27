@@ -7,7 +7,7 @@
 #include "iopener"
 
 #include "../file_opener"
-#include "../file"
+#include "../file_format"
 #include "../rcmp"
 #include "../vpair"
 
@@ -16,12 +16,10 @@
 namespace inlib {
 
 class opener : public file_opener {
-protected:
+public:
   typedef std::pair<std::string,iopener*> named_opener_t;
 public:
-  virtual bool open(uint64 a_sz,const char* a_buffer,
-                    const args& a_args,
-                    bool& a_done){
+  virtual bool open(uint64 a_sz,const char* a_buffer,const args& a_args,bool& a_done){
 
     a_done = false;
 
@@ -68,8 +66,8 @@ public:
         if(counter_inited) {
           if(mem_counter!=old_counter) {
             ::printf("debug : load_exsg : balance %d\n",
-              mem_counter-old_counter);     
-          }        
+              mem_counter-old_counter);
+          }
         } else {
           counter_inited = true;
           old_counter = mem_counter;
@@ -107,10 +105,7 @@ public:
   //not in enum due to potential inheritance.
   //typedef std::string format_type;
 
-  virtual bool open(const std::string& a_path,
-                    const format_type& a_format,
-                    const args& a_args,
-                    bool& a_done){
+  virtual bool open(const std::string& a_path,const format_type& a_format,const args& a_args,bool& a_done){
     a_done = false;
 
     std::ostream& out = m_gv.out();
@@ -125,7 +120,7 @@ public:
       out << "inlib::opener::open :"
           << " file " << sout(a_path) << " does not exist."
           << std::endl;
-      m_gv.map_warn_failed();
+      m_gv.map_warn_not_existing_file();
       return false;
     }
 
@@ -202,7 +197,7 @@ public:
       if(!(*it).second->is(a_path,is)) return false;
       if(is) {
         a_done = true;
-        return true;        
+        return true;
       }
     }
     return true;
@@ -239,15 +234,21 @@ public:
   void set_preferred_format(const format_type& a_v) {m_preferred_format = a_v;}
   const std::string& preferred_format() const {return m_preferred_format;}
 public:
-  void add_ext(const std::string& a_ext) {m_exts.push_back(a_ext);}
+  void add_ext(const std::string& a_ext) {if(!is_in(m_exts,a_ext)) m_exts.push_back(a_ext);}
   const std::vector<std::string>& exts() const {return m_exts;}
   void clear_exts() {m_exts.clear();}
   void add_opener(const std::string& a_name,iopener* a_op) {
+    //if(!is_an_opener(a_name))
     m_openers.push_back(named_opener_t(a_name,a_op)); //take ownership of a_op.
   }
   const std::vector<named_opener_t>& openers() const {return m_openers;}
   //std::vector<named_opener_t>& openers() {return m_openers;}
 protected:
+  bool is_an_opener(const std::string& a_name) const {
+    inlib_vforcit(named_opener_t,m_openers,it) {if((*it).first==a_name) return true;}
+    return false;
+  }
+
   void clear_openers(){
     inlib_vforit(named_opener_t,m_openers,it) delete (*it).second;
     m_openers.clear();
@@ -263,7 +264,7 @@ protected:
   std::vector<std::string> m_exts;
   unsigned int m_mem_limit;
   //have a vector (and not a map) since the order is important.
-  std::vector<named_opener_t> m_openers;  
+  std::vector<named_opener_t> m_openers;
   std::string m_preferred_format; //for Wt upload.
   bool m_verbose;
 };
