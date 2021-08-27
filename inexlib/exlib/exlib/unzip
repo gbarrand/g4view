@@ -8,7 +8,9 @@
 
 #include "zip"
 
-#include <inlib/dirmanip>
+#include <inlib/dirs>
+#include <inlib/file_write>
+#include <inlib/path>
 
 namespace exlib {
 
@@ -20,9 +22,7 @@ public:
   unzip(const unzip& a_from):base_zip(a_from){}
   unzip& operator=(const unzip&){return *this;}
 public:
-  virtual bool visit_entry(const std::string& a_entry,
-                           unsigned int a_size,
-                           const char* a_buffer) {
+  virtual bool visit_entry(const std::string& a_entry,unsigned int a_size,const char* a_buffer) {
     if(!a_size) return true; //directory
 
     std::string dir = inlib::dir_name(a_entry);
@@ -30,21 +30,24 @@ public:
 
     std::string pwd;
     if(!inlib::dir::pwd(pwd)) {
-      m_out << "exlib::unzip::visit_entry :" 
-            << " can't get pwd."
-            << std::endl;  
+      m_out << "exlib::unzip::visit_entry :"
+            << " for a_entry " << inlib::sout(a_entry)
+            << ", can't get pwd."
+            << std::endl;
     } else {
       if(!inlib::mkdirs(m_out,dir,true)){
-        m_out << "exlib::unzip::visit_entry :" 
-              << " mkdirs " << inlib::sout(dir) << " failed."
-              << std::endl;  
+        m_out << "exlib::unzip::visit_entry :"
+              << " for a_entry " << inlib::sout(a_entry)
+              << ", mkdirs " << inlib::sout(dir) << " failed."
+              << std::endl;
       } else {
         if(!inlib::file::write_bytes(name,a_buffer,a_size)) {
-          m_out << "exlib::unzip::visit_entry :" 
-                << " write entry \"" << a_entry << "\""
+          m_out << "exlib::unzip::visit_entry :"
+                << " for a_entry " << inlib::sout(a_entry)
+                << ", write entry \"" << a_entry << "\""
                 << " (size " << a_size << ")."
                 << " failed."
-                << std::endl;  
+                << std::endl;
         }
       }
       if(!inlib::dir::cd(pwd)){}
@@ -88,7 +91,7 @@ inline  bool unzip_from(std::ostream& a_out,
   if(!uzp.load_file(a_path)) {
     a_out << "exlib::unzip_from :"
           << " problem unzipping file " << inlib::sout(a_path)
-          << std::endl;      
+          << std::endl;
     retval = false;
   } else {
     if(a_expected_dir.size()) {
@@ -97,8 +100,8 @@ inline  bool unzip_from(std::ostream& a_out,
       if(!is_dir) {
         a_out << "exlib::unzip_from :"
               << " unzipping of " << a_path
-              << " did not create the directory " << a_expected_dir << "." 
-              << std::endl;      
+              << " did not create the directory " << a_expected_dir << "."
+              << std::endl;
         retval = false;
       }
     }

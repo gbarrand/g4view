@@ -25,22 +25,22 @@ public:
 
   virtual ~log_streambuf(){delete [] m_buffer;}
 private:
-  log_streambuf(const log_streambuf& aFrom){}
+  log_streambuf(const log_streambuf&){}
   log_streambuf& operator=(const log_streambuf&){return *this;}
 public:
-  int overflow(int aChar) {
+  int overflow(int a_char) {
     int result = 0;
     if(m_count>=m_size) {
       m_buffer[m_count] = '\0';
       m_count = 0;
-      result = receiveString();
+      result = receive_string();
     }
-    m_buffer[m_count] = aChar;
+    m_buffer[m_count] = a_char;
     m_count++;
-    if(aChar=='\n') {
+    if(a_char=='\n') {
       m_buffer[m_count] = '\0';
       m_count = 0;
-      result = receiveString();
+      result = receive_string();
     }
     return result;
   }
@@ -48,11 +48,11 @@ public:
   int sync() {
     m_buffer[m_count] = '\0';
     m_count = 0;
-    return receiveString ();
+    return receive_string ();
   }
 
 private:
-  int receiveString() {
+  int receive_string() {
     __android_log_print(ANDROID_LOG_INFO,m_app_name.c_str(),"%s",m_buffer);
     return 0;
   }

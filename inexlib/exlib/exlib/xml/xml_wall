@@ -11,7 +11,7 @@
 namespace exlib {
 namespace xml {
 
-inline bool load_wall_file(std::ostream& a_out,inlib::xml::walls& a_walls,const std::string& a_file) {
+inline bool load_wall_file(std::ostream& a_out,const std::string& a_file,inlib::xml::walls& a_walls) {
   inlib::xml::default_factory factory;
   exlib::xml::loader ml(factory,a_out,false);
   std::vector<std::string> tags;
@@ -26,6 +26,6 @@ inline bool load_wall_file(std::ostream& a_out,inlib::xml::walls& a_walls,const 
 
 }}
 
-#endif
-
 //exlib_build_use inlib expat
+
+#endif

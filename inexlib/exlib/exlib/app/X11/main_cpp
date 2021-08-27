@@ -36,7 +36,7 @@ public:
         int width,height;
         if(!m_x11.window_size(m_win,width,height)) return true;
         if(width==height) return true;
-        
+
         int x,y;
         m_main.position(x,y);
         //::printf("debug : location 001 : %d %d\n",x,y);
@@ -88,90 +88,27 @@ protected:
   app_X11::main<APP_MAIN>& m_main;
 };
 
-//#define EXLIB_APP_HAS_TERM
-//exlib_
-//build_use Getline
-
-#ifdef EXLIB_APP_HAS_TERM
-#include <inlib/sys/base_timer>
-#include <inlib/strip>
-#include <Getline/ourex_Getline.h> //enforce ourex.
-
-class term_timer : public inlib::base_timer {
-  typedef inlib::base_timer parent;
-public:
-  virtual void action() {
-    int is_stdin;
-    if(!::ourex_Gl_is_there_stdin_input(&is_stdin)) {
-      m_out << "term_timer::action : ourex_Gl_is_there_stdin_input() failed." << std::endl;
-      return;
-    }
-    if(!is_stdin) return;
-    char* p = ourex_Getlinem(1,0);
-    if(!p) return;
-    if(*p) {
-      std::string cmd(p);
-      inlib::strip(cmd,inlib::trailing,'\n');
-
-      ::ourex_Gl_histadd((char*)cmd.c_str());
-
-      if((cmd=="quit")||(cmd=="exit")) {
-        m_ui.set_to_exit();
-      } else {
-        ::printf("dummy : \"%s\"\n",cmd.c_str());
-      }
-
-      ::ourex_Getlinem(-1,"term> ");
-    } else { // ^D
-      m_ui.set_to_exit();
-      ::ourex_Getlinem(-1,"term> ");
-    }
-  }
-public:
-  INLIB_SCLASS(term_timer)
-  virtual void* cast(const std::string& a_class) const {
-    if(void* p = inlib::cmp_cast<term_timer>(this,a_class)) return p;
-    return 0;
-  }
-public:
-  term_timer(std::ostream& a_out,unsigned int a_interval,inlib::sg::ui& a_ui)
-  :parent(a_interval)
-  ,m_out(a_out)
-  ,m_ui(a_ui)
-  {
-    ::ourex_Gl_histinit((char*)"term.hist");
-    ::ourex_Getlinem(-1,"term> ");
-//  return ourex_Gl_is_valid()?true:false;
-  }
-  virtual ~term_timer(){
-    ::ourex_Gl_erase_line();
-    //FIXME : have to reset the cursor to the begin of line and 
-    //        erase the prompt. This would avoid to have in 
-    //        OpenPAWFinalize an extra 
-    //          out << std::endl;
-    ::ourex_Getlinem(2,0);
-  }
-private:
-  term_timer(const term_timer& a_from)
-  :parent(a_from)
-  ,m_out(a_from.m_out)
-  ,m_ui(a_from.m_ui)
-  {}
-  term_timer& operator=(const term_timer&){return *this;}
-private:
-  std::ostream& m_out;
-  inlib::sg::ui& m_ui;
-};
-#endif
-
-#include "../../sg/view_wall"
+#include "sg_serv"
+#include "../../zlib"
 
 #ifdef EXLIB_NO_GL
 #else
 #include "../../X11/session"
 #endif
 
-#include <iostream>
+#ifdef EXLIB_APP_HAS_TERM
+#ifdef EXLIB_APP_TERM_INSH
+#include "../../insh_term_timer"
+#else
+#include "../../dummy_term_timer"
+#endif
+#else
+#include <inlib/sys/base_timer>
+#endif
+
+#include <inlib/sg/view_sg_client>
+
+#include <inlib/sg/view_sg_serv>
 
 #ifdef INLIB_MEM
 #include <inlib/mem>
@@ -183,31 +120,72 @@ inline void at_exit() {std::cout << "exlib_main : at_exit..."<< std::endl;inlib:
 #include <inlib/args>
 #include <inlib/saui>
 #include <inlib/sargs>
-
-#include <cstdlib>
-
 #include <inlib/app>
 
-template <class APP_CONTEXT,class APP_MAIN>
-int exlib_main(const std::string& a_app_name,int argc,char** argv,bool a_land = true) {
-  //NOTE : we enforce landscape by default for desktop oapps.
+#include <iostream>
+#include <cstdlib>
+
+template <class APP_MAIN>
+inline int exlib_main(const std::string& a_app_name,int argc,char** argv) {
   bool verbose = false;
 
 #ifdef INLIB_MEM
   #ifdef INLIB_MEM_ATEXIT
   ::atexit(at_exit);
-  #endif  
+  #endif
   inlib::mem::set_check_by_class(true);{
 #endif
+
+  inlib::args args(argc,argv);
+
+  //////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
+  if(args.is_arg(inlib::s_arg_h())||args.is_arg(inlib::s_arg_help())) {
+    std::cout << "\
+usage :\n\
+  OS> <exe> [options] <file>\n\
+options are :\n\
+-h, -help           : dump this message.\n\
+-verbose            : verbose mode.\n\
+-version            : dump the version of the application.\n\
+-ww=<window width>  : if -wh is not given, wh is computed to have a A4 landscape ratio.\n\
+-wh=<window height> : if -ww is not given, ww is computed to have a A4 landscape ratio.\n\
+-portrait           : if needed, swap ww and wh to be in portrait mode.\n\
+-land               : if needed, swap ww and wh to be in landscape mode.\n\
+-full_screen        : to be full screen.\n\
+-no_decos           : to remove window decorations.\n\
+-black              : start with a black backgroud for the viewing area.\n\
+-monitors           : dump the number of monitors known by the X11 server.\n\
+-arg0               : print argv[0].\n\
+";
+#ifdef EXLIB_APP_HAS_TERM
+#ifdef EXLIB_APP_TERM_INSH
+    std::cout << "\
+-terminal           : have an insh prompt in the terminal.\n\
+";
+#endif
+#endif
+    std::cout << APP_MAIN::s_args_help();
+    return EXIT_FAILURE;
+  }
+  if(args.is_arg(inlib::s_arg_version())) {
+    std::cout << APP_MAIN::s_version() << std::endl;
+    return EXIT_FAILURE;
+  }
+  if(args.is_arg(inlib::s_arg_arg0())) {
+    std::cout << (argc?argv[0]:"none") << std::endl;
+    return EXIT_FAILURE;
+  }
+  //////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
 
   std::string exe_path; //for res_dir
   if(!inlib::program_path(argv[0],exe_path)) {
     std::cout << "exlib_main : can't get exe directory." << std::endl;
     return EXIT_FAILURE;
   }
-
-  inlib::args args(argc,argv);
-  if(a_land) args.add(inlib::s_arg_land(),"");
 
   verbose = args.is_arg(inlib::s_arg_verbose());
 
@@ -218,7 +196,7 @@ int exlib_main(const std::string& a_app_name,int argc,char** argv,bool a_land = 
   if(home_dir.empty()) {
     std::cout << "exlib_main : can't get home directory." << std::endl;
     return EXIT_FAILURE;
-  }  
+  }
   std::string doc_app_dir = "Documents";
   doc_app_dir += inlib::sep();
   doc_app_dir += a_app_name;
@@ -230,16 +208,34 @@ int exlib_main(const std::string& a_app_name,int argc,char** argv,bool a_land = 
   std::string res_dir;
   inlib::app_res_dir(exe_path,res_dir);
 
-  std::string data_dir = doc_dir;
   std::string out_dir = doc_dir;
+//if(!inlib::mkdirs(std::cout,out_dir)) { //for EsbRootView/setups.
+//  std::cout << "exlib_main : can't create directory " << inlib::sout(out_dir) << "." << std::endl;
+//  return EXIT_FAILURE;
+//}
+
   std::string tmp_dir = "/tmp";
 
+  if(XInitThreads()==False) { // for inlib::sg::view_sg_serv.
+    std::cout << "exlib_main : XInitThreads failed." << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  unsigned int monitor = 0;
+  args.find<unsigned int>(inlib::s_arg_monitor(),monitor,0);
+
 #ifdef EXLIB_NO_GL
-  exlib::X11::base_session x11(std::cout);
+  exlib::X11::base_session x11(std::cout,monitor);
 #else
-  exlib::X11::session x11(std::cout);
+  exlib::X11::session x11(std::cout,monitor);
 #endif
   if(!x11.display()) return EXIT_FAILURE;
+
+  if(args.is_arg(inlib::s_arg_monitors())) {
+    int monitors = ::XScreenCount(x11.display());
+    std::cout << monitors << std::endl;
+    return EXIT_FAILURE;
+  }
 
   unsigned int ww,wh;
   inlib::window_size_from_args(args,ww,wh);
@@ -247,8 +243,8 @@ int exlib_main(const std::string& a_app_name,int argc,char** argv,bool a_land = 
   Window win = x11.create_window(a_app_name.c_str(),0,0,ww,wh);
   if(win==0L) return EXIT_FAILURE;
   if(args.is_arg(inlib::s_arg_full_screen())){
-    int dw = ::XDisplayWidth(x11.display(),::XDefaultScreen(x11.display()));
-    int dh = ::XDisplayHeight(x11.display(),::XDefaultScreen(x11.display()));
+    int dw = ::XDisplayWidth(x11.display(),monitor);
+    int dh = ::XDisplayHeight(x11.display(),monitor);
     ::XMoveResizeWindow(x11.display(),win,0,0,dw,dh);
     x11.set_wm_no_decorations(win);
   } else if(args.is_arg(inlib::s_arg_no_decos())){
@@ -258,20 +254,41 @@ int exlib_main(const std::string& a_app_name,int argc,char** argv,bool a_land = 
   x11.map_raise_window(win);
   //x11.show_window(win); //it waits a MapNotify.
 
-  APP_CONTEXT app_context(res_dir);
-
- {app_X11::main<APP_MAIN> _main(std::cout,a_app_name,data_dir,res_dir,out_dir,tmp_dir,verbose,x11.display(),win
+ {app_X11::main<APP_MAIN> _main(std::cout,doc_dir,res_dir,out_dir,tmp_dir,verbose,x11.display()
 #ifdef EXLIB_NO_GL
+                                ,monitor,win
 #else
+                                ,win
                                 ,x11.context()
 #endif
                                 );
-  _main.set_argcv(args);  
+  _main.set_argcv(args);
   if(args.is_arg(inlib::s_arg_black())) _main.m_params.m_scene_screen_color = inlib::colorf_black();
 
+  //////////////////////////////////////////////////////////////////
+  //// app as a scene graph server or client : /////////////////////
+  //////////////////////////////////////////////////////////////////
+  inlib::sg::view_sg_serv* _view_sg_serv = inlib::sg::cast_view_sg_serv(_main);
+  if(_view_sg_serv)
+    _view_sg_serv->set_params(0,exlib::sg_serv_connect_func,exlib::sg_serv_disconnect_func,0,
+                              x11.display(),(void*)win);
+
+  inlib::sg::view_sg_client* _view_sg_client = inlib::sg::cast_view_sg_client(_main);
+  if(_view_sg_client && _view_sg_client->walls()._walls().empty()) _view_sg_client = 0;
+
+  //////////////////////////////////////////////////////////////////
+  /// insh default scripts : ///////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
+  _main.source_dot_insh();
+  _main.exec_startup_insh();
+  /*_main.exec_insh_startup();*/
+
+  //////////////////////////////////////////////////////////////////
+  /// document file : //////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
  {std::string DOCUMENT;
   args.files_at_end(); //take care of the upper -land.
-  if(!args.file(DOCUMENT)) args.find(inlib::s_arg_document(),DOCUMENT);  
+  if(!args.file(DOCUMENT)) args.find(inlib::s_arg_document(),DOCUMENT);
   if(verbose) {
     std::cout << "exlib_main :"
               << " document is " << inlib::sout(DOCUMENT) << "."
@@ -284,17 +301,24 @@ int exlib_main(const std::string& a_app_name,int argc,char** argv,bool a_land = 
   }}
 
   //////////////////////////////////////////////////////////////////
-  /// steering /////////////////////////////////////////////////////
+  /// terminal : ///////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
+  std::ostream& _term_out = std::cout;
+#include "../term.icc"  // have to delete _term_timer. Done below.
+
+  //////////////////////////////////////////////////////////////////
+  /// steering : ///////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////
   x11.add_dispatcher(new rotate_dispatcher<APP_MAIN>(x11,win,_main));
   x11.add_dispatcher(new exlib::X11::gui_dispatcher(x11,win,_main));
 
   //Atom atom = ::XInternAtom(x11.display(),"WM_DELETE_WINDOW",False);
 
-  exlib::sg::view_wall* _view_wall = exlib::sg::cast_view_wall(_main);
-  if(_view_wall && _view_wall->walls()._walls().empty()) _view_wall = 0;
+  bool extra_sockets = false;
+  extra_sockets = _view_sg_client?true:false;
+  if(!extra_sockets) extra_sockets = _view_sg_serv?true:false;
 
-  if(_view_wall) { //APP_USE_WALL
+  if(extra_sockets) {
 
   while(true) {
     XEvent xevent;
@@ -304,160 +328,210 @@ int exlib_main(const std::string& a_app_name,int argc,char** argv,bool a_land = 
   }
 
   int fd_X11 = ::XConnectionNumber(x11.display());
-  std::vector<int> socks;
-  socks.push_back(fd_X11);
-  std::vector<bool> has_input;
 
-#ifdef EXLIB_APP_HAS_TERM
-  unsigned int term_timer_interval = 16; //millisecs.
-  term_timer _term_timer(std::cout,term_timer_interval,_main);
-  _term_timer.start();
-#endif
+  std::vector<int> socks;
+  std::vector<bool> has_input;
 
   if(verbose) {
     std::cout << "exlib_main :"
-              << " enter steering loop ..."
+              << " enter steering loop (extra_sockets) ..."
               << std::endl;
   }
 
-  while(!_main.to_exit()) { 
+  while(!_main.to_exit()) {
 
-#ifdef EXLIB_APP_HAS_TERM
-    if(_main.num_cbks() || _term_timer.active()) {
-      bool dc_connected = _view_wall->is_connected();
+    if(_main.num_cbks() || (_term_timer && _term_timer->active()) ) {
       if(_main.num_cbks()) _main.do_works();
-      if(_term_timer.active()) _term_timer.check_time_out();
-#else
-    if(_main.num_cbks()) {
-      bool dc_connected = _view_wall->is_connected();
-      _main.do_works();
-#endif
+      if(_term_timer && _term_timer->active()) _term_timer->check_time_out();
 
-      if(!dc_connected && _view_wall->is_connected()) {
-        //was not connected, but the do_works() did a connection.
-        socks.clear();
-        socks.push_back(fd_X11);
-        socks.push_back(_view_wall->data_client().socket().socket());
-      }
-
-      if(dc_connected && !_view_wall->is_connected()) {
-        //was connected, but the do_works() did a disconnection.
-        socks.clear();
-        socks.push_back(fd_X11);
-      }
-
-      //while(::XPending(x11.display())) { //why not that ?
-      if(::XPending(x11.display())) {
+      while(::XPending(x11.display())) {
         XEvent xevent;
         ::XNextEvent(x11.display(),&xevent);
-        if(xevent.type==ClientMessage) {
-          if(xevent.xclient.data.l[0]==(long)x11.SESSION_EXIT_STEER_atom()) break;
+        if( (xevent.type==ClientMessage) && (xevent.xclient.data.l[0]==(long)x11.SESSION_EXIT_STEER_atom()) ) {
+          _main.set_to_exit();
+        } else {
+          x11.dispatch(xevent);
         }
-        x11.dispatch(xevent);
       }
- 
-      if(_view_wall->is_connected()) {
-        bool have_socks_input;
-        if(!_view_wall->data_client().socket().is_there_input(have_socks_input)) {
-          std::cout << "exlib_main :"
-                    << " inlib::net::is_there_input failed."
-                    << std::endl;
+
+      if(_view_sg_client && _view_sg_client->is_connected()) {
+        bool have_sock_input;
+        if(!_view_sg_client->is_there_input(have_sock_input)) {
+          std::cout << "exlib_main : inlib::net::is_there_input failed." << std::endl;
           break;
         }
-        if(have_socks_input) {
-          if(_view_wall->is_connected()) {
-            if(!_view_wall->data_client().poll()) {}
-            if(!_view_wall->is_connected()) {
-              //we have received a inlib::wall::protocol::disconnect()
-              _main.map_warn("disconnected");
-              _main.win_render();
-              socks.clear();
-              socks.push_back(fd_X11);
-            }
+        if(have_sock_input) {
+          if(!_view_sg_client->poll()) {}
+          if(!_view_sg_client->is_connected()) {
+            //we have received a inlib::wall::protocol::disconnect()
+            _main.map_warn("disconnected");
+            _main.win_render();
           }
         }
       }
-  
+
+      if(_view_sg_serv && _view_sg_serv->is_connected()) {
+        bool have_sock_input;
+        if(!_view_sg_serv->is_there_input(have_sock_input)) {
+          std::cout << "exlib_main : inlib::net::is_there_input failed." << std::endl;
+          break;
+        }
+        if(have_sock_input) {
+          if(!_view_sg_serv->treat_event(exlib::decompress_buffer)) {
+            std::cout  << "exlib_main : view_sg_serv::treat_event() failed." << std::endl;
+          }
+        }
+      }
+
 #ifdef EXLIB_NO_GL
       _main.do_paint();
 #endif
       continue;
     }
 
-    if(verbose) {
-      std::cout << "exlib_main :"
-                << " inlib::net::wait_input() ..."
-                << std::endl;
-    }
-
-    if(!inlib::net::wait_input(socks,has_input)) {
-      std::cout << "exlib_main :"
-                << " inlib::net::wait_input failed."
-                << std::endl;
-      break;
-    }
-
-    if(::XPending(x11.display())) {
+//#define  EXLIB_APP_POLL
+#ifdef EXLIB_APP_POLL
+    while(::XPending(x11.display())) {
       XEvent xevent;
       ::XNextEvent(x11.display(),&xevent);
-      if(xevent.type==ClientMessage) {
-        if(xevent.xclient.data.l[0]==(long)x11.SESSION_EXIT_STEER_atom())
-          break;
+      if( (xevent.type==ClientMessage) && (xevent.xclient.data.l[0]==(long)x11.SESSION_EXIT_STEER_atom()) ) {
+        _main.set_to_exit();
+      } else {
+        x11.dispatch(xevent);
       }
-      x11.dispatch(xevent);
+    }
 
-    } else { //from data client.
-
-      if(_view_wall->is_connected()) {
-        if(!_view_wall->data_client().poll()) {}
-        if(!_view_wall->is_connected()) {
+    if(_view_sg_client && _view_sg_client->is_connected()) {
+      bool have_sock_input;
+      if(!_view_sg_client->is_there_input(have_sock_input)) {
+        std::cout << "exlib_main : inlib::net::is_there_input failed." << std::endl;
+        break;
+      }
+      if(have_sock_input) {
+        if(verbose) std::cout << "exlib_main : poll : event on view_sg_client..." << std::endl;
+        if(!_view_sg_client->poll()) {}
+        if(!_view_sg_client->is_connected()) {
           //we have received a inlib::wall::protocol::disconnect()
           _main.map_warn("disconnected");
           _main.win_render();
-          socks.clear();
-          socks.push_back(fd_X11);
+        }
+      }
+    }
+
+    if(_view_sg_serv && _view_sg_serv->is_connected()) {
+      bool have_sock_input;
+      if(!_view_sg_serv->is_there_input(have_sock_input)) {
+        std::cout << "exlib_main : inlib::net::is_there_input failed." << std::endl;
+        break;
+      }
+      if(have_sock_input) {
+        if(verbose) std::cout << "exlib_main : poll : event on view_sg_serv..." << std::endl;
+        if(!_view_sg_serv->treat_event(exlib::decompress_buffer)) {
+          std::cout  << "exlib_main : view_sg_serv::treat_event() failed." << std::endl;
+        }
+      }
+    }
+
+#else //not EXLIB_APP_POLL
+    socks.clear();
+    socks.push_back(fd_X11);
+    // For the two below lines, we must provide something even if _view_sg_client, _view_sg_serv = 0.
+    socks.push_back(_view_sg_client ? _view_sg_client->socket() : INVALID_SOCKET);
+    socks.push_back(_view_sg_serv ? _view_sg_serv->socket() : INVALID_SOCKET);
+
+    if(!inlib::net::wait_input(socks,has_input)) {
+      std::cout << "exlib_main : inlib::net::wait_input failed." << std::endl;
+      break;
+    }
+
+/*
+    std::cout << "exlib_main : debug : some event ... (#input " << has_input.size() << ")." << std::endl;
+    if(has_input.size()==3) {
+      std::cout << "exlib_main : debug : 3 input : " << has_input[0] << " " << has_input[1] << " " << has_input[2] << std::endl;
+    } else if(has_input.size()==2) {
+      std::cout << "exlib_main : debug : 2 input : " << has_input[0] << " " << has_input[1] << std::endl;
+    } else if(has_input.size()==1) {
+      std::cout << "exlib_main : debug : 1 input : " << has_input[0] << std::endl;
+    }
+*/
+
+    while(::XPending(x11.display())) {
+      XEvent xevent;
+      ::XNextEvent(x11.display(),&xevent);
+      if( (xevent.type==ClientMessage) && (xevent.xclient.data.l[0]==(long)x11.SESSION_EXIT_STEER_atom()) ) {
+        _main.set_to_exit();
+      } else {
+        x11.dispatch(xevent);
+      }
+    }
+
+    if(has_input[1]) {  //from wall :
+      if(verbose) std::cout << "exlib_main : event on view_sg_client..." << std::endl;
+      if(!_view_sg_client->poll()) {}
+      if(!_view_sg_client->is_connected()) {
+        //we have received a inlib::wall::protocol::disconnect()
+        _main.map_warn("disconnected");
+        _main.win_render();
+      }
+    }
+
+    if(has_input[2]) {  //from data client :
+      if(verbose) std::cout << "exlib_main : event on view_sg_serv..." << std::endl;
+      if(!_view_sg_serv->treat_event(exlib::decompress_buffer)) {
+        std::cout  << "exlib_main : view_sg_serv::treat_event() failed." << std::endl;
+      }
+    }
+
+#endif //end EXLIB_APP_POLL
+
+#ifdef EXLIB_NO_GL
+    _main.do_paint();
+#endif
+
+  }
+
+
+  } else { //not extra_sockets
+
+    if(verbose) {
+      std::cout << "exlib_main : enter steering loop (pure X11) ..." << std::endl;
+    }
+
+    while(!_main.to_exit()) {
+
+      //std::cout << "exlib_main : loop..." << std::endl;
+      if(_main.num_cbks() || (_term_timer && _term_timer->active()) ) {
+        if(_main.num_cbks()) _main.do_works();
+        if(_term_timer && _term_timer->active()) _term_timer->check_time_out();
+
+        if(!::XPending(x11.display())) {
+#ifdef EXLIB_NO_GL
+          _main.do_paint();
+#endif
+          continue;
         }
       }
 
-    }
-
-#ifdef EXLIB_NO_GL
-    _main.do_paint();
-#endif
-
-  }
-
-
-  } else { //APP_USE_WALL
-
-  while(!_main.to_exit()) { 
-
-    //std::cout << "exlib_main : loop..." << std::endl;
-    if(_main.num_cbks()) {
-      _main.do_works();
-      if(!::XPending(x11.display())) {
-#ifdef EXLIB_NO_GL
-        _main.do_paint();
-#endif
-        continue;
+      XEvent xevent;
+      ::XNextEvent(x11.display(),&xevent);
+      if( (xevent.type==ClientMessage) && (xevent.xclient.data.l[0]==(long)x11.SESSION_EXIT_STEER_atom()) ) {
+        _main.set_to_exit();
+      } else {
+        x11.dispatch(xevent);
       }
-    }
-
-    XEvent xevent;
-    ::XNextEvent(x11.display(),&xevent);
-    if(xevent.type==ClientMessage) {
-      if(xevent.xclient.data.l[0]==(long)x11.SESSION_EXIT_STEER_atom())
-        break;
-    }
-    x11.dispatch(xevent);
 
 #ifdef EXLIB_NO_GL
-    _main.do_paint();
+      _main.do_paint();
 #endif
 
-  }
+    }
 
-  } //APP_USE_WALL
+  } //extra_sockets
+
+  delete _term_timer;
+
+  if(_view_sg_serv) _view_sg_serv->set_params(0,0,0,0,0,0);
+  if(_view_sg_client) _view_sg_client->set_params(0,0,0,0);
 
   } //_main
 
@@ -469,7 +543,7 @@ int exlib_main(const std::string& a_app_name,int argc,char** argv,bool a_land = 
   inlib::mem::balance(std::cout);
   #endif
   std::cout << a_app_name << "_X11 : exit(mem) ..." << std::endl;
-#else  
+#else
   if(verbose) std::cout << a_app_name << "_X11 : exit ..." << std::endl;
 #endif
 
@@ -477,7 +551,10 @@ int exlib_main(const std::string& a_app_name,int argc,char** argv,bool a_land = 
 }
 
 //exlib_build_use inlib inlib_glutess freetype png jpeg zlib expat
-//exlib_build_use GL GLX X11
+//exlib_build_use GLX X11
+
+//exlib_build_cppflags -DEXLIB_APP_HAS_TERM -DEXLIB_APP_TERM_INSH
+//exlib_build_use Getline
 
 #endif
 

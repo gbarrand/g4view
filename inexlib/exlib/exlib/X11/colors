@@ -1,5 +1,5 @@
 // Copyright (C) 2010, Guy Barrand. All rights reserved.
-// See the file wall.license for terms.
+// See the file exlib.license for terms.
 
 #ifndef exlib_X11_colors
 #define exlib_X11_colors
@@ -15,14 +15,15 @@ typedef unsigned long Pixel;
 typedef std::vector<Pixel> pixels_t;
 typedef std::map<inlib::colorf,Pixel,inlib::cmp_colorf> colors_t;
 
-inline bool rgb2pixel(Display* a_display,float a_r,float a_g,float a_b,Pixel& a_pixel,bool& a_allocated) {
+inline bool rgb2pixel(Display* a_display,unsigned int a_monitor,
+                      float a_r,float a_g,float a_b,Pixel& a_pixel,bool& a_allocated) {
   // read_write visual class: PseudoColor, GrayScale, DirectColor.
   // read_only  visual class: TrueColor, StaticColor, StaticGray.
   // Could allocate a read_only cell in a read_write, read_only visual class.
   // Could allocate a read_write cell only in read_write visual class.
   // StaticGray + (depth=1) is monochrome.
 
-  Screen* screen = ::XDefaultScreenOfDisplay(a_display);
+  Screen* screen = ::XScreenOfDisplay(a_display,a_monitor);
   int vclass = ::XDefaultVisualOfScreen(screen)->c_class;
   Colormap cmap = ::XDefaultColormapOfScreen(screen);
 
@@ -67,12 +68,14 @@ inline bool rgb2pixel(Display* a_display,float a_r,float a_g,float a_b,Pixel& a_
   return true;
 }
 
-inline bool get_pixel(Display* a_display,pixels_t& a_pixels,colors_t& a_colors,float a_r,float a_g,float a_b,Pixel& a_pixel) {
+inline bool get_pixel(Display* a_display,unsigned int a_monitor,
+                      pixels_t& a_pixels,colors_t& a_colors,float a_r,float a_g,float a_b,Pixel& a_pixel) {
   std::map<inlib::colorf,Pixel,inlib::cmp_colorf>::const_iterator it = a_colors.find(inlib::colorf(a_r,a_g,a_b));
   if(it!=a_colors.end()) {a_pixel = (*it).second;return true;}
   bool allocated;
-  if(!rgb2pixel(a_display,a_r,a_g,a_b,a_pixel,allocated)) {
-    a_pixel = XWhitePixelOfScreen(XDefaultScreenOfDisplay(a_display));
+  if(!rgb2pixel(a_display,a_monitor,a_r,a_g,a_b,a_pixel,allocated)) {
+    Screen* screen = ::XScreenOfDisplay(a_display,a_monitor);
+    a_pixel = XWhitePixelOfScreen(screen);
     return false;
   }
   if(allocated) a_pixels.push_back(a_pixel);
@@ -80,10 +83,10 @@ inline bool get_pixel(Display* a_display,pixels_t& a_pixels,colors_t& a_colors,f
   return true;
 }
 
-inline bool set_foreground(Display* a_display,GC a_gc,pixels_t& a_pixels,colors_t& a_colors,
+inline bool set_foreground(Display* a_display,unsigned int a_monitor,GC a_gc,pixels_t& a_pixels,colors_t& a_colors,
                            float a_r,float a_g,float a_b) {
   Pixel pixel;
-  if(!get_pixel(a_display,a_pixels,a_colors,a_r,a_g,a_b,pixel)) return false;
+  if(!get_pixel(a_display,a_monitor,a_pixels,a_colors,a_r,a_g,a_b,pixel)) return false;
   XGCValues gcv;
   gcv.foreground = pixel;
   if(::XChangeGC(a_display,a_gc,GCForeground,&gcv)==0) return false;

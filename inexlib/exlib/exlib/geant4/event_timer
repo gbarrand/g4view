@@ -24,46 +24,36 @@ public:
     if(!_evd) return;
     m_event_count = 0;
     m_event_start = _evd->event_index();
-    m_run_manager.start_run(m_wanted_nevent);
+    if(!start_run(m_wanted_nevent)) return;
     base_timer::start();
   }
   virtual void stop() {
-    if(active()) m_run_manager.end_run();
+    if(active()) end_run();
     base_timer::stop();
   }
 
   virtual void action() {
-
-    //m_gv.out() << "debug : exlib::geant4::event_timer::action." << std::endl;
-
     if(m_event_count>=m_wanted_nevent) {
       stop();
       return;
     }
-
-    m_run_manager.do_one_event();
-
+    do_one_event();  //It does a G4RunManager::DoEventLoop(1,0,-1)
     inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(m_gv);
     if(_evd) {
       std::string stmp;
       if(!inlib::num2s(_evd->event_index(),stmp)){}
       m_gv.show_console("event index "+stmp);
-      _evd->event_index()++;
     }
-
+    _evd->event_index()++;
     m_event_count++;
   }
 public:
   event_timer(inlib::sg::gui_viewer& a_gv,
-              run_manager& a_run_manager,
               unsigned int a_wanted_nevent,
               unsigned int a_interval)
   :parent(a_interval)
   ,m_gv(a_gv)
-  ,m_run_manager(a_run_manager)
-
   ,m_wanted_nevent(a_wanted_nevent)
-
   ,m_event_start(0)
   ,m_event_count(0)
   {
@@ -80,10 +70,7 @@ public:
   event_timer(const event_timer& a_from)
   :parent(a_from)
   ,m_gv(a_from.m_gv)
-  ,m_run_manager(a_from.m_run_manager)
-
   ,m_wanted_nevent(a_from.m_wanted_nevent)
-
   ,m_event_start(0)
   ,m_event_count(0)
   {
@@ -93,21 +80,15 @@ public:
   }
   event_timer& operator=(const event_timer& a_from){
     parent::operator=(a_from);
-
     if(&a_from==this) return *this;
-
     m_wanted_nevent = a_from.m_wanted_nevent;
-
     m_event_start = 0;
     m_event_count = 0;
-
     return *this;
   }
 protected:
   inlib::sg::gui_viewer& m_gv;
-  run_manager& m_run_manager;
   unsigned int m_wanted_nevent;
-
   unsigned int m_event_start;
   unsigned int m_event_count;
 };

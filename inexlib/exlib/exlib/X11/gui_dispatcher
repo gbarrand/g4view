@@ -123,6 +123,17 @@ public:
         return true;
 	*/
       }
+
+    } else if((a_event.type==ButtonRelease)&&(a_event.xbutton.button==5)) { // mouse scrollwheel up :
+      if(m_viewer.update_anim_motion(inlib::sg::anim_up,m_viewer.m_params.m_anim_mode))
+        m_viewer.win_render();
+      return true;
+
+    } else if((a_event.type==ButtonRelease)&&(a_event.xbutton.button==4)) { // mouse scrollwheel down :
+      if(m_viewer.update_anim_motion(inlib::sg::anim_down,m_viewer.m_params.m_anim_mode))
+        m_viewer.win_render();
+      return true;
+
     }
     return false;
   }

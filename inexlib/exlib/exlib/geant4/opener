@@ -4,32 +4,21 @@
 #ifndef exlib_geant4_opener
 #define exlib_geant4_opener
 
+#include "utils"
+#include "rgdml"
+#include "geo"
+
 #include <G4GeometryManager.hh>
 #include <G4UImanager.hh>
 
-#include "rgdml"
-#include "geo"
-#include "utils"
-#include "strings"
-
 #include <inlib/sg/iopener>
-#include <inlib/xml/styles>
-#include <inlib/sg/scenario>
 
 #include <inlib/sg/view_evd>
 
 #include "../gzip"
 
-////////////////////////////
-/// for open scenario : ////
-////////////////////////////
-#include "primary_generator"
-
 namespace exlib {
 namespace geant4 {
-
-INLIB_GLOBAL_STRING(mac)
-INLIB_GLOBAL_STRING(cmnd)
 
 class opener : public virtual inlib::iopener {
   typedef inlib::iopener parent;
@@ -51,15 +40,21 @@ public:
     inlib::sg::gui_viewer* _gv = inlib::sg::cast_gui_viewer(a_viewer);
     if(!_gv) return false;
     inlib::sg::gui_viewer& a_gv = *_gv;
- 
+
+    G4RunManager* rmgr = G4RunManager::GetRunManager();
+    if(!rmgr) {
+      a_gv.map_warn("No G4RunManager found.");
+      return false;
+    }
+    
     G4GeometryManager::GetInstance()->OpenGeometry();
 
-    geant4::clean_geom_stores();
+    clean_geom_stores();
 
     G4VPhysicalVolume* world = 0;
    {inlib::xml::default_factory fac;
     bool verbose = false;
-    geant4::rgdml ml(fac,a_gv.out(),verbose);
+    rgdml ml(fac,a_gv.out(),verbose);
 
    {bool _is = false;
     if(inlib::file::is_gzip(a_path,_is)) {
@@ -67,7 +62,7 @@ public:
         ml.set_compressed_reader(new gzip_reader());//ml takes ownership
       }
     }}
-  
+
     if(!ml.load_file(a_path,false,world)) {
       a_gv.map_warn_failed();
       return false;
@@ -75,7 +70,7 @@ public:
     if(!world) {
       a_gv.map_warn("No physical volume found");
       return false;
-    }     
+    }
 
    {G4LogicalVolume* vol = world->GetLogicalVolume();
     if(vol && vol->GetNoDaughters()) {
@@ -85,7 +80,7 @@ public:
       vol->SetVisAttributes(atb);
     }}
 
-    m_run_manager.DefineWorldVolume(world);
+    rmgr->DefineWorldVolume(world);
 
   //a_gv.map_warn("gdml file opened.",false);
 
@@ -93,8 +88,8 @@ public:
     /////////////////////////////////////////////////
     /////////////////////////////////////////////////
     if(!_evd->is_evd()) _evd->create_sg_evd(2000);
-  
-    inlib::sg::separator& dsep = _evd->detector_sg();
+
+    inlib::sg::separator& dsep = _evd->static_sg();
 
     geant4::geo* geo = new geant4::geo(*world);
     geo->volume = world->GetName();
@@ -111,7 +106,7 @@ public:
 
     geo->atb = inlib::sg::atb_by_depth;
     geo->set_cmap(cmap);
-  
+
     geo->max_time = 10;  //seconds
     geo->max_shapes = 5000;
 
@@ -133,7 +128,7 @@ public:
     } else {
       inlib::sg::separator* sep = new inlib::sg::separator;
       dsep.add(sep);
-  
+
       sep->add(new inlib::sg::matrix()); //for manip.
       sep->add(geo);
 
@@ -162,84 +157,17 @@ public:
     return true;
   }
 
-  virtual bool open(const std::string& a_path,
-                    inlib::sg::viewer& a_viewer,
-                    const inlib::xml::scenario& a_sno,
-                    inlib::sg::cmaps_t& a_cmaps,
+  virtual bool open(const std::string&,
+                    inlib::sg::viewer&,
+                    const inlib::xml::scenario&,
+                    inlib::sg::cmaps_t&,
                     const inlib::args&,
                     bool& a_done) const {
     a_done = false;
-
-    inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(a_viewer);
-    if(!_evd) return false;
-    inlib::sg::gui_viewer* _gv = inlib::sg::cast_gui_viewer(a_viewer);
-    if(!_gv) return false;
-    inlib::sg::gui_viewer& a_gv = *_gv;
-
-    G4GeometryManager::GetInstance()->OpenGeometry();
-    
-    geant4::clean_geom_stores();
-
-    G4VPhysicalVolume* world = 0;
-   {inlib::xml::default_factory fac;
-    //bool verbose = true;
-    bool verbose = false;
-    geant4::rgdml ml(fac,a_gv.out(),verbose);
-
-   {bool _is = false;
-    if(inlib::file::is_gzip(a_path,_is)) {
-      if(_is) {
-        ml.set_compressed_reader(new gzip_reader());//ml takes ownership
-      }
-    }}
-
-    if(!ml.load_file(a_path,false,world)) {
-      a_gv.map_warn_failed();
-      return false;
-    }}
-    if(!world) {
-      a_gv.map_warn("No physical volume found");
-      return false;
-    }     
-    
-/*
-   {G4LogicalVolume* vol = world->GetLogicalVolume();
-    if(vol && vol->GetNoDaughters()) {
-      //NOTE : there is a G4VisAttributes leaking...
-      //vol->SetVisAttributes(G4VisAttributes::Invisible);
-      G4VisAttributes* atb = new G4VisAttributes(false);
-      vol->SetVisAttributes(atb);
-    }}
-*/
-    
-    m_run_manager.DefineWorldVolume(world);
-    
-    //a_gv.map_warn("gdml file opened.",false);
-    //a_gv.set_scene_camera(0); //to enforce an adapted cam.
-
-    inlib::sg::separator& dsep = _evd->detector_sg();
-
-    std::string swarn;
-    if(!inlib::create_scenario_sg<G4VPhysicalVolume,geant4::geo>
-         (a_gv,a_cmaps,a_sno,*world,dsep,geant4::no_vds,geant4::pv_name,swarn)){}
-    if(swarn.size()) {
-      a_gv.map_warn(swarn);
-    } else {
-      a_gv.hide_main_menu();
-    }
-
-    create_scenario_gun(m_run_manager,a_gv,a_sno);
-
-    add_trajectory_styles(a_gv.styles(),a_sno);
-    add_primary_styles(a_gv.styles(),a_sno);
-  
-    a_done = true;
     return true;
   }
 public:
-  opener(G4RunManager& a_run_manager)
-  :m_run_manager(a_run_manager)
-  {
+  opener() {
 #ifdef INLIB_MEM
     inlib::mem::increment(s_class().c_str());
 #endif
@@ -252,193 +180,12 @@ public:
 public:
   opener(const opener& a_from)
   :parent(a_from)
-  ,m_run_manager(a_from.m_run_manager)
   {
 #ifdef INLIB_MEM
     inlib::mem::increment(s_class().c_str());
 #endif
   }
-  opener& operator=(const opener&){return *this;}  
-protected:
-  static geant4::primary_generator* _get_primary_generator(G4RunManager& a_run_manager,inlib::sg::alert& a_gv) {
-    G4VUserPrimaryGeneratorAction* pga = geant4::get_primary_generator(a_run_manager,a_gv);
-    if(!pga) return 0;
-    geant4::primary_generator* pg = dynamic_cast<geant4::primary_generator*>(pga);
-    if(!pg) {a_gv.warn("primary generator not our");return 0;}
-    return pg;
-  }    
-
-  static void create_scenario_gun(G4RunManager& a_run_manager,inlib::sg::gui_viewer& a_gv,const inlib::xml::scenario& a_sno) {
-    if(a_sno.m_gun.m_particle.empty()) return;
-
-    geant4::primary_generator* pg = _get_primary_generator(a_run_manager,a_gv);
-    if(!pg) return;
-
-#ifdef EXLIB_HAS_PYTHIA8
-   {std::vector<std::string> dirs;
-    dirs.push_back(a_gv.res_dir());
-    inlib::append(dirs,a_gv.data_dirs());
-
-    std::vector<std::string> exts;
-    exts.push_back(a_sno.m_gun.m_file);
-
-    std::vector<std::string> paths;
-    inlib::get_files(a_gv.out(),dirs,exts,paths);
-    if(paths.size()) pg->set_cmnd(paths[0]);}
-
-    pg->set_select_particle(a_sno.m_gun.m_select_particle);
-    pg->set_accept_event(a_sno.m_gun.m_accept_event);
-    pg->set_primary_particle(a_sno.m_gun.m_primary_particle);
-#endif
-
-    if(!pg->set_particle(a_sno.m_gun.m_particle)) {
-      a_gv.map_warn("primary_generator.set_particle() failed.");
-      return;
-    }
-
-    double momentum = 1000; //1GeV. MeV is the basic unit in G4.
-    if(a_sno.m_gun.m_momentum.size()){
-    if(!inlib::to(a_sno.m_gun.m_momentum,momentum)) {
-      a_gv.map_warn("momentum not a number");
-      return;     
-    }}
-    if(momentum<=0) {
-      a_gv.map_warn("momentum<=0");
-      return;   
-    }
-
-    double pos_x = 0;
-    if(a_sno.m_gun.m_pos_x.size()){
-    if(!inlib::to(a_sno.m_gun.m_pos_x,pos_x)) {
-      a_gv.map_warn_nan();
-      return;     
-    }}
-    double pos_y = 0;
-    if(a_sno.m_gun.m_pos_y.size()){
-    if(!inlib::to(a_sno.m_gun.m_pos_y,pos_y)) {
-      a_gv.map_warn_nan();
-      return;     
-    }}
-    double pos_z = 0;
-    if(a_sno.m_gun.m_pos_z.size()){
-    if(!inlib::to(a_sno.m_gun.m_pos_z,pos_z)) {
-      a_gv.map_warn_nan();
-      return;     
-    }}
-
-    double dir_x = 0;
-    if(a_sno.m_gun.m_dir_x.size()){
-    if(!inlib::to(a_sno.m_gun.m_dir_x,dir_x)) {
-      a_gv.map_warn_nan();
-      return;     
-    }}
-    double dir_y = 0;
-    if(a_sno.m_gun.m_dir_y.size()){
-    if(!inlib::to(a_sno.m_gun.m_dir_y,dir_y)) {
-      a_gv.map_warn_nan();
-      return;     
-    }}
-    double dir_z = 1;
-    if(a_sno.m_gun.m_dir_z.size()){
-    if(!inlib::to(a_sno.m_gun.m_dir_z,dir_z)) {
-      a_gv.map_warn_nan();
-      return;     
-    }}
-    if(inlib::vec3d(dir_x,dir_y,dir_z).length()<=0) {
-      a_gv.map_warn("not a vector");
-      return;     
-    }
-
-    double sigma_momentum = 0;
-    if(a_sno.m_gun.m_sigma_momentum.size()){
-    if(!inlib::to(a_sno.m_gun.m_sigma_momentum,sigma_momentum)) {
-      a_gv.map_warn_nan();
-      return;     
-    }}
-    double sigma_angle = 0;
-    if(a_sno.m_gun.m_sigma_angle.size()){
-    if(!inlib::to(a_sno.m_gun.m_sigma_angle,sigma_angle)) {
-      a_gv.map_warn_nan();
-      return;     
-    }}
-
-    pg->set_momentum(momentum);
-    pg->set_position(pos_x,pos_y,pos_z);
-    pg->set_momentum_direction(dir_x,dir_y,dir_z);
-    pg->set_sigma_momentum(sigma_momentum);
-    pg->set_sigma_angle(sigma_angle);
-
-  }
-
-  INLIB_CLASS_STRING(trajectory)
-  INLIB_CLASS_STRING(primary)
-  INLIB_CLASS_STRING(color)
-  INLIB_CLASS_STRING(show_name)
-  INLIB_CLASS_STRING(text_scale)
-  INLIB_CLASS_STRING(at_end)
-
-  static void add_trajectory_styles(inlib::xml::styles& a_styles,
-                                    const inlib::xml::scenario& a_sno) {
-
-    a_styles.remove_styles(s_trajectory()+inlib::res_sep()+"*");
-    
-    if(a_sno.m_trajectories.empty()) return;
-
-    const inlib::xml::scenario::named_atbs_t& tjs = 
-      a_sno.m_trajectories.front();
-
-    typedef inlib::xml::atbs atbs_t;
-    typedef std::pair<std::string,atbs_t> named_atbs_t;
-    inlib_vforcit(named_atbs_t,tjs,it){
-      inlib::xml::styles::style_t sty;
-      sty.push_back
-        (inlib::xml::styles::style_item_t
-           (s_color(),(*it).second.m_color));
-      sty.push_back
-        (inlib::xml::styles::style_item_t
-           (s_show_name(),(*it).second.m_show_name));
-      sty.push_back
-        (inlib::xml::styles::style_item_t
-           (s_text_scale(),(*it).second.m_text_scale));
-      sty.push_back
-        (inlib::xml::styles::style_item_t
-           (s_at_end(),(*it).second.m_at_end));
-      a_styles.add_style(s_trajectory()+inlib::res_sep()+(*it).first,sty);
-    }
-
-  }
-
-  static void add_primary_styles(inlib::xml::styles& a_styles,
-                                 const inlib::xml::scenario& a_sno) {
-
-    a_styles.remove_styles(s_primary()+inlib::res_sep()+"*");
-    
-    if(a_sno.m_primaries.empty()) return;
-
-    const inlib::xml::scenario::named_atbs_t& tjs = a_sno.m_primaries.front();
-
-    typedef inlib::xml::atbs atbs_t;
-    typedef std::pair<std::string,atbs_t> named_atbs_t;
-    inlib_vforcit(named_atbs_t,tjs,it){
-      inlib::xml::styles::style_t sty;
-      sty.push_back
-        (inlib::xml::styles::style_item_t
-           (s_color(),(*it).second.m_color));
-      sty.push_back
-        (inlib::xml::styles::style_item_t
-           (s_show_name(),(*it).second.m_show_name));
-      sty.push_back
-        (inlib::xml::styles::style_item_t
-           (s_text_scale(),(*it).second.m_text_scale));
-      sty.push_back
-        (inlib::xml::styles::style_item_t
-           (s_at_end(),(*it).second.m_at_end));
-      a_styles.add_style(s_primary()+inlib::res_sep()+(*it).first,sty);
-    }
-
-  }
-protected:
-  G4RunManager& m_run_manager;
+  opener& operator=(const opener&){return *this;}
 };
 
 class mac_opener : public virtual inlib::iopener {
@@ -448,7 +195,7 @@ public:
   virtual parent* copy() const {return new mac_opener(*this);}
   virtual const std::string& s_cls() const {return s_class();}
   virtual bool is(const std::string& a_path,bool& a_is) const {
-    a_is = (inlib::suffix(a_path)==s_mac()?true:false);
+    a_is = (inlib::suffix(a_path)=="mac"?true:false);
     return true;
   }
   virtual bool open(const std::string& a_path,
@@ -457,16 +204,15 @@ public:
                     bool& a_done) const {
     a_done = false;
 
-    //inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(a_viewer);
-    //if(!_evd) return false;
     inlib::sg::gui_viewer* _gv = inlib::sg::cast_gui_viewer(a_viewer);
     if(!_gv) return false;
     inlib::sg::gui_viewer& a_gv = *_gv;
- 
-    if(!geant4::set_store_trajectory(a_gv)) return false;
 
-    a_gv.hide_main_menu();
-    a_gv.win_render();
+// {std::string serr;
+//  if(!set_store_trajectory(serr)) {
+//    a_gv.warn(serr);
+//    return false;
+//  }}
 
     G4UImanager* UI = G4UImanager::GetUIpointer();
     if(!UI) {
@@ -474,6 +220,9 @@ public:
       return false;
     }
     UI->ExecuteMacroFile(a_path.c_str());
+
+//  a_gv.hide_main_menu();
+//  a_gv.win_render();
 
     a_done = true;
     return true;
@@ -517,88 +266,7 @@ public:
     inlib::mem::increment(s_class().c_str());
 #endif
   }
-  mac_opener& operator=(const mac_opener&){return *this;}  
-};
-
-class cmnd_opener : public virtual inlib::iopener {
-  typedef inlib::iopener parent;
-  INLIB_SCLASS(exlib::geant4::cmnd_opener)
-public:
-  virtual parent* copy() const {return new cmnd_opener(*this);}
-  virtual const std::string& s_cls() const {return s_class();}
-  virtual bool is(const std::string& a_path,bool& a_is) const {
-    a_is = (inlib::suffix(a_path)==s_cmnd()?true:false);
-    return true;
-  }
-  virtual bool open(const std::string& a_path,
-                    inlib::sg::viewer& a_viewer,
-                    const inlib::args&,
-                    bool& a_done) const {
-    a_done = false;
-
-    //inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(a_viewer);
-    //if(!_evd) return false;
-    inlib::sg::gui_viewer* _gv = inlib::sg::cast_gui_viewer(a_viewer);
-    if(!_gv) return false;
-    inlib::sg::gui_viewer& a_gv = *_gv;
-
-    geant4::primary_generator* pg = geant4::our_primary_generator(m_run_manager,a_gv);
-    if(pg) { 
-#ifdef EXLIB_HAS_PYTHIA8
-      pg->set_cmnd(a_path);
-      pg->reset_select_particle();
-      pg->reset_accept_event();
-      pg->reset_primary_particle();
-#endif
-
-      pg->set_particle(geant4::s_pythia8());
-      a_gv.map_warn_done();
-    }   
-
-    a_done = true;
-    return true;
-  }
-
-  virtual bool is(inlib::uint64,const char*,bool& a_is) const {
-    a_is = false;
-    return true;
-  }
-  virtual bool open(inlib::uint64,const char*,
-                    inlib::sg::viewer&,
-                    const inlib::args&,
-                    bool& a_done) const {
-    a_done = false;
-    return true;
-  }
-  virtual bool open(const std::string&,
-                    inlib::sg::viewer&,
-                    const inlib::xml::scenario&,
-                    inlib::sg::cmaps_t&,
-                    const inlib::args&,
-                    bool& a_done) const {
-    a_done = false;
-    return true;
-  }
-public:
-  cmnd_opener(G4RunManager& a_run_manager):m_run_manager(a_run_manager){
-#ifdef INLIB_MEM
-    inlib::mem::increment(s_class().c_str());
-#endif
-  }
-  virtual ~cmnd_opener(){
-#ifdef INLIB_MEM
-    inlib::mem::decrement(s_class().c_str());
-#endif
-  }
-public:
-  cmnd_opener(const cmnd_opener& a_from):parent(a_from),m_run_manager(a_from.m_run_manager){
-#ifdef INLIB_MEM
-    inlib::mem::increment(s_class().c_str());
-#endif
-  }
-  cmnd_opener& operator=(const cmnd_opener&){return *this;}
-protected:
-  G4RunManager& m_run_manager;
+  mac_opener& operator=(const mac_opener&){return *this;}
 };
 
 }}

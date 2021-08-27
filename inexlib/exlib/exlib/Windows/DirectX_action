@@ -26,7 +26,7 @@ public:
   virtual void* cast(const std::string& a_class) const {
     if(void* p = inlib::cmp_cast<DirectX_manager>(this,a_class)) {return p;}
     else return 0;
-  }  
+  }
 public:
   struct _VERTEX {
     FLOAT m_x,m_y,m_z,m_r,m_g,m_b,m_a;
@@ -35,7 +35,7 @@ public:
   virtual bool begin_render(int,int,unsigned int a_ww,unsigned int a_wh,
                             float a_r,float a_g,float a_b,float a_a,bool = true) {
     if(!m_hwnd) return false;
-    
+
     m_out << "debug : begin_render : 021 " << a_ww << " " << a_wh << std::endl;
 
     bool resize = false;
@@ -43,7 +43,7 @@ public:
       m_ww = a_ww;
       m_wh = a_wh;
       resize = true;
-    }      
+    }
 
     if(resize) {
       _clear();
@@ -52,9 +52,9 @@ public:
         return false;
       }
     }
-    
+
     if(!m_swap_chain) return false;
-    
+
     // Set the viewport
   //::ZeroMemory(&m_viewport, sizeof(D3D11_VIEWPORT));
     m_viewport.TopLeftX = 0;
@@ -73,7 +73,7 @@ public:
     m_context->ClearRenderTargetView(m_back_buffer,m_clear_color);
 
     //draw_test();
-    
+
     return true;
   }
   virtual void end_render() {
@@ -131,7 +131,7 @@ public:
   ,m_ww(0),m_wh(0)
   {
     if(!a_hwnd) {m_out << "exlib::Windows::DirectX_manager::DirectX_manager : null HWND." << std::endl;return;}
-    
+
     static const char s_shader[] = "\
 struct VOut {float4 position : SV_POSITION;float4 color : COLOR;};\
 VOut VShader(float4 a_position : POSITION, float4 a_color : COLOR) {\
@@ -156,7 +156,7 @@ VPointOut VPointShader(float4 a_position : POSITION) {\
       m_out << "exlib::Windows::DirectX_manager::DirectX_manager : can't compile shader for PShader." << std::endl;
       m_PS = 0;
     }
-    
+
   }
   virtual ~DirectX_manager() {
     _clear();
@@ -178,12 +178,12 @@ public:
     if(&a_from==this) return *this;
     return *this;
   }
-public:  
+public:
   const ID3D11Device& device() const {return *m_device;}
   const ID3D11DeviceContext& context() const {return *m_context;}
   ID3D11Device& device() {return *m_device;}
   ID3D11DeviceContext& context() {return *m_context;}
-  
+
   bool set_mode(inlib::gl::mode_t a_mode) {
     if(!m_context) return false;
     if(a_mode==inlib::gl::points()) {
@@ -200,11 +200,11 @@ public:
 //  } else if(a_mode==inlib::gl::triangle_fan()) {
     } else {
       m_out << "exlib::Windows::DirectX_manager::set_mode : mode not treated : "
-            << (unsigned int)a_mode << ". Set line strip." << std::endl;	  
+            << (unsigned int)a_mode << ". Set line strip." << std::endl;
     }
     return true;
   }
-  
+
   void draw_test() {
     _VERTEX OurVertices[] = {
       {0.0f, 0.5f, 0.0f,    1.0f, 0.0f, 0.0f, 1.0f},
@@ -232,7 +232,7 @@ public:
     UINT stride = sizeof(_VERTEX);
     UINT offset = 0;
     m_context->IASetVertexBuffers(0,1,&pVBuffer,&stride,&offset);
-    
+
     m_context->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     m_context->Draw(3, 0);
@@ -242,7 +242,7 @@ public:
 
   void set_state(bool a_ccw) {
     if(m_pRasterizerState) {m_pRasterizerState->Release();m_pRasterizerState = 0;}
-    
+
   //::ZeroMemory(&m_srd,sizeof(D3D11_RASTERIZER_DESC));
     m_srd.FillMode              = D3D11_FILL_SOLID;
     m_srd.CullMode              = D3D11_CULL_BACK;
@@ -255,16 +255,16 @@ public:
     m_srd.MultisampleEnable     = FALSE;
     m_srd.AntialiasedLineEnable = FALSE;
     if(m_device->CreateRasterizerState(&m_srd,&m_pRasterizerState)!=S_OK) {}
-    
+
     m_context->RSSetState(m_pRasterizerState);
   }
-  
-protected:  
+
+protected:
   bool initialize() {
     if(!m_hwnd) return false;
     if(!m_VS) return false;
     if(!m_PS) return false;
-  
+
   ::ZeroMemory(&m_scd,sizeof(DXGI_SWAP_CHAIN_DESC));
     // fill the swap chain description struct
     m_scd.BufferCount = 1;                                    // one back buffer
@@ -280,12 +280,12 @@ protected:
                                   NULL,NULL,NULL,NULL,
                                   D3D11_SDK_VERSION,
                                   &m_scd,&m_swap_chain,&m_device,NULL,&m_context);
-  
+
     if((m_swap_chain==NULL)||(m_device==NULL)||(m_context==NULL)) {
       _clear();
       return false;
     }
-    
+
     ID3D11Texture2D* pBackBuffer;
     m_swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
     if(!pBackBuffer) {_clear();return false;}
@@ -293,11 +293,11 @@ protected:
     // use the back buffer address to create the render target
     m_device->CreateRenderTargetView(pBackBuffer, NULL, &m_back_buffer);
     pBackBuffer->Release();
-  
+
     if(!m_back_buffer) {_clear();return false;}
 
   //m_context->OMSetRenderTargets(1, &m_back_buffer, NULL); // set the render target as the back buffer
-  
+
     m_device->CreateVertexShader(m_VS->GetBufferPointer(),m_VS->GetBufferSize(),NULL,&m_pVS);
     m_device->CreatePixelShader(m_PS->GetBufferPointer(),m_PS->GetBufferSize(),NULL,&m_pPS);
     m_context->VSSetShader(m_pVS, 0, 0);
@@ -307,7 +307,7 @@ protected:
       {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
       {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
     };
-  
+
     m_device->CreateInputLayout(m_ied,2,m_VS->GetBufferPointer(),m_VS->GetBufferSize(),&m_pLayout);
     m_context->IASetInputLayout(m_pLayout);
 
@@ -344,7 +344,7 @@ protected:
     m_descDepth.CPUAccessFlags = 0;
     m_descDepth.MiscFlags = 0;
     if(m_device->CreateTexture2D(&m_descDepth,NULL,&m_pDepthStencil)!=S_OK) {}
-    
+
     m_dsd.DepthEnable = true;
     m_dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
     m_dsd.DepthFunc = D3D11_COMPARISON_LESS;
@@ -363,7 +363,7 @@ protected:
     //m_dsd.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
     if(m_device->CreateDepthStencilState(&m_dsd,&m_pDSState)!=S_OK){}
     m_context->OMSetDepthStencilState(m_pDSState,1);
-    
+
     m_descDSV.Format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
     m_descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
     m_descDSV.Texture2D.MipSlice = 0;
@@ -381,7 +381,7 @@ protected:
     if(m_pDSV) {m_pDSV->Release();m_pDSV = 0;}
     if(m_pDSState) {m_pDSState->Release();m_pDSState = 0;}
     if(m_pDepthStencil) {m_pDepthStencil->Release();m_pDepthStencil = 0;}
-    
+
     if(m_pRasterizerState) {m_pRasterizerState->Release();m_pRasterizerState = 0;}
     if(m_pLayout) {m_pLayout->Release();m_pLayout = 0;}
     if(m_pVS) {m_pVS->Release();m_pVS = 0;}
@@ -389,10 +389,10 @@ protected:
     if(m_back_buffer) {m_back_buffer->Release();m_back_buffer = 0;}
     if(m_swap_chain) {m_swap_chain->Release();m_swap_chain = 0;}
     if(m_device) {m_device->Release();m_device = 0;}
-    if(m_context) {m_context->Release();m_context = 0;}    
+    if(m_context) {m_context->Release();m_context = 0;}
   }
-  
-protected:  
+
+protected:
   std::ostream& m_out;
   HWND m_hwnd;
   ID3D10Blob* m_VS;
@@ -421,12 +421,12 @@ protected:
 };
 
 class DirectX_action : public inlib::sg::render_action {
-  typedef inlib::sg::render_action parent;
+  INLIB_ACTION(DirectX_action,exlib::Windows::DirectX_action,inlib::sg::render_action)
 public:
   virtual void draw_vertex_array(inlib::gl::mode_t a_mode,size_t a_floatn,const float* a_xyzs) {
     size_t num = a_floatn/3;
     if(!num) return;
-    
+
     //m_out << "debug : draw_vertex_array : color "
     //      << m_color.r() << " " << m_color.g() << " " << m_color.b() << " " << m_color.a()
     //      << std::endl;
@@ -456,7 +456,7 @@ public:
 
     // copy the vertices into the buffer
     m_mgr.context().Map(pVBuffer, NULL,D3D11_MAP_WRITE_DISCARD, NULL, &m_ms);
-    
+
     if(a_mode==inlib::gl::triangle_fan()) {
       float* pxyz_rgbas = (float*)m_ms.pData;
       inlib::gl::triangle_fan_to_triangles(old_num,a_xyzs,m_color.r(),m_color.g(),m_color.b(),m_color.a(),pxyz_rgbas);
@@ -485,13 +485,13 @@ public:
     }
 
     if(!project_xyz_rgbas(num,(float*)m_ms.pData)) {}
-    
+
     m_mgr.context().Unmap(pVBuffer,NULL);
 
     UINT stride = sizeof(DirectX_manager::_VERTEX);
     UINT offset = 0;
     m_mgr.context().IASetVertexBuffers(0,1,&pVBuffer,&stride,&offset);
-    
+
     m_mgr.set_state(m_ccw);
 
     if(m_mgr.set_mode(mode)) m_mgr.context().Draw(num,0);
@@ -502,11 +502,11 @@ public:
   virtual void draw_vertex_array_xy(inlib::gl::mode_t a_mode,size_t a_floatn,const float* a_xys){
     size_t num = a_floatn/2;
     if(!num) return;
-    
+
     //m_out << "debug : draw_vertex_array_xy : color "
     //      << m_color.r() << " " << m_color.g() << " " << m_color.b() << " " << m_color.a()
     //      << std::endl;
-	  
+
     size_t old_num = num;
     inlib::gl::mode_t mode = a_mode;
     if(a_mode==inlib::gl::triangle_fan()) {
@@ -561,15 +561,15 @@ public:
     }
 
     if(!project_xyz_rgbas(num,(float*)m_ms.pData)) {}
-    
+
     m_mgr.context().Unmap(pVBuffer,NULL);
 
     UINT stride = sizeof(DirectX_manager::_VERTEX);
     UINT offset = 0;
     m_mgr.context().IASetVertexBuffers(0,1,&pVBuffer,&stride,&offset);
-    
+
     m_mgr.set_state(m_ccw);
-    
+
     if(m_mgr.set_mode(mode)) m_mgr.context().Draw(num,0);
 
     pVBuffer->Release();
@@ -617,6 +617,11 @@ public:
 
   virtual void set_winding(inlib::sg::winding_type a_v) {m_ccw = (a_v==inlib::sg::winding_ccw?true:false);}
 
+  virtual void set_shade_model(inlib::sg::shade_type a_v) {
+    if(a_v==inlib::sg::shade_smooth) {}
+    else {}
+  }
+
   virtual void set_depth_test(bool a_on) {m_DEPTH_TEST = a_on;}
 
   virtual void set_cull_face(bool a_on) {m_CULL_FACE = a_on;}
@@ -637,21 +642,23 @@ public:
   }
 
   virtual void set_lighting(bool a_on) {m_light_on = a_on;}
+  virtual void set_blend(bool) {}
 
   virtual void restore_state(unsigned int /*a_ret_num_light*/) {
-    m_proj = m_state.m_proj;
-    m_model = m_state.m_model;
+    const inlib::sg::state& _state = state();
+    m_proj = _state.m_proj;
+    m_model = _state.m_model;
 
-    m_color = m_state.m_color;
-    m_ccw = (m_state.m_winding==inlib::sg::winding_ccw?true:false);
-    m_POLYGON_OFFSET_FILL = m_state.m_GL_POLYGON_OFFSET_FILL;
-    m_CULL_FACE = m_state.m_GL_CULL_FACE;
-    m_POINT_SMOOTH = m_state.m_GL_POINT_SMOOTH;
-    m_LINE_SMOOTH = m_state.m_GL_LINE_SMOOTH;
-    m_point_size = m_state.m_point_size;
-    m_line_width = m_state.m_line_width;
-    m_light_on = m_state.m_GL_LIGHTING;
-    m_DEPTH_TEST = m_state.m_GL_DEPTH_TEST;
+    m_color = _state.m_color;
+    m_ccw = (_state.m_winding==inlib::sg::winding_ccw?true:false);
+    m_POLYGON_OFFSET_FILL = _state.m_GL_POLYGON_OFFSET_FILL;
+    m_CULL_FACE = _state.m_GL_CULL_FACE;
+    m_POINT_SMOOTH = _state.m_GL_POINT_SMOOTH;
+    m_LINE_SMOOTH = _state.m_GL_LINE_SMOOTH;
+    m_point_size = _state.m_point_size;
+    m_line_width = _state.m_line_width;
+    m_light_on = _state.m_GL_LIGHTING;
+    m_DEPTH_TEST = _state.m_GL_DEPTH_TEST;
   }
 
   /////////////////////////////////////////////////////////////////
@@ -744,7 +751,7 @@ protected:
     parent::operator=(a_from);
     if(&a_from==this) return *this;
     m_mgr = a_from.m_mgr;
-    
+
     m_light_color = a_from.m_light_color;
     m_light_direction = a_from.m_light_direction;
     m_normal = a_from.m_normal;
@@ -776,12 +783,12 @@ protected:
   }
   bool project_xyz_rgbas(size_t a_num,float* a_xyz_rgbas) {
     float w;
-    float* mpos = a_xyz_rgbas;    
+    float* mpos = a_xyz_rgbas;
     for(size_t index=0;index<a_num;index++,mpos+=7) { //WARNING : 7 and not 3.
       if(!project_point(*(mpos+0),*(mpos+1),*(mpos+2),w)) {}
     }
     return true;
-  }    
+  }
 protected:
   DirectX_manager& m_mgr;
 
@@ -792,13 +799,13 @@ protected:
   // to be restored in restore_state() :
   inlib::mat4f m_proj;
   inlib::mat4f m_model;
-  inlib::colorf m_color;  
+  inlib::colorf m_color;
   bool m_ccw;
-  bool m_POLYGON_OFFSET_FILL;	
+  bool m_POLYGON_OFFSET_FILL;
   bool m_CULL_FACE;
   bool m_POINT_SMOOTH;
   bool m_LINE_SMOOTH;
-  float m_point_size;  
+  float m_point_size;
   float m_line_width;
   bool m_light_on;
   bool m_DEPTH_TEST;

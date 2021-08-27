@@ -4,22 +4,20 @@
 #ifndef exlib_geant4_visited_volume
 #define exlib_geant4_visited_volume
 
+#include "polyhedron"
+#include "ivisited_volume"
+
 #include <G4VPhysicalVolume.hh>
 #include <G4LogicalVolume.hh>
 #include <G4VSolid.hh>
-#include <G4Version.hh>
-
-#include "polyhedron"
-
 #include <G4VisAttributes.hh>
-
-#include "ivisited_volume"
+#include <G4Version.hh>
 
 #include <inlib/sg/separator>
 #include <inlib/sg/matrix>
 #include <inlib/sg/rgba>
 #include <inlib/sg/draw_style>
-#include <inlib/mat4d>
+#include <inlib/lina/mat4d>
 #include <inlib/sg/polyhedron>
 
 namespace exlib {
@@ -41,7 +39,7 @@ public: //visited_volume
       bool visible = true;
       bool solid = m_solid;
       bool rwf = m_reduced_wire_frame;
- 
+
       inlib::colorf rgba(m_color);
 
       if(a_pv.GetLogicalVolume()) {
@@ -49,7 +47,7 @@ public: //visited_volume
         if(visAtbs) {
           visible = visAtbs->IsVisible();
           a_do_daughters = visAtbs->IsDaughtersInvisible()?false:true;
-  
+
           const G4Color& color = visAtbs->GetColor();
           float r = (float)color.GetRed();
           float g = (float)color.GetGreen();
@@ -67,10 +65,10 @@ public: //visited_volume
           }
         }
       }
-  
+
       if(visible) {
 
-        if(rgba.a()!=1.0f) { 
+        if(rgba.a()!=1.0f) {
           if(m_do_transparents!=1) {
             if(rgba.a()!=m_do_transparents) return true;
           } else {
@@ -85,7 +83,7 @@ public: //visited_volume
                 << " Can't create polyhedron for PV " << a_pv.GetName()
                 << std::endl;
           return false;
-        }     
+        }
 
         inlib::sg::separator* separator = new inlib::sg::separator;
 
@@ -103,7 +101,7 @@ public: //visited_volume
           float(a_g4(2,0)),float(a_g4(2,1)),float(a_g4(2,2)),float(a_g4(2,3)),
                          0,               0,               0,              1);
         separator->add(transform);
-              
+
         //exlib::geant4::polyhedron* phd = new exlib::geant4::polyhedron();
         // NOTE : there is a bug in G4Visible::operator!=()
         // which does not verify that fpVisAttributes
@@ -137,7 +135,7 @@ public: //visited_volume
       } //end visible
 
     }
-   
+
     return true;
   }
 public:

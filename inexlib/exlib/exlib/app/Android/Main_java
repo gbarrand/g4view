@@ -24,6 +24,8 @@ import java.io.OutputStream;
 import java.io.File;
 import android.content.Intent;
 import android.net.Uri;
+import android.support.v4.content.FileProvider;
+//import androidx.core.content.FileProvider
 
 // for ACTION_VIEW :
 import android.content.ContentResolver;
@@ -50,7 +52,7 @@ public class Main extends NativeActivity {
         //Log.v("EXLIB_APP::Main::onCreate","File intent : "+
         //      action+" : "+intent.getDataString()+" : "+intent.getType()+" : "+name);
         String document_path = "/sdcard/Android/data/fr.in2p3.lal.EXLIB_APP/DOCUMENT";
-        uri_to_file(uri,document_path); 
+        uri_to_file(uri,document_path);
 
       } else if (scheme.compareTo(ContentResolver.SCHEME_CONTENT) == 0) {
         ContentResolver resolver = getContentResolver();
@@ -58,7 +60,7 @@ public class Main extends NativeActivity {
         //Log.v("EXLIB_APP::Main::onCreate","Content intent : "+
         //      action+" : "+intent.getDataString()+" : "+intent.getType()+" : "+name);
         String document_path = "/sdcard/Android/data/fr.in2p3.lal.EXLIB_APP/DOCUMENT";
-        uri_to_file(uri,document_path); 
+        uri_to_file(uri,document_path);
 
 /*
       } else if (scheme.compareTo("http") == 0) {
@@ -74,13 +76,14 @@ public class Main extends NativeActivity {
       }
     }
 
-    //System.err.println("debug : Main::onCreate : end");	
+    //System.err.println("debug : Main::onCreate : end");
   }
 
 
   private void load_resources() {
-    final Object saved_object = getLastNonConfigurationInstance();
-    if(saved_object!=null) return; //done
+    //final Object saved_object = getLastNonConfigurationInstance(); //deprecated.
+    //if(saved_object!=null) return; //done
+
     //First load of Activity.
 
     String app_dir = getFilesDir().getPath();
@@ -91,7 +94,7 @@ public class Main extends NativeActivity {
       try {
         String name = f.getName();
 
-        //NOTE : 
+        //NOTE :
         // if resource is xxx_ext then name is xxx_ext
         // if resource is xxx_yyy.ext then name is xxx_yyy
 
@@ -111,7 +114,7 @@ public class Main extends NativeActivity {
         int pos = name.lastIndexOf("_");
         if(pos!=(-1)) {
           String ext = name.substring(pos+1,name.length());
-          String fname = name.substring(0,pos);	
+          String fname = name.substring(0,pos);
 
         //System.out.println("debug : ext "+ext+" fname "+fname);
 
@@ -128,17 +131,21 @@ public class Main extends NativeActivity {
              (ext.equals("wrl"))     || //for ioda built with CoinGL and HEPVis.
              (ext.equals("heprep"))  || //for ioda.
              (ext.equals("zheprep")) || //for ioda.
+             (ext.equals("shp"))     || //for ioda.
+             (ext.equals("shx"))     || //for ioda.
              (ext.equals("g4m"))     || //for MEMPHYS init.g4m
              (ext.equals("memphys")) || //for MEMPHYS input event file.
              (ext.equals("ttf"))     ||
              (ext.equals("otf"))     ||
              (ext.equals("jpg"))     ||
+             (ext.equals("jpeg"))    ||
              (ext.equals("png"))     ||
              (ext.equals("fog"))     ||
              (ext.equals("dot"))     ||
              (ext.equals("dcm"))     || //for DICOM
              (ext.equals("dic"))     || //for DICOM
              (ext.equals("fits"))    ||
+             (ext.equals("insh"))    ||
              (ext.equals("style"))   ||
              (ext.equals("ftp"))     ||
              (ext.equals("srv"))     ||
@@ -151,6 +158,7 @@ public class Main extends NativeActivity {
              (ext.equals("zip"))       ||
              (ext.equals("zvid"))      ||
              (ext.equals("scenarios")) ||
+             (ext.equals("gz"))        || //for TouchSky.
              (ext.equals("slides"))    ){
 
             if(ext.equals("fog")) {
@@ -190,7 +198,7 @@ public class Main extends NativeActivity {
       } catch(IOException e){
         System.out.println(e.getMessage());
       }
-    }      
+    }
   }
 
   public void send_mail(String a_to,
@@ -209,11 +217,19 @@ public class Main extends NativeActivity {
     intent.putExtra(Intent.EXTRA_TEXT,a_msg);
     intent.setType("message/rfc822");
     if(a_path.length()!=0) {
+    /*
       File file = new File(a_path);
       if(file.exists()) {
         intent.setType(a_mime);
         //Uri uri = Uri.fromFile(file);
         Uri uri = Uri.parse("file://" + file.getAbsolutePath());
+        intent.putExtra(Intent.EXTRA_STREAM,uri);
+      }
+      */
+      File file = new File(a_path);
+      if(file.exists()) {
+        intent.setType(a_mime);
+        Uri uri = FileProvider.getUriForFile(this,"fr.in2p3.lal.EXLIB_APP.provider",file);
         intent.putExtra(Intent.EXTRA_STREAM,uri);
       }
     }

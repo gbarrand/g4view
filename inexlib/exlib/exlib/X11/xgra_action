@@ -25,7 +25,7 @@ public:
   virtual void* cast(const std::string& a_class) const {
     if(void* p = inlib::cmp_cast<xgra_manager>(this,a_class)) {return p;}
     else return 0;
-  }  
+  }
 public:
   virtual bool begin_render(int,int,unsigned int a_ww,unsigned int a_wh,float a_r,float a_g,float a_b,float,bool = true) {
     if(!set_foreground(a_r,a_g,a_b)) {}
@@ -70,10 +70,9 @@ public:
     unsigned int ww = _img.width();
     unsigned int wh = _img.height();
 
-    XImage* image = ::XCreateImage(m_display,
-				   ::XDefaultVisualOfScreen(::XDefaultScreenOfDisplay(m_display)),
-                                   ::XDefaultDepthOfScreen(::XDefaultScreenOfDisplay(m_display)),
-                                   ZPixmap,0,NULL,ww,wh,8,0);
+    Screen* screen = ::XScreenOfDisplay(m_display,m_monitor);
+
+    XImage* image = ::XCreateImage(m_display,::XDefaultVisualOfScreen(screen),::XDefaultDepthOfScreen(screen),ZPixmap,0,NULL,ww,wh,8,0);
 
     if(!image) return 0;
     image->data = new char[image->height*image->bytes_per_line];
@@ -91,7 +90,7 @@ public:
       r = float(*pos)/255.0F;pos++;
       g = float(*pos)/255.0F;pos++;
       b = float(*pos)/255.0F;pos++;
-      if(!get_pixel(m_display,m_pixels,m_colors,r,g,b,pixel)) {}
+      if(!get_pixel(m_display,m_monitor,m_pixels,m_colors,r,g,b,pixel)) {}
       XPutPixel(image,col,row,pixel);
     }}}
     m_gen_id++;
@@ -121,19 +120,20 @@ public:
   virtual size_t used_texture_memory() const {return 0;}
   virtual size_t gstos_size() const {return 0;}
 public:
-  xgra_manager(std::ostream& a_out,Display* a_display,Window a_window)
-  :m_out(a_out),m_display(a_display),m_window(a_window),m_pixmap(0),m_gc(0),m_gen_id(0)
+  xgra_manager(std::ostream& a_out,Display* a_display,unsigned int a_monitor,Window a_window)
+  :m_out(a_out),m_display(a_display),m_monitor(a_monitor),m_window(a_window),m_pixmap(0),m_gc(0),m_gen_id(0)
   ,m_gsto_mode(inlib::sg::gsto_memory)
   {
     //XGCValues vgc;
     //vgc.line_style = LineSolid;
     //vgc.line_width = 0;
-    //m_gc = ::XCreateGC(m_display,XDefaultRootWindow(m_display),GCLineStyle|GCLineWidth,&vgc);
-    m_gc = ::XCreateGC(m_display,XDefaultRootWindow(m_display),0,0);
+    //m_gc = ::XCreateGC(m_display,XRootWindow(m_display,m_monitor),GCLineStyle|GCLineWidth,&vgc);
+    m_gc = ::XCreateGC(m_display,XRootWindow(m_display,m_monitor),0,0);
   }
   virtual ~xgra_manager(){
+    Screen* screen = ::XScreenOfDisplay(m_display,m_monitor);
    {inlib_vforit(Pixel,m_pixels,it) {
-      ::XFreeColors(m_display,XDefaultColormapOfScreen(XDefaultScreenOfDisplay(m_display)),&(*it),1,0);
+      ::XFreeColors(m_display,XDefaultColormapOfScreen(screen),&(*it),1,0);
     }
     m_pixels.clear();}
     m_colors.clear();
@@ -167,7 +167,7 @@ public:
   void set_window(Window a_window) {m_window = a_window;}
 
   bool set_foreground(float a_r,float a_g,float a_b) {
-    return ::exlib::X11::set_foreground(m_display,m_gc,m_pixels,m_colors,a_r,a_g,a_b);
+    return ::exlib::X11::set_foreground(m_display,m_monitor,m_gc,m_pixels,m_colors,a_r,a_g,a_b);
   }
 
   bool find_image(unsigned int a_id,XImage*& a_image) const {
@@ -191,8 +191,8 @@ public:
     double_buffer = true;
     if(double_buffer) {
       if(m_pixmap) ::XFreePixmap(m_display,m_pixmap);
-      m_pixmap = XCreatePixmap(m_display,XDefaultRootWindow(m_display),a_w,a_h,
-                               XDefaultDepthOfScreen(XDefaultScreenOfDisplay(m_display)));
+      Screen* screen = ::XScreenOfDisplay(m_display,m_monitor);
+      m_pixmap = XCreatePixmap(m_display,XRootWindow(m_display,m_monitor),a_w,a_h,XDefaultDepthOfScreen(screen));
       if(!m_pixmap) return false;
 
       //if(m_gc) ::XFreeGC(m_display,m_gc);
@@ -211,7 +211,7 @@ public:
     } else {
       //if(m_gc) ::XFreeGC(m_display,m_gc);
       //m_gc = ::XCreateGC(m_display,m_window,0,0);
-    }    
+    }
     return true;
   }
   void pixmap2win() {
@@ -224,6 +224,7 @@ public:
 protected:
   std::ostream& m_out;
   Display* m_display;
+  unsigned int m_monitor;
   Window m_window;
   Pixmap m_pixmap;
   GC m_gc;
@@ -236,7 +237,7 @@ protected:
 };
 
 class xgra_action : public inlib::sg::render_action {
-  typedef inlib::sg::render_action parent;
+  INLIB_ACTION(xgra_action,exlib::X11::xgra_action,inlib::sg::render_action)
 
   static unsigned int _GL2PS_POINT()    {return 2;}
   static unsigned int _GL2PS_LINE()     {return 3;}
@@ -606,6 +607,11 @@ public:
     m_ccw = (a_v==inlib::sg::winding_ccw?true:false);
   }
 
+  virtual void set_shade_model(inlib::sg::shade_type a_v) {
+    if(a_v==inlib::sg::shade_smooth) {}
+    else {}
+  }
+
   virtual void set_depth_test(bool a_on) {m_DEPTH_TEST = a_on;}
 
   virtual void set_cull_face(bool a_on) {m_CULL_FACE = a_on;}
@@ -626,21 +632,23 @@ public:
   }
 
   virtual void set_lighting(bool a_on) {m_light_on = a_on;}
+  virtual void set_blend(bool) {}
 
   virtual void restore_state(unsigned int /*a_ret_num_light*/) {
-    m_proj = m_state.m_proj;
-    m_model = m_state.m_model;
+    const inlib::sg::state& _state = state();
+    m_proj = _state.m_proj;
+    m_model = _state.m_model;
 
-    m_color = m_state.m_color;
-    m_ccw = (m_state.m_winding==inlib::sg::winding_ccw?true:false);
-    m_POLYGON_OFFSET_FILL = m_state.m_GL_POLYGON_OFFSET_FILL;
-    m_CULL_FACE = m_state.m_GL_CULL_FACE;
-    m_POINT_SMOOTH = m_state.m_GL_POINT_SMOOTH;
-    m_LINE_SMOOTH = m_state.m_GL_LINE_SMOOTH;
-    m_point_size = m_state.m_point_size;
-    m_line_width = m_state.m_line_width;
-    m_light_on = m_state.m_GL_LIGHTING;
-    m_DEPTH_TEST = m_state.m_GL_DEPTH_TEST;
+    m_color = _state.m_color;
+    m_ccw = (_state.m_winding==inlib::sg::winding_ccw?true:false);
+    m_POLYGON_OFFSET_FILL = _state.m_GL_POLYGON_OFFSET_FILL;
+    m_CULL_FACE = _state.m_GL_CULL_FACE;
+    m_POINT_SMOOTH = _state.m_GL_POINT_SMOOTH;
+    m_LINE_SMOOTH = _state.m_GL_LINE_SMOOTH;
+    m_point_size = _state.m_point_size;
+    m_line_width = _state.m_line_width;
+    m_light_on = _state.m_GL_LIGHTING;
+    m_DEPTH_TEST = _state.m_GL_DEPTH_TEST;
   }
 
   /////////////////////////////////////////////////////////////////
@@ -762,7 +770,7 @@ public:
 
     //m_zb.change_size(a_ww,a_wh);
 //    m_zb.clear_color_buffer(0);
-//    m_zb.clear_depth_buffer();  
+//    m_zb.clear_depth_buffer();
   }
   virtual ~xgra_action(){}
 protected:
@@ -871,7 +879,7 @@ protected:
 
       return true;
     }
-  
+
     virtual bool add_point(float a_x,float a_y,float a_z,float,
                            float a_r,float a_g,float a_b,float /*a_a*/) {
       //::printf("debug : add_point2\n");
@@ -891,7 +899,7 @@ protected:
 
       return true;
     }
-  
+
     virtual bool add_line(float a_bx,float a_by,float a_bz,float,
                           float a_ex,float a_ey,float a_ez,float) {
       //::printf("debug : add_line\n");
@@ -914,7 +922,7 @@ protected:
 
       return true;
     }
-  
+
     virtual bool add_line(float a_bx,float a_by,float a_bz,float, float a_br,float a_bg,float a_bb,float /*a_ba*/,
                           float a_ex,float a_ey,float a_ez,float, float,float,float,float){
       //::printf("debug : add_line2\n");
@@ -937,7 +945,7 @@ protected:
 
       return true;
     }
-  
+
     virtual bool add_triangle(float a_p1x,float a_p1y,float a_p1z,float,
                               float a_p2x,float a_p2y,float a_p2z,float,
                               float a_p3x,float a_p3y,float a_p3z,float){
@@ -994,6 +1002,64 @@ protected:
       return true;
     }
 
+    virtual bool project_normal(float& a_x,float& a_y,float& a_z) {return true;}
+    virtual bool add_point_normal(float a_x,float a_y,float a_z,float a_w,
+                                  float a_nx,float a_ny,float a_nz) {
+      add_point(a_x,a_y,a_z,a_w);
+      return true;
+    }
+    virtual bool add_point_normal(float a_x,float a_y,float a_z,float a_w,
+                                  float a_nx,float a_ny,float a_nz,
+                                  float a_r,float a_g,float a_b,float a_a) {
+      add_point(a_x,a_y,a_z,a_w,a_r,a_g,a_b,a_a);
+      return true;
+    }
+    virtual bool add_line_normal(float a_bx,float a_by,float a_bz,float a_bw,
+                                 float a_bnx,float a_bny,float a_bnz,
+                                 float a_ex,float a_ey,float a_ez,float a_ew,
+                                 float a_enx,float a_eny,float a_enz) {
+      add_line(a_bx,a_by,a_bz,a_bw, a_ex,a_ey,a_ez,a_ew);
+      return true;
+    }
+    virtual bool add_line_normal(float a_bx,float a_by,float a_bz,float a_bw,
+                                 float a_bnx,float a_bny,float a_bnz,
+                                 float a_br,float a_bg,float a_bb,float a_ba,
+                                 float a_ex,float a_ey,float a_ez,float a_ew,
+                                 float a_enx,float a_eny,float a_enz,
+                                 float a_er,float a_eg,float a_eb,float a_ea){
+      add_line(a_bx,a_by,a_bz,a_bw, a_br,a_bg,a_bb,a_ba, a_ex,a_ey,a_ez,a_ew, a_er,a_eg,a_eb,a_ea);
+      return true;
+    }
+    virtual bool add_triangle_normal(
+      float a_p1x,float a_p1y,float a_p1z,float a_p1w,
+      float a_n1x,float a_n1y,float a_n1z,
+      float a_p2x,float a_p2y,float a_p2z,float a_p2w,
+      float a_n2x,float a_n2y,float a_n2z,
+      float a_p3x,float a_p3y,float a_p3z,float a_p3w,
+      float a_n3x,float a_n3y,float a_n3z) {
+      add_triangle(a_p1x,a_p1y,a_p1z,a_p1w,
+                   a_p2x,a_p2y,a_p2z,a_p2w,
+                   a_p3x,a_p3y,a_p3z,a_p3w);
+      return true;
+    }
+    virtual bool add_triangle_normal(
+      float a_p1x,float a_p1y,float a_p1z,float a_p1w,
+      float a_n1x,float a_n1y,float a_n1z,
+      float a_r1,float a_g1,float a_b1,float a_a1,
+      float a_p2x,float a_p2y,float a_p2z,float a_p2w,
+      float a_n2x,float a_n2y,float a_n2z,
+      float a_r2,float a_g2,float a_b2,float a_a2,
+      float a_p3x,float a_p3y,float a_p3z,float a_p3w,
+      float a_n3x,float a_n3y,float a_n3z,
+      float a_r3,float a_g3,float a_b3,float a_a3){
+      add_triangle(a_p1x,a_p1y,a_p1z,a_p1w,
+                   a_r1,a_g1,a_b1,a_a1,
+                   a_p2x,a_p2y,a_p2z,a_p2w,
+                   a_r2,a_g2,a_b2,a_a2,
+                   a_p3x,a_p3y,a_p3z,a_p3w,
+                   a_r3,a_g3,a_b3,a_a3);
+      return true;
+    }
   public:
     primvis(xgra_action& a_this):m_this(a_this){}
     virtual ~primvis(){}
@@ -1023,13 +1089,13 @@ protected:
   // to be restored in restore_state() :
   inlib::mat4f m_proj;
   inlib::mat4f m_model;
-  inlib::colorf m_color;  
+  inlib::colorf m_color;
   bool m_ccw;
-  bool m_POLYGON_OFFSET_FILL;	
+  bool m_POLYGON_OFFSET_FILL;
   bool m_CULL_FACE;
   bool m_POINT_SMOOTH;
   bool m_LINE_SMOOTH;
-  float m_point_size;  
+  float m_point_size;
   float m_line_width;
   bool m_light_on;
   bool m_DEPTH_TEST;

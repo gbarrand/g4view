@@ -21,7 +21,7 @@ inline bool zread_buff(gzFile a_file,char* a_buff,unsigned int a_lbuf,size_t& a_
   int len = ::gzread(a_file,a_buff,a_lbuf);
   if(len==(-1)) {
     //out << "Lib::GZipReader::read :"
-    //    << " error reading in file \"" << fFileName 
+    //    << " error reading in file \"" << fFileName
     //   << "\"." << Lib::endl;
     a_length = 0;
     return false;
@@ -80,7 +80,7 @@ public:
     m_gzFile = ::gzopen(a_name.c_str(),"wb");
     if(!m_gzFile) {
       m_out << "ogzip::ogzip :"
-            << " gzopen error for \"" << a_name << "\"." 
+            << " gzopen error for \"" << a_name << "\"."
             << std::endl;
     }
   }
@@ -135,7 +135,7 @@ private:
     if(!m_gzFile) return EOF;
     if(::gzwrite(m_gzFile,m_buffer,m_count)==0) {
       m_out << "ogzip::gz_write :"
-            << " gzwrite error for file \"" << m_name << "\"." 
+            << " gzwrite error for file \"" << m_name << "\"."
             << std::endl;
       close();
       return EOF;
@@ -248,7 +248,7 @@ inline bool gzip_is_iv(const std::string& a_file,bool& a_is){
   if(head[6]!='t') {a_is = false;return true;}
   if(head[7]!='o') {a_is = false;return true;}
   if(head[8]!='r') {a_is = false;return true;}
-  a_is = true;  
+  a_is = true;
   return true;
 }
 
@@ -262,7 +262,7 @@ inline bool gzip_is_wrl(const std::string& a_file,bool& a_is){
   if(head[2]!='R') {a_is = false;return true;}
   if(head[3]!='M') {a_is = false;return true;}
   if(head[4]!='L') {a_is = false;return true;}
-  a_is = true;  
+  a_is = true;
   return true;
 }
 
@@ -278,7 +278,7 @@ inline bool gzip_is_bsg(const std::string& a_file,bool& a_is){
   if(head[4]!='b') {a_is = false;return true;}
   if(head[5]!='s') {a_is = false;return true;}
   if(head[6]!='g') {a_is = false;return true;}
-  a_is = true;  
+  a_is = true;
   return true;
 }
 
@@ -380,7 +380,7 @@ inline bool gzip_read_bytes(const std::string& a_file,char*& a_buffer,long& a_le
   a_buffer[usz] = 0;
   a_length = usz;
   return true;
-}  
+}
 
 }
 

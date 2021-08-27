@@ -4,12 +4,12 @@
 #ifndef exlib_geant4_geo
 #define exlib_geant4_geo
 
-#include <G4VisAttributes.hh> //Have G4 first to quiet VisualC++.
-
-#include <inlib/sg/geo>
-
 #include "geom_visitor"
 #include "add_shape"
+
+#include <G4VisAttributes.hh>
+
+#include <inlib/sg/geo>
 
 namespace exlib {
 namespace geant4 {
@@ -43,7 +43,7 @@ public:
   }
 public:
   virtual void update_sg(std::ostream& a_out) {
-    begin_update_sg(a_out);
+    if(!begin_update_sg(a_out)) return;
     inlib::mat4d identity;
     identity.set_identity();
     _vis_volume(a_out,m_vol,identity,0);
@@ -85,7 +85,7 @@ public:
       G4VSolid* vsolid = _pv.second.first;
       if(vsolid) {
         if(!geant4::add_shape(a_out,a_sep,*vsolid,_pv.second.second,a_solid)) {
-          a_out << "exlib::geant4::geo::add_shape :" 
+          a_out << "exlib::geant4::geo::add_shape :"
                 << " sep_add_shape failed."
                 << " vol " << a_vol.GetName()
                 << std::endl;
@@ -101,7 +101,7 @@ public:
   virtual bool vis_children(std::ostream& a_out,
                             const G4VPhysicalVolume& a_vol,
                             const inlib::mat4d& a_matrix,
-                            unsigned int a_depth) {  
+                            unsigned int a_depth) {
 
     get_pvs gs;
     geom_visitor gv(a_out);
@@ -120,7 +120,7 @@ public:
                        newTransform,a_depth+1)) {
           return false;
         }
-      }                   
+      }
     }}
 
     return true;
@@ -141,19 +141,19 @@ protected:
                               bool& a_do_daughters){
 
       a_do_daughters = false;
-      m_pvs.push_back(pv_t(&a_pv,soltsf_t(a_solid,a_matrix)));                
+      m_pvs.push_back(pv_t(&a_pv,soltsf_t(a_solid,a_matrix)));
       return true;
     }
   public:
     get_pvs(){}
     virtual ~get_pvs(){}
-  protected:  
+  protected:
     get_pvs(const get_pvs& a_from):ivisited_volume(a_from){}
     get_pvs& operator=(const get_pvs& a_from){
       if(&a_from==this) return *this;
       m_pvs.clear();
       return *this;
-    }  
+    }
   public:
     std::vector<pv_t> m_pvs;
   };
@@ -169,8 +169,8 @@ protected:
       a_out << "exlib::geant4::geo::sep_add_shape :"
             << " Can't create polyhedron for PV " << a_vsolid.GetName()
             << std::endl;
-      return false;        
-    }     
+      return false;
+    }
 
     inlib::sg::polyhedron* _node = new inlib::sg::polyhedron();
     _node->solid = a_solid;

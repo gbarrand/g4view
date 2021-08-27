@@ -14,11 +14,11 @@ namespace X11 {
 
 class pv_holder {
 public:
-  pv_holder(std::ostream& a_out,Display* a_display,Window a_window)
+  pv_holder(std::ostream& a_out,Display* a_display,unsigned int a_monitor,Window a_window)
   :m_out(a_out)
   ,m_ttf()
   ,m_selection()
-  ,m_mgr_gra(a_out,a_display,a_window)
+  ,m_mgr_gra(a_out,a_display,a_monitor,a_window)
   {}
   virtual ~pv_holder(){}
 protected:
@@ -26,7 +26,7 @@ protected:
   :m_out(a_from.m_out)
   ,m_ttf(a_from.m_ttf)
   ,m_selection(a_from.m_selection)
-  ,m_mgr_gra(m_out,0,0)
+  ,m_mgr_gra(m_out,0,0,0)
   {}
   pv_holder& operator=(const pv_holder& a_from) {
     m_ttf = a_from.m_ttf;

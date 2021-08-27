@@ -24,7 +24,7 @@
 
 namespace exlib {
 
-// used to open a zip file and browse the entries. 
+// used to open a zip file and browse the entries.
 
 class base_zip {
 #ifdef INLIB_MEM
@@ -80,7 +80,7 @@ public:
     }
 
     for (uLong i=0;i<gi.number_entry;i++) {
-  
+
       //uLong ratio=0;
 
       unz_file_info file_info;
@@ -93,7 +93,7 @@ public:
         ::unzClose(uf);
         return false;
       }}
-  
+
      {int err = ::unzOpenCurrentFilePassword(uf,NULL);
       if(err!=UNZ_OK) {
         m_out << "exlib::base_zip::load_file :"
@@ -101,7 +101,7 @@ public:
         ::unzClose(uf);
         return false;
       }}
-  
+
       uLong size_buf = file_info.uncompressed_size;
       if(size_buf) {
         char* buf = new char[size_buf];
@@ -144,13 +144,13 @@ public:
                 << " empty."
                 << std::endl;
         }
-  
+
         if(!visit_entry(file_in_zip,0,0)) {
           ::unzClose(uf);
           return false;
         }
       }
-  
+
       if (i<gi.number_entry-1) {
         int err = ::unzGoToNextFile(uf);
         if(err!=UNZ_OK) {
@@ -180,7 +180,7 @@ public:
   }
 
 protected:
-  std::ostream& m_out; 
+  std::ostream& m_out;
 };
 
 class zip_iterator {
@@ -332,7 +332,7 @@ protected:
       close_();
       return false;
     }}
-  
+
    {int err = ::unzOpenCurrentFilePassword(m_uf,NULL);
     if(err!=UNZ_OK) {
       m_out << "exlib::zip_iterator::read :"
@@ -340,7 +340,7 @@ protected:
       close_();
       return false;
     }}
-  
+
     uLong size_buf = file_info.uncompressed_size;
     if(size_buf) {
       char* buf = new char[size_buf];
@@ -394,7 +394,7 @@ protected:
   }
 
 protected:
-  std::ostream& m_out; 
+  std::ostream& m_out;
   bool m_verbose;
   unsigned int m_index;
 protected:
@@ -431,7 +431,7 @@ public:
     m_zipFile = ::zipOpen(a_name.c_str(),APPEND_STATUS_CREATE);
     if(!m_zipFile) {
       m_out << "exlib::ozip::ozip :"
-            << " zipOpen error for \"" << a_name << "\"." 
+            << " zipOpen error for \"" << a_name << "\"."
             << std::endl;
     }
   }
@@ -491,12 +491,12 @@ public:
     zi.tmz_date.tm_mon = 0;
     zi.tmz_date.tm_year = 0;
     //filetime(filenameinzip,&zi.tmz_date,&zi.dosDate);
-  
+
     zi.dosDate = 0;
     zi.internal_fa = 0;
     zi.external_fa = 0;
-  
-    int err = 
+
+    int err =
       //zipOpenNewFileInZip3(zf,file_in_zip.c_str(),&zi,
       ::zipOpenNewFileInZip(m_zipFile,a_name.c_str(),&zi,
         NULL,0,NULL,0,NULL /* comment*/,
@@ -509,7 +509,7 @@ public:
       close();
       return false;
     }
-  
+
     m_entry_opened = true;
     return true;
   }

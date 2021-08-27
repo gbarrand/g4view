@@ -6,22 +6,10 @@
 
 // From G4/N03.
 
-#include <G4RunManager.hh>
-#include <G4PVPlacement.hh>
-#include <G4PVReplica.hh>
-#include <G4GeometryManager.hh>
-//#include <G4UserEventAction.hh>
-
-#include "utils"
-#include "histo_mgr"
-#include "strings"
-
-#include "primary_generator"
-#include <G4Tubs.hh>
-#include "box"
+#include <G4UserSteppingAction.hh>
+#include <G4Step.hh>
 
 #include <inlib/S_STRING>
-#include <inlib/sg/alert>
 #include <inlib/histo/h1d>
 
 #ifdef INLIB_MEM
@@ -30,407 +18,339 @@
 
 namespace exlib {
 namespace geant4 {
+namespace calorimeter {
 
-class calorimeter {
-//public:
-  calorimeter(){}
-  virtual ~calorimeter(){}
-//public:
-  calorimeter(const calorimeter&){}
-  calorimeter& operator=(const calorimeter&){return *this;}
+inline unsigned int calor_nb_of_layers() {return 10;}
+inline double calor_absorber_thickness() {return 10.*CLHEP::mm;}
+inline double calor_gap_thickness() {return 5.*CLHEP::mm;}
+//inline double calor_gap_thickness() {return 10.*CLHEP::mm;}
+inline double calor_size_xy() {return 10.*CLHEP::cm;}
+inline double calor_thickness() {
+  double layer_thickness = calor_absorber_thickness() + calor_gap_thickness();
+  return calor_nb_of_layers()*layer_thickness;
+}
+inline double world_size_z() {return 1.2*calor_thickness();}
+inline double world_size_xy() {return 1.2*calor_size_xy();}
 
-protected:
-  INLIB_CLASS_STRING(vacuum)
-  INLIB_CLASS_STRING(aluminium)
-  INLIB_CLASS_STRING(titanium)
-  INLIB_CLASS_STRING(iron)
-  INLIB_CLASS_STRING(copper)
-  INLIB_CLASS_STRING(tungsten)
-  INLIB_CLASS_STRING(gold)
-  INLIB_CLASS_STRING(lead)
-  INLIB_CLASS_STRING(uranium)
-  INLIB_CLASS_STRING(liquid_argon)
-
-  // geom :
-  INLIB_CLASS_STRING(world)
-    INLIB_CLASS_STRING(calorimeter)
-      INLIB_CLASS_STRING(layer)
-        INLIB_CLASS_STRING(absorber)
-        INLIB_CLASS_STRING(gap)
-
-  static void construct_materials() {
-    //clear_materials();
-
-    double a,z,density;
-
-    if(!G4Material::GetMaterial(s_vacuum(),false)) {
-      new G4Material(s_vacuum(),
-                     z=1,a=1.01*CLHEP::g/CLHEP::mole,density=CLHEP::universe_mean_density,
-                     kStateGas,2.73*CLHEP::kelvin,3.e-18*CLHEP::hep_pascal);
-    }
-
-    // candidate materials for absorbers :
-
-    if(!G4Material::GetMaterial(s_aluminium(),false)) {
-      new G4Material(s_aluminium(),
-                     z=13,a=26.98*CLHEP::g/CLHEP::mole,density=2.700*CLHEP::g/CLHEP::cm3);
-    }
-    if(!G4Material::GetMaterial(s_titanium(),false)) {
-      new G4Material(s_titanium(),
-                     z=22,a=47.867*CLHEP::g/CLHEP::mole,density=4.54*CLHEP::g/CLHEP::cm3);
-    }
-    if(!G4Material::GetMaterial(s_iron(),false)) {
-      new G4Material(s_iron(),
-                     z=26,a=55.85*CLHEP::g/CLHEP::mole,density=7.870*CLHEP::g/CLHEP::cm3);
-    }
-    if(!G4Material::GetMaterial(s_copper(),false)) {
-      new G4Material(s_copper(),
-                     z=29,a=63.55*CLHEP::g/CLHEP::mole,density=8.960*CLHEP::g/CLHEP::cm3);
-    }
-    if(!G4Material::GetMaterial(s_tungsten(),false)) {
-      new G4Material(s_tungsten(),
-                     z=74,a=183.85*CLHEP::g/CLHEP::mole,density=19.30*CLHEP::g/CLHEP::cm3);
-    }
-    if(!G4Material::GetMaterial(s_gold(),false)) {
-      new G4Material(s_gold(),
-                     z=79,a=196.97*CLHEP::g/CLHEP::mole,density= 19.32*CLHEP::g/CLHEP::cm3);
-    }
-    if(!G4Material::GetMaterial(s_lead(),false)) {
-      new G4Material(s_lead(),
-                     z=82,a=207.19*CLHEP::g/CLHEP::mole,density=11.35*CLHEP::g/CLHEP::cm3);
-    }
-    if(!G4Material::GetMaterial(s_uranium(),false)) {
-      new G4Material(s_uranium(),
-                     z=92,a=238.03*CLHEP::g/CLHEP::mole,density=18.95*CLHEP::g/CLHEP::cm3);
-    }
-
-    // candidate materials for gaps :
-    if(!G4Material::GetMaterial(s_liquid_argon(),false)) {
-      new G4Material(s_liquid_argon(),
-                     z=18.,a=39.95*CLHEP::g/CLHEP::mole,density= 1.390*CLHEP::g/CLHEP::cm3);
-    }
-  }
-
+class stepping_action: public G4UserSteppingAction {
+#ifdef INLIB_MEM
+  INLIB_SCLASS(exlib::geant4::calorimeter::stepping_action)
+#endif
 public:
-  static unsigned int calor_nb_of_layers() {return 10;}
+  virtual void UserSteppingAction(const G4Step* a_step) {
+    G4double edep = a_step->GetTotalEnergyDeposit();
+    if(edep==0) return;
 
-  static double calor_absorber_thickness() {return 10.*CLHEP::mm;}
-  static double calor_gap_thickness() {return 5.*CLHEP::mm;}
+    G4StepPoint* point = a_step->GetPreStepPoint();
+    //G4VPhysicalVolume* pv = point->GetTouchableHandle()->GetVolume();
+    //if(pv==m_pv_absorber)
+    {
+      m_histo_de.fill(edep);
+      
+      const G4ThreeVector& pos = point->GetPosition();
+      double z = pos.z()+calor_thickness()*0.5;
 
-//  static double calor_gap_thickness() {return 10.*CLHEP::mm;}
-
-  static double calor_size_xy() {return 10.*CLHEP::cm;}
-
-  static double calor_thickness() {
+      m_histo_z_de.fill(z,edep);
+    }
+  }
+public:
+  stepping_action(G4VPhysicalVolume* a_pv_absorber)
+  :m_pv_absorber(a_pv_absorber)
+  ,m_histo_de("Edep in absorber",100,0,10*CLHEP::MeV)
+  ,m_histo_z_de("",0,0,1)
+  {
+#ifdef INLIB_MEM
+    inlib::mem::increment(s_class().c_str());
+#endif
     double layer_thickness = calor_absorber_thickness() + calor_gap_thickness();
-    return calor_nb_of_layers()*layer_thickness;
+
+    double cooking = 1.0001; //to get hits at borders.
+
+    // one bin per absorber or gap :
+    std::vector<double> edges(2*calor_nb_of_layers()+1);
+    for(unsigned int i=0;i<calor_nb_of_layers();i++) {
+      edges[2*i+0] = layer_thickness*i;
+      edges[2*i+1] = layer_thickness*i+calor_absorber_thickness()*cooking;
+    }
+    edges[2*calor_nb_of_layers()] = calor_thickness();
+    m_histo_z_de = inlib::histo::h1d("Edep in absorbers, gaps",edges);
+  }
+  virtual ~stepping_action(){
+#ifdef INLIB_MEM
+    inlib::mem::decrement(s_class().c_str());
+#endif
+  }
+protected:
+  stepping_action(const stepping_action& a_from)
+  :G4UserSteppingAction(a_from)
+  ,m_pv_absorber(a_from.m_pv_absorber)
+  ,m_histo_de(a_from.m_histo_de)
+  ,m_histo_z_de(a_from.m_histo_z_de)
+  {}
+  stepping_action& operator=(const stepping_action&){return *this;}
+public:
+  inlib::histo::h1d& histo_de() {return m_histo_de;}
+  inlib::histo::h1d& histo_z_de() {return m_histo_z_de;}
+protected:
+  G4VPhysicalVolume* m_pv_absorber;
+  inlib::histo::h1d m_histo_de;
+  inlib::histo::h1d m_histo_z_de;
+};
+
+/*
+class event_action : public G4UserEventAction {
+#ifdef INLIB_MEM
+  INLIB_SCLASS(exlib::geant4::calorimeter::event_action)
+#endif
+public:
+  virtual void EndOfEventAction(const G4Event* a_event) {
+    dump_primary_particles(m_out,*a_event);
+  }
+public:
+  event_action(std::ostream& a_out):m_out(a_out){
+#ifdef INLIB_MEM
+    inlib::mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~event_action(){
+#ifdef INLIB_MEM
+    inlib::mem::decrement(s_class().c_str());
+#endif
+  }
+protected:
+  event_action(const event_action& a_from)
+  :G4UserEventAction(a_from)
+  ,m_out(a_from.m_out)
+  {}
+  event_action& operator=(const event_action&){return *this;}
+protected:
+  std::ostream& m_out;
+};
+*/
+
+}}}
+
+#include <G4Material.hh>
+
+namespace exlib {
+namespace geant4 {
+namespace calorimeter {
+
+INLIB_GLOBAL_STRING(vacuum)
+INLIB_GLOBAL_STRING(aluminium)
+INLIB_GLOBAL_STRING(titanium)
+INLIB_GLOBAL_STRING(iron)
+INLIB_GLOBAL_STRING(copper)
+INLIB_GLOBAL_STRING(tungsten)
+INLIB_GLOBAL_STRING(gold)
+INLIB_GLOBAL_STRING(lead)
+INLIB_GLOBAL_STRING(uranium)
+INLIB_GLOBAL_STRING(liquid_argon)
+
+inline void construct_materials() {
+  //clear_materials();
+
+  double a,z,density;
+
+  if(!G4Material::GetMaterial(s_vacuum(),false)) {
+    new G4Material(s_vacuum(),
+                   z=1,a=1.01*CLHEP::g/CLHEP::mole,density=CLHEP::universe_mean_density,
+                   kStateGas,2.73*CLHEP::kelvin,3.e-18*CLHEP::hep_pascal);
   }
 
-  static double world_size_z() {return 1.2*calor_thickness();}
-  static double world_size_xy() {return 1.2*calor_size_xy();}
+  // candidate materials for absorbers :
 
-  class stepping_action;
-  static bool construct(inlib::sg::alert& a_gv,stepping_action*& a_sa,bool a_icon = false) {
+  if(!G4Material::GetMaterial(s_aluminium(),false)) {
+    new G4Material(s_aluminium(),
+                   z=13,a=26.98*CLHEP::g/CLHEP::mole,density=2.700*CLHEP::g/CLHEP::cm3);
+  }
+  if(!G4Material::GetMaterial(s_titanium(),false)) {
+    new G4Material(s_titanium(),
+                   z=22,a=47.867*CLHEP::g/CLHEP::mole,density=4.54*CLHEP::g/CLHEP::cm3);
+  }
+  if(!G4Material::GetMaterial(s_iron(),false)) {
+    new G4Material(s_iron(),
+                   z=26,a=55.85*CLHEP::g/CLHEP::mole,density=7.870*CLHEP::g/CLHEP::cm3);
+  }
+  if(!G4Material::GetMaterial(s_copper(),false)) {
+    new G4Material(s_copper(),
+                   z=29,a=63.55*CLHEP::g/CLHEP::mole,density=8.960*CLHEP::g/CLHEP::cm3);
+  }
+  if(!G4Material::GetMaterial(s_tungsten(),false)) {
+    new G4Material(s_tungsten(),
+                   z=74,a=183.85*CLHEP::g/CLHEP::mole,density=19.30*CLHEP::g/CLHEP::cm3);
+  }
+  if(!G4Material::GetMaterial(s_gold(),false)) {
+    new G4Material(s_gold(),
+                   z=79,a=196.97*CLHEP::g/CLHEP::mole,density= 19.32*CLHEP::g/CLHEP::cm3);
+  }
+  if(!G4Material::GetMaterial(s_lead(),false)) {
+    new G4Material(s_lead(),
+                   z=82,a=207.19*CLHEP::g/CLHEP::mole,density=11.35*CLHEP::g/CLHEP::cm3);
+  }
+  if(!G4Material::GetMaterial(s_uranium(),false)) {
+    new G4Material(s_uranium(),
+                   z=92,a=238.03*CLHEP::g/CLHEP::mole,density=18.95*CLHEP::g/CLHEP::cm3);
+  }
 
-    G4RunManager* rmgr = G4RunManager::GetRunManager();
-    if(!rmgr) {
-      a_gv.warn("No G4 run manager.");
-      a_sa = 0;
-      return false;
-    }
+  // candidate materials for gaps :
+  if(!G4Material::GetMaterial(s_liquid_argon(),false)) {
+    new G4Material(s_liquid_argon(),
+                   z=18.,a=39.95*CLHEP::g/CLHEP::mole,density= 1.390*CLHEP::g/CLHEP::cm3);
+  }
+}
 
-    //////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////
-    construct_materials();
+}}}
 
-    //////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////
-    G4GeometryManager::GetInstance()->OpenGeometry();
-    clean_geom_stores();
+#include "box"
 
+#include <G4LogicalVolume.hh>
+#include <G4VisAttributes.hh>
+#include <G4PVParameterised.hh>
+#include <G4PVPlacement.hh>
+#include <G4PVReplica.hh>
 
-    // default parameter values of the calorimeter
+namespace exlib {
+namespace geant4 {
+namespace calorimeter {
 
-    //ComputeCalorParameters();
-    double layer_thickness = calor_absorber_thickness() + calor_gap_thickness();
-     
-    G4Material* vacuum = G4Material::GetMaterial(s_vacuum());
-    G4Material* AbsorberMaterial = G4Material::GetMaterial(s_lead());
-    G4Material* GapMaterial = G4Material::GetMaterial(s_liquid_argon());
-            
-    //NOTE : all below "new" are owned by G4 stores.
+// geom :
+INLIB_GLOBAL_STRING(world)
+  INLIB_GLOBAL_STRING(calorimeter)
+    INLIB_GLOBAL_STRING(layer)
+      INLIB_GLOBAL_STRING(absorber)
+      INLIB_GLOBAL_STRING(gap)
 
-    // world :
-    box* solidWorld = new box(s_world(),world_size_xy()/2,world_size_xy()/2,world_size_z()/2);
-    G4LogicalVolume* logicWorld = new G4LogicalVolume(solidWorld,vacuum,s_world());
-    G4VPhysicalVolume* physiWorld =
-      new G4PVPlacement(0,G4ThreeVector(),
-                        logicWorld,s_world(),0,
-                        false,0);
-  
-    // calorimeter :
-    box* solidCalor = new box(s_calorimeter(),calor_size_xy()/2,calor_size_xy()/2,calor_thickness()/2);
-    G4LogicalVolume* logicCalor = new G4LogicalVolume(solidCalor,vacuum,s_calorimeter());
-    new G4PVPlacement(0,G4ThreeVector(),
-                      logicCalor,s_calorimeter(),logicWorld,
-                      false,0);
-  
-    // layer :
-    box* solidLayer = new box(s_layer(),calor_size_xy()/2,calor_size_xy()/2,layer_thickness/2);
-    G4LogicalVolume* logicLayer = new G4LogicalVolume(solidLayer,vacuum,s_layer());
+inline G4VPhysicalVolume* construct_geometry(std::ostream& a_out,bool a_icon,
+                                             G4VPhysicalVolume*& a_physi_absorber) {
+  //ComputeCalorParameters();
+  double layer_thickness = calor_absorber_thickness() + calor_gap_thickness();
 
-    if(calor_nb_of_layers()>1) {
-      new G4PVReplica(s_layer(),
-                      logicLayer,logicCalor,
-                      kZAxis,calor_nb_of_layers(),layer_thickness);
+  G4Material* vacuum = G4Material::GetMaterial(s_vacuum());
+  G4Material* AbsorberMaterial = G4Material::GetMaterial(s_lead());
+  G4Material* GapMaterial = G4Material::GetMaterial(s_liquid_argon());
 
-    } else {
-      new G4PVPlacement(0,G4ThreeVector(),
-                        logicLayer,s_layer(),logicCalor,
-                        false,0);
-    }                                   
+  //NOTE : all below "new" are owned by G4 stores.
+
+  // world :
+  box* solidWorld = new box(s_world(),world_size_xy()/2,world_size_xy()/2,world_size_z()/2);
+  G4LogicalVolume* logicWorld = new G4LogicalVolume(solidWorld,vacuum,s_world());
+  G4VPhysicalVolume* physiWorld = new G4PVPlacement(0,G4ThreeVector(),logicWorld,s_world(),0,false,0);
+		      
+  // calorimeter :
+  box* solidCalor = new box(s_calorimeter(),calor_size_xy()/2,calor_size_xy()/2,calor_thickness()/2);
+  G4LogicalVolume* logicCalor = new G4LogicalVolume(solidCalor,vacuum,s_calorimeter());
+  new G4PVPlacement(0,G4ThreeVector(),logicCalor,s_calorimeter(),logicWorld,false,0);
+
+  // layer :
+  box* solidLayer = new box(s_layer(),calor_size_xy()/2,calor_size_xy()/2,layer_thickness/2);
+  G4LogicalVolume* logicLayer = new G4LogicalVolume(solidLayer,vacuum,s_layer());
+
+  if(calor_nb_of_layers()>1) {
+    new G4PVReplica(s_layer(),
+                    logicLayer,logicCalor,
+                    kZAxis,calor_nb_of_layers(),layer_thickness);
+  } else {
+    new G4PVPlacement(0,G4ThreeVector(),logicLayer,s_layer(),logicCalor,false,0);
+  }
 
 #define EXLIB_GEANT4_CALORIMENTER_BOX
 
-    // absorber :
+  // absorber :
 #ifdef EXLIB_GEANT4_CALORIMENTER_BOX
-    box* solidAbsorber =
-      new box(s_absorber(),
-              calor_size_xy()/2,calor_size_xy()/2,
-              calor_absorber_thickness()/2);
+  box* solidAbsorber = new box(s_absorber(),calor_size_xy()/2,calor_size_xy()/2,calor_absorber_thickness()/2);
 #else
-    G4Tubs* solidAbsorber =
-      new G4Tubs(s_absorber(),
-                 0,calor_size_xy()/2, //rmin,rmax
-                 calor_absorber_thickness()/2,
-                 0,inlib::two_pi());
+  G4Tubs* solidAbsorber =
+    new G4Tubs(s_absorber(),
+               0,calor_size_xy()/2, //rmin,rmax
+               calor_absorber_thickness()/2,
+               0,inlib::two_pi());
 #endif
-    G4LogicalVolume* logicAbsorber = new G4LogicalVolume(solidAbsorber,AbsorberMaterial,s_absorber());
-    double absorber_shift = -layer_thickness/2+calor_absorber_thickness()/2;
-    G4VPhysicalVolume* physiAbsorber =
-      new G4PVPlacement(0,
-                        G4ThreeVector(0,0,absorber_shift),
-                        logicAbsorber,s_absorber(),logicLayer,
-                        false,0);
-    // gap :
-#ifdef EXLIB_GEANT4_CALORIMENTER_BOX
-    box* solidGap =
-      new box(s_gap(),
-              calor_size_xy()/2,calor_size_xy()/2,
-              calor_gap_thickness()/2);
-#else
-    G4Tubs* solidGap =
-      new G4Tubs(s_gap(),
-                 0,calor_size_xy()/2, //rmin,rmax
-                 calor_gap_thickness()/2,
-                 0,inlib::two_pi());
-#endif
-    G4LogicalVolume* logicGap =
-      new G4LogicalVolume(solidGap,GapMaterial,s_gap());
-    // gap shifted of : (A+G)/2-G/2)=A/2
-    double gap_shift = layer_thickness/2-calor_gap_thickness()/2;
+  G4LogicalVolume* logicAbsorber = new G4LogicalVolume(solidAbsorber,AbsorberMaterial,s_absorber());
+  double absorber_shift = -layer_thickness/2+calor_absorber_thickness()/2;
+  G4VPhysicalVolume* physiAbsorber =
     new G4PVPlacement(0,
-                      G4ThreeVector(0,0,gap_shift),
-                      logicGap,s_gap(),logicLayer,
+                      G4ThreeVector(0,0,absorber_shift),
+                      logicAbsorber,s_absorber(),logicLayer,
                       false,0);
-
-    //////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////
-    // who delete atbs ?
-    //typedef visatb vatb_t;
-    typedef G4VisAttributes vatb_t;
-
-    if(a_icon) { // Have flashy colors for g4view icon.
-      vatb_t* atb = new vatb_t(G4Colour(0,0,0));
-      atb->SetVisibility(true);
-      logicWorld->SetVisAttributes(atb);
-    } else {
-      vatb_t* atb = new vatb_t(G4Colour(1,0,0));
-      atb->SetVisibility(false);
-      logicWorld->SetVisAttributes(atb);
-    }
-
-   {vatb_t* atb = new vatb_t(G4Colour(1,0,0));
-    atb->SetVisibility(false);
-    logicCalor->SetVisAttributes(atb);}
-
-   {vatb_t* atb = new vatb_t(G4Colour(1,0,0));
-    atb->SetVisibility(false);
-    logicLayer->SetVisAttributes(atb);}
-  
-    //////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////
+		      
+  // gap :
 #ifdef EXLIB_GEANT4_CALORIMENTER_BOX
-    if(a_icon) { // Have flashy colors for g4view icon.
-
-     {vatb_t* atb = new vatb_t(G4Colour(1,0,0));
-      atb->SetVisibility(true);
-      logicAbsorber->SetVisAttributes(atb);}
-     {vatb_t* atb = new vatb_t(G4Colour(0,0,1));
-      atb->SetVisibility(true);
-      logicGap->SetVisAttributes(atb);}
-
-    } else {
-
-     {double grey = 0.9;
-      vatb_t* atb = new vatb_t(G4Colour(grey,grey,grey));
-      logicAbsorber->SetVisAttributes(atb);}
-     {double grey = 0.4;
-      vatb_t* atb = new vatb_t(G4Colour(grey,grey,grey));
-      atb->SetVisibility(false);
-      logicGap->SetVisAttributes(atb);}
-
-    }
+  box* solidGap = new box(s_gap(),calor_size_xy()/2,calor_size_xy()/2,calor_gap_thickness()/2);
 #else
-   {vatb_t* atb = new vatb_t(G4Colour(0.5,0.5,0.5,1));
-    atb->SetForceSolid(true);
-    logicAbsorber->SetVisAttributes(atb);}  
-   {vatb_t* atb = new vatb_t(G4Colour(0,0,0.8,0.2));
-    atb->SetForceSolid(true);
-    logicGap->SetVisAttributes(atb);}
+  G4Tubs* solidGap =
+    new G4Tubs(s_gap(),
+               0,calor_size_xy()/2, //rmin,rmax
+               calor_gap_thickness()/2,
+               0,inlib::two_pi());
 #endif
+  G4LogicalVolume* logicGap = new G4LogicalVolume(solidGap,GapMaterial,s_gap());
+  // gap shifted of : (A+G)/2-G/2)=A/2
+  double gap_shift = layer_thickness/2-calor_gap_thickness()/2;
+  new G4PVPlacement(0,G4ThreeVector(0,0,gap_shift),logicGap,s_gap(),logicLayer,false,0);
 
-    rmgr->DefineWorldVolume(physiWorld);
+  //////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////
+  // who delete atbs ?
+  //typedef visatb vatb_t;
+  typedef G4VisAttributes vatb_t;
 
-    //////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////
-    //WARNING : a "new G4ParticleGun" adds gun commands
-    //          in the G4UImanager singleton, then we have first
-    //          to delete the existing gun to remove existing
-    //          gun commands.
-   {const G4VUserPrimaryGeneratorAction* old = rmgr->GetUserPrimaryGeneratorAction();
-    delete const_cast<G4VUserPrimaryGeneratorAction*>(old);
-    primary_generator* gen = new primary_generator(a_gv.out_stream());
-    gen->set_particle(s_e_plus());
-    gen->set_position(0,0,-(world_size_z()/2)*1.5);
-    gen->set_momentum_direction(inlib::vec3d(0,0,1));
-    rmgr->SetUserAction(gen);}
-
-    //////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////
-   {delete rmgr->GetUserSteppingAction();
-    a_sa = new stepping_action(physiAbsorber);
-    rmgr->SetUserAction(a_sa);} //give ownership to rmgr.
-
-/*
-   {delete rmgr->GetUserEventAction();
-    event_action* ea = new event_action(a_gv.out());
-    rmgr->SetUserAction(ea);} //give ownership to rmgr.
-*/
-
-    return true;
+  if(a_icon) { // Have flashy colors for g4view icon.
+    vatb_t* atb = new vatb_t(G4Colour(0,0,0));
+    atb->SetVisibility(true);
+    logicWorld->SetVisAttributes(atb);
+  } else {
+    vatb_t* atb = new vatb_t(G4Colour(1,0,0));
+    atb->SetVisibility(false);
+    logicWorld->SetVisAttributes(atb);
   }
 
-public:
-  class stepping_action
-  :public G4UserSteppingAction
-  ,public virtual histo_mgr {
-#ifdef INLIB_MEM
-    INLIB_SCLASS(exlib::geant4::calorimeter::stepping_action)
-#endif
-  public:
-    virtual void UserSteppingAction(const G4Step* a_step) {
-      G4double edep = a_step->GetTotalEnergyDeposit();
-      if(edep==0) return;
+ {vatb_t* atb = new vatb_t(G4Colour(1,0,0));
+  atb->SetVisibility(false);
+  logicCalor->SetVisAttributes(atb);}
 
-      G4StepPoint* point = a_step->GetPreStepPoint();
-      //G4VPhysicalVolume* pv = point->GetTouchableHandle()->GetVolume();
-      //if(pv==m_pv_absorber) 
-      {
-        m_histo_de.fill(edep);
+ {vatb_t* atb = new vatb_t(G4Colour(1,0,0));
+  atb->SetVisibility(false);
+  logicLayer->SetVisAttributes(atb);}
+
+  //////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////
+#ifdef EXLIB_GEANT4_CALORIMENTER_BOX
+  if(a_icon) { // Have flashy colors for g4view icon.
+
+   {vatb_t* atb = new vatb_t(G4Colour(1,0,0));
+    atb->SetVisibility(true);
+    logicAbsorber->SetVisAttributes(atb);}
+   {vatb_t* atb = new vatb_t(G4Colour(0,0,1));
+    atb->SetVisibility(true);
+    logicGap->SetVisAttributes(atb);}
+
+  } else {
+
+   {double grey = 0.9;
+    vatb_t* atb = new vatb_t(G4Colour(grey,grey,grey));
+    logicAbsorber->SetVisAttributes(atb);}
+   {double grey = 0.4;
+    vatb_t* atb = new vatb_t(G4Colour(grey,grey,grey));
+    atb->SetVisibility(false);
+    logicGap->SetVisAttributes(atb);}
+
+  }
+#else
+ {vatb_t* atb = new vatb_t(G4Colour(0.5,0.5,0.5,1));
+  atb->SetForceSolid(true);
+  logicAbsorber->SetVisAttributes(atb);}
+ {vatb_t* atb = new vatb_t(G4Colour(0,0,0.8,0.2));
+  atb->SetForceSolid(true);
+  logicGap->SetVisAttributes(atb);}
+#endif
+
+  a_physi_absorber = physiAbsorber;
   
-        const G4ThreeVector& pos = point->GetPosition();        
-        double z = pos.z()+calor_thickness()*0.5;
+  return physiWorld;
+}
 
-        m_histo_z_de.fill(z,edep);
-      }
-    }
-  public:
-    virtual void reset_histos() {
-      m_histo_de.reset();
-      m_histo_z_de.reset();
-    }
-  public:
-    stepping_action(G4VPhysicalVolume* a_pv_absorber)
-    :m_pv_absorber(a_pv_absorber)
-    ,m_histo_de("Edep in absorber",100,0,10*CLHEP::MeV)    
-    ,m_histo_z_de("",0,0,1)
-    {
-#ifdef INLIB_MEM
-      inlib::mem::increment(s_class().c_str());
-#endif
-      double layer_thickness =
-        calor_absorber_thickness() + calor_gap_thickness();
-
-      double cooking = 1.0001; //to get hits at borders.
-
-      // one bin per absorber or gap :
-      std::vector<double> edges(2*calor_nb_of_layers()+1);
-      for(unsigned int i=0;i<calor_nb_of_layers();i++) {
-        edges[2*i+0] = layer_thickness*i;
-        edges[2*i+1] = layer_thickness*i+calor_absorber_thickness()*cooking;
-      }
-      edges[2*calor_nb_of_layers()] = calor_thickness();
-      m_histo_z_de = inlib::histo::h1d("Edep in absorbers, gaps",edges);
-
-    }
-    virtual ~stepping_action(){
-#ifdef INLIB_MEM
-      inlib::mem::decrement(s_class().c_str());
-#endif
-    }
-  protected:
-    stepping_action(const stepping_action& a_from)
-    :histo_mgr(a_from)
-    ,G4UserSteppingAction(a_from)
-    ,m_pv_absorber(a_from.m_pv_absorber)
-    ,m_histo_de(a_from.m_histo_de)
-    ,m_histo_z_de(a_from.m_histo_z_de)
-    {}
-    stepping_action& operator=(const stepping_action&){return *this;}
-  public:
-    inlib::histo::h1d& histo_de() {return m_histo_de;}    
-    inlib::histo::h1d& histo_z_de() {return m_histo_z_de;}    
-  protected:
-    G4VPhysicalVolume* m_pv_absorber;
-    inlib::histo::h1d m_histo_de;
-    inlib::histo::h1d m_histo_z_de;
-  };
-  
-/*
-  class event_action : public G4UserEventAction {
-#ifdef INLIB_MEM
-    INLIB_SCLASS(exlib::geant4::calorimeter::event_action)
-#endif
-  public:
-    virtual void EndOfEventAction(const G4Event* a_event) {
-      dump_primary_particles(m_out,*a_event);
-    }
-  public:
-    event_action(std::ostream& a_out):m_out(a_out){
-#ifdef INLIB_MEM
-      inlib::mem::increment(s_class().c_str());
-#endif
-    }
-    virtual ~event_action(){
-#ifdef INLIB_MEM
-      inlib::mem::decrement(s_class().c_str());
-#endif
-    }
-  protected:
-    event_action(const event_action& a_from)
-    :G4UserEventAction(a_from)
-    ,m_out(a_from.m_out)
-    {}
-    event_action& operator=(const event_action&){return *this;}
-  protected:
-    std::ostream& m_out;
-  };
-*/
-  
-};
-
-}}
+}}}
 
 #undef EXLIB_GEANT4_CALORIMENTER_BOX
 

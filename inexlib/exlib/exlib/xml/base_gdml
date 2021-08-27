@@ -8,7 +8,7 @@
 
 #include "loader"
 
-#include "../yacc/cexpr_eval.h"
+#include <inlib/yacc/cexpr_eval.h>
 
 namespace exlib {
 namespace xml {
@@ -39,7 +39,7 @@ public:
     if(itm!=a_map.end()) {a_v = (*itm).second;return true;}}
 
     // expression :
-    exlib::yacc::cexpr_eval proc(m_out,a_s);
+    inlib::yacc::cexpr_eval proc(m_out,a_s);
 
     std::vector<std::string> vars;
     if(!proc.find_variables(vars)) {
@@ -64,7 +64,7 @@ public:
 
    {std::vector<inlib::value>::iterator it2 = vals.begin();
     inlib_vforcit(std::string,vars,it){
-      bool found = false;    
+      bool found = false;
       inlib_mforcit(std::string,double,a_map,itm){
         if((*itm).first==(*it)) {
           (*it2).set((*itm).second);
@@ -138,10 +138,10 @@ public:
     parent_gdml::init_map_consts();
     parent_gdml::init_map_units();
 
-    if(!parent::load_file(a_file,a_compressed)) return false;    
+    if(!parent::load_file(a_file,a_compressed)) return false;
     inlib::xml::tree* top = top_item();
     if(!top) return false;
-    if(top->tag_name()!=parent_gdml::s_gdml()) return false;    
+    if(top->tag_name()!=parent_gdml::s_gdml()) return false;
 
    {inlib::xml::looper _for(*top);
     while(inlib::xml::tree* _tree = _for.next_tree()) {
@@ -162,7 +162,7 @@ public:
       } else {
         m_out << "exlib::xml::base_gdml::load_file :"
               << " unknown tag " << inlib::sout(tag_name) << "."
-              << std::endl;        
+              << std::endl;
         return false;
       }
 
@@ -172,10 +172,10 @@ public:
 
 /*
   bool load_buffer(unsigned int a_sz,const char* a_buffer){
-    if(!parent::load_buffer(a_sz,a_buffer)) return false;    
+    if(!parent::load_buffer(a_sz,a_buffer)) return false;
     inlib::xml::tree* top = top_item();
     if(!top) return false;
-    if(top->tag_name()!=s_gdml()) return false;    
+    if(top->tag_name()!=s_gdml()) return false;
 
    {const std::list<inlib::xml::tree*>& list = top->children();
     inlib_lforcit(inlib::xml::tree,list,it) {

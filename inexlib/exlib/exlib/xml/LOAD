@@ -24,16 +24,16 @@
       }\
     }}\
     \
-    /*look for a <app>.<ext> in the data dir :*/\
+    /*look for a <app>.<ext> in the doc dir :*/\
     /* any found item with same name will override existing one.*/\
-   {std::string path = a_data_dir;\
+   {std::string path = a_doc_dir;\
     path += inlib::sep();\
     path += m_app_name;\
     path += "."+std::string(#a__ext);\
     if(inlib::file::exists(path)) exlib::xml::load_##a__ext##_file(m_out,path,m_##a__ext##s);}\
     \
-    /*look for a <ext>s file in the data dir :*/\
-   {std::string path = a_data_dir;\
+    /*look for a <ext>s file in the doc dir :*/\
+   {std::string path = a_doc_dir;\
     path += inlib::sep();\
     path += std::string(#a__ext)+"s";\
     if(inlib::file::exists(path)) exlib::xml::load_##a__ext##_file(m_out,path,m_##a__ext##s);}

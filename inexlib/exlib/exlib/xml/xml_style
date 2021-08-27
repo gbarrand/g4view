@@ -10,7 +10,7 @@
 
 namespace exlib {
 namespace xml {
-  
+
 inline bool load_style_file(std::ostream&,const std::string& a_file,inlib::xml::styles& a_styles) {
   inlib::xml::default_factory factory;
   exlib::xml::loader ml(factory,a_styles.out(),false);

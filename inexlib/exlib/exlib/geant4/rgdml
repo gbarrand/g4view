@@ -4,6 +4,7 @@
 #ifndef exlib_geant4_rgdml
 #define exlib_geant4_rgdml
 
+#include <G4Version.hh>
 #include <G4NistManager.hh>
 
 #include <G4ReflectedSolid.hh>
@@ -80,11 +81,11 @@ public:
   Transform3D& operator=(const Transform3D& a_from){
     HepGeom::Transform3D::operator=(a_from);
     return *this;
-  }  
+  }
 };
 
 class rgdml
-:public xml::base_gdml 
+:public xml::base_gdml
 <G4Element
 ,G4Material
 ,G4LogicalVolume
@@ -96,7 +97,7 @@ class rgdml
 ,G4VSolid>
 {
 
-  typedef xml::base_gdml 
+  typedef xml::base_gdml
 <G4Element
 ,G4Material
 ,G4LogicalVolume
@@ -278,8 +279,8 @@ public:
     G4MaterialPropertyVector* propvect = new G4MaterialPropertyVector(0,0,0);
     std::vector< std::pair<double,double> >::const_iterator it;
     for(it=a_vals.begin();it!=a_vals.end();++it) {
-      propvect->InsertValues((*it).first,(*it).second); 
-    }   
+      propvect->InsertValues((*it).first,(*it).second);
+    }
     matprop->AddProperty(a_name.c_str(),propvect);
   }
 
@@ -299,7 +300,7 @@ public:
   virtual G4VSolid* create_tube(const std::string& a_name,
                                 double a_rmin,double a_rmax,
                                 double a_z,
-                                double a_phi,double a_dphi) { 
+                                double a_phi,double a_dphi) {
     return new G4Tubs(a_name,a_rmin,a_rmax,a_z,a_phi,a_dphi);
   }
   virtual G4VSolid* create_elliptical_tube(const std::string& a_name,
@@ -314,7 +315,7 @@ public:
   virtual G4VSolid* create_sphere(const std::string& a_name,
                                   double a_rmin,double a_rmax,
                                   double a_phi,double a_dphi,
-                                  double a_theta,double a_dtheta) { 
+                                  double a_theta,double a_dtheta) {
     return new G4Sphere(a_name,a_rmin,a_rmax,a_phi,a_dphi,a_theta,a_dtheta);
   }
   virtual G4VSolid* create_cone(const std::string& a_name,
@@ -428,8 +429,8 @@ public:
   }
   virtual G4VSolid* create_twisted_tubs(const std::string& a_name,
                                         double a_twisted_angle,
-                                        double a_end_inner_rad, 
-                                        double a_end_outer_rad, 
+                                        double a_end_inner_rad,
+                                        double a_end_outer_rad,
                                         double a_zlen,
                                         double a_phi){
     return new G4TwistedTubs(a_name,
@@ -474,7 +475,7 @@ public:
 
     G4Transform3D transform(rot,position);
     transform = transform*G4Scale3D(a_sx,a_sy,a_sz);
-          
+
     return new G4ReflectedSolid(a_name,a_solid,transform);
 
   }
@@ -502,13 +503,13 @@ public:
                   const std::vector< std::pair<double,double> >& a_vs,
                   const std::vector<zsection>& a_zs){
     std::vector<G4TwoVector> vs;
-   {std::vector< std::pair<double,double> >::const_iterator it;    
+   {std::vector< std::pair<double,double> >::const_iterator it;
     for(it=a_vs.begin();it!=a_vs.end();++it){
       vs.push_back(G4TwoVector((*it).first,(*it).second));
     }}
 
     std::vector<G4ExtrudedSolid::ZSection> zs;
-   {std::vector<zsection>::const_iterator it;    
+   {std::vector<zsection>::const_iterator it;
     for(it=a_zs.begin();it!=a_zs.end();++it){
       zs.push_back(G4ExtrudedSolid::ZSection
         ((*it).m_Z,
@@ -565,7 +566,7 @@ public:
                 G4ThreeVector((*it).m_4.x(),(*it).m_4.y(),(*it).m_4.z()),
                 (*it).m_type==inlib::xml::facet_vertex_absolute?ABSOLUTE:RELATIVE));
     }}
-    solid->SetSolidClosed(true);  
+    solid->SetSolidClosed(true);
     return solid;
   }
 
@@ -581,7 +582,7 @@ public:
                  a_value);
   }
 
-  virtual G4LogicalVolume* pv_lv(const G4VPhysicalVolume& a_pv) const { 
+  virtual G4LogicalVolume* pv_lv(const G4VPhysicalVolume& a_pv) const {
     return a_pv.GetLogicalVolume();
   }
 
@@ -674,8 +675,8 @@ public:
     divide_lv(const std::string& a_name,
               G4LogicalVolume* a_volume,
               G4LogicalVolume* a_mother,
-              axis_type a_axis, 
-              unsigned int a_number, 
+              axis_type a_axis,
+              unsigned int a_number,
               double a_width,double a_offset){
     //G4PVDivisionFactory::GetInstance();
     return G4ReflectionFactory::Instance()->Divide
@@ -686,8 +687,8 @@ public:
     divide_lv(const std::string& a_name,
               G4LogicalVolume* a_volume,
               G4LogicalVolume* a_mother,
-              axis_type a_axis, 
-              unsigned int a_number, 
+              axis_type a_axis,
+              unsigned int a_number,
               double a_offset){
     //G4PVDivisionFactory::GetInstance();
     return G4ReflectionFactory::Instance()->Divide
@@ -698,7 +699,7 @@ public:
     divide_lv(const std::string& a_name,
               G4LogicalVolume* a_volume,
               G4LogicalVolume* a_mother,
-              axis_type a_axis, 
+              axis_type a_axis,
               double a_width,double a_offset){
     //G4PVDivisionFactory::GetInstance();
     return G4ReflectionFactory::Instance()->Divide
@@ -789,7 +790,7 @@ protected:
       cons.SetStartPhiAngle(m_params[index].m_dim[5]);
       cons.SetDeltaPhiAngle(m_params[index].m_dim[6]);
     }
-   
+
     virtual void ComputeDimensions(G4Sphere& sphere,
                                    const G4int index,
                                    const G4VPhysicalVolume*) const {

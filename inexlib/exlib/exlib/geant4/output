@@ -18,25 +18,25 @@ public: //G4coutDestination
 #if defined(G4VERSION_NUMBER) && G4VERSION_NUMBER>=1031
   virtual G4int ReceiveG4cout(const G4String& a_s) {if(m_G4cout_on) m__out << a_s;return 0;}
   virtual G4int ReceiveG4cerr(const G4String& a_s) {if(m_G4cout_on) m__out << a_s;return 0;}
-#else  
+#else
   virtual G4int ReceiveG4cout(G4String a_s) {if(m_G4cout_on) m__out << a_s;return 0;}
   virtual G4int ReceiveG4cerr(G4String a_s) {if(m_G4cout_on) m__out << a_s;return 0;}
-#endif  
+#endif
 public:
-  output(std::ostream& a_out)
+  output(std::ostream& a_out,bool a_on)
   :parent()
   ,m__out(a_out)
-  ,m_G4cout_on(true)
+  ,m_G4cout_on(a_on)
   {
     // Enforce the creation of the G4UImanager singleton here
     // since it does a G4c[out,err]buf.SetDestination(null) that will
     // redirect outputs to std::c[out,err].
-    G4UImanager::GetUIpointer(); 
+    G4UImanager::GetUIpointer();
     // Then we can enforce our redirection of G4c[out,err] :
     G4coutbuf.SetDestination(this);
     G4cerrbuf.SetDestination(this);
   }
-  virtual ~output() { 
+  virtual ~output() {
     G4coutbuf.SetDestination(0);
     G4cerrbuf.SetDestination(0);
   }
@@ -55,7 +55,7 @@ public:
   void enable_geant4_output() {m_G4cout_on = true;}
   void disable_geant4_output() {m_G4cout_on = false;}
 protected:
-  std::ostream& m__out; //m_out may clash with various m_out around.
+  std::ostream& m__out;
   bool m_G4cout_on;
 };
 

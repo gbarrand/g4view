@@ -3,7 +3,7 @@
 
 #ifndef exlib_geant4_ivisited_volume
 #define exlib_geant4_ivisited_volume
- 
+
 class G4VPhysicalVolume;
 class G4VSolid;
 class G4Material;
@@ -20,7 +20,7 @@ public:
   virtual bool begin_volume(G4VPhysicalVolume&,
                             G4VSolid*,G4Material*,
                             const inlib::mat4d&,
-                            bool& a_do_daugters) = 0; 
+                            bool& a_do_daugters) = 0;
   virtual void end_volume(G4VPhysicalVolume&) {}
   virtual void begin_daughters(G4VPhysicalVolume&,int) {}
   virtual void end_daughters(G4VPhysicalVolume&,int) {}

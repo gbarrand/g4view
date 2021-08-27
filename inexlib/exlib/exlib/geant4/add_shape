@@ -4,9 +4,9 @@
 #ifndef exlib_geant4_add_shape
 #define exlib_geant4_add_shape
 
-#include <G4VSolid.hh>
-
 #include "polyhedron"
+
+#include <G4VSolid.hh>
 
 #include <inlib/sg/separator>
 #include <inlib/sg/polyhedron>
@@ -19,8 +19,8 @@ inline bool add_shape(std::ostream& a_out,inlib::sg::separator& a_sep,G4VSolid& 
   G4Polyhedron* g4Polyhedron = a_vsolid.CreatePolyhedron();
   if(!g4Polyhedron) {
     a_out << "exlib::geant4::add_shape : can't create polyhedron for G4VSolid " << a_vsolid.GetName() << std::endl;
-    return false;        
-  }     
+    return false;
+  }
 
   inlib::sg::polyhedron* _node = new inlib::sg::polyhedron();
   _node->solid = a_solid;

@@ -5,7 +5,7 @@
 #define exlib_app_X11_main_xgra
 
 #include <inlib/sg/viewer>
-#include <inlib/dirmanip>
+#include <inlib/dirs>
 #include <inlib/net/base_socket>
 
 #include "../../png"
@@ -69,25 +69,25 @@ public:
   virtual void win_render() {
     m_to_render = true; //do not do render() here to avoid a too much flashing window.
   }
+  virtual unsigned char* get_pixels(unsigned int,unsigned int,bool = true) {return 0;}
 public:
   main(std::ostream& a_out
-       ,const std::string& a_app_name
-       ,const std::string& a_data_dir
+       ,const std::string& a_doc_dir
        ,const std::string& a_res_dir
        ,const std::string& a_out_dir
        ,const std::string& a_tmp_dir
        ,bool a_verbose
        ,Display* a_display
+       ,unsigned int a_monitor
        ,Window a_window)
-  :parent_pv_holder(a_out,a_display,a_window)
+  :parent_pv_holder(a_out,a_display,a_monitor,a_window)
   ,parent(a_out,
           parent_pv_holder::gra_mgr(),parent_pv_holder::ttf(),parent_pv_holder::selection(),
-          a_data_dir,a_res_dir,a_out_dir,a_tmp_dir,a_verbose,0)
+          a_doc_dir,a_res_dir,a_out_dir,a_tmp_dir,a_verbose,0)
   ,m_display(a_display)
   ,m_window(a_window)
   ,m_to_render(false)
   ,m_win_x(0),m_win_y(0)
-  ,m_app_name(a_app_name)
   {
     //parent::m_params.m_image_buttons = false;
     parent::m_params.m_gsto_mode = inlib::sg::s_gsto_memory();
@@ -95,7 +95,7 @@ public:
     parent::push_home(); //NOTE : it can't call a potential push_home() done on an inheriting class.
   }
   virtual ~main(){}
-protected:  
+protected:
   main(const main& a_from)
   :parent_pv_holder(a_from)
   ,parent(a_from)
@@ -123,15 +123,12 @@ public:
   }
   void set_position(int a_x,int a_y) {m_win_x = a_x;m_win_y = a_y;}
   void position(int& a_x,int& a_y) const {a_x = m_win_x;a_y = m_win_y;}
-  //void set_app_name(const std::string& a_name) {m_app_name = a_name;}
-  const std::string& app_name() const {return m_app_name;}
 protected:
   Display* m_display;
   Window m_window;
   bool m_to_render;
   int m_win_x;
   int m_win_y;
-  std::string m_app_name;
 };
 
 }
