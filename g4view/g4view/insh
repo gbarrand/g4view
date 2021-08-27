@@ -1,0 +1,203 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef g4view_insh
+#define g4view_insh
+
+#include "primary_generator"
+
+#include <inlib/insh/ishell>
+#include <inlib/args>
+#include <inlib/file_exists>
+
+namespace g4view {
+
+inline void insh_app_primary_generator_set(inlib::ishell& a_insh,const std::vector<std::string>& a_args) {
+  static const std::string s_cmd("app_primary_generator_set");
+  
+  G4RunManager* rmgr = G4RunManager::GetRunManager();
+  if(!rmgr) {
+    a_insh.warn(s_cmd+": G4RunManager::GetRunManager() is null.");
+    return;
+  }
+
+  std::string serr;
+  primary_generator* pg = our_primary_generator(*rmgr,serr);
+  if(!pg) {a_insh.warn(s_cmd+": "+serr);return;}
+  
+  //////////////////////////////////////
+  //// args: ///////////////////////////
+  //////////////////////////////////////
+  inlib::args _args(a_args);
+
+  bool reset;
+  INLIB_ISHELL_IS_ARG(reset)
+  if(reset) pg->reset();
+    
+  std::string sparticle;
+  INLIB_ISHELL_GET_ARG_STRING(particle)
+  if(sparticle.empty()) {
+    a_insh.warn(s_cmd+": -particle empty.");
+    return;
+  }
+  double momentum = 1000; //1GeV. MeV is the basic unit in G4.
+  INLIB_ISHELL_GET_ARG_DOUBLE(momentum)
+  if(momentum<=0) {
+    a_insh.warn(s_cmd+": momentum<=0");
+    return;
+  }
+  double dir_x = 0;
+  INLIB_ISHELL_GET_ARG_DOUBLE(dir_x)
+  double dir_y = 0;
+  INLIB_ISHELL_GET_ARG_DOUBLE(dir_y)
+  double dir_z = 1;
+  INLIB_ISHELL_GET_ARG_DOUBLE(dir_z)
+  if(inlib::vec3d(dir_x,dir_y,dir_z).length()<=0) {
+    a_insh.warn(s_cmd+": not a vector");
+    return;
+  }
+  double pos_x = 0;
+  INLIB_ISHELL_GET_ARG_DOUBLE(pos_x)
+  double pos_y = 0;
+  INLIB_ISHELL_GET_ARG_DOUBLE(pos_y)
+  double pos_z = 0;
+  INLIB_ISHELL_GET_ARG_DOUBLE(pos_z)
+  double sigma_momentum = 0;
+  INLIB_ISHELL_GET_ARG_DOUBLE(sigma_momentum)
+  double sigma_angle = 0;
+  INLIB_ISHELL_GET_ARG_DOUBLE(sigma_angle)
+  
+  //////////////////////////////////////
+  //////////////////////////////////////
+  //////////////////////////////////////
+  
+  pg->set_particle(sparticle);
+  pg->set_momentum(momentum);
+  pg->set_position(pos_x,pos_y,pos_z);
+  if(!pg->set_direction(dir_x,dir_y,dir_z)) {
+    a_insh.warn(s_cmd+": set_direction failed.");
+    return;
+  }
+  pg->set_sigma_momentum(sigma_momentum);
+  pg->set_sigma_angle(sigma_angle);
+
+  if(sparticle=="pythia8") {
+#ifdef EXLIB_HAS_PYTHIA8
+    std::string scmnd;
+    INLIB_ISHELL_GET_ARG_STRING(cmnd)
+    if(scmnd.empty()) {
+      a_insh.warn(s_cmd+": -cmnd empty.");
+      return;
+    }
+    if(!inlib::file::exists(scmnd)) {
+      a_insh.warn(s_cmd+": cmnd file "+scmnd+" does not exist.");
+      return;
+    }
+    std::string sselect_particle;
+    INLIB_ISHELL_GET_ARG_STRING(select_particle)
+    std::string saccept_event;
+    INLIB_ISHELL_GET_ARG_STRING(accept_event)
+    std::string sprimary_particle;
+    INLIB_ISHELL_GET_ARG_STRING(primary_particle)
+    pg->set_cmnd(scmnd);
+    pg->set_select_particle(sselect_particle);
+    pg->set_accept_event(saccept_event);
+    pg->set_primary_particle(sprimary_particle);
+#else
+    a_insh.warn(s_cmd+": application not built with pythia8.");
+    return;
+#endif
+  }
+
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  
+}
+
+inline void insh_app_primary_generator_get(inlib::ishell& a_insh,const std::vector<std::string>& a_args) {
+  static const std::string s_cmd("app_primary_generator_get");
+  
+  G4RunManager* rmgr = G4RunManager::GetRunManager();
+  if(!rmgr) {
+    a_insh.warn(s_cmd+": G4RunManager::GetRunManager() is null.");
+    return;
+  }
+  
+  std::string serr;
+  primary_generator* pg = our_primary_generator(*rmgr,serr);
+  if(!pg) {a_insh.warn(s_cmd+": "+serr);return;}
+
+  //////////////////////////////////////
+  //// args: ///////////////////////////
+  //////////////////////////////////////
+  if(a_args.empty()) {
+    a_insh.warn(s_cmd+": one argument expected.");
+    return;
+  }
+  const std::string arg0 = a_args[0];
+  
+  if(arg0=="particle") {
+    a_insh.out(pg->particle());
+    return;
+  }
+  if(arg0=="momentum") {
+    a_insh.out_num<double>(pg->momentum());
+    return;
+  }
+  const inlib::vec3d& dir = pg->direction();
+  if(arg0=="dir_x") {
+    a_insh.out_num<double>(dir.x());
+    return;
+  }
+  if(arg0=="dir_y") {
+    a_insh.out_num<double>(dir.y());
+    return;
+  }
+  if(arg0=="dir_z") {
+    a_insh.out_num<double>(dir.z());
+    return;
+  }
+  const inlib::vec3d& pos = pg->position();
+  if(arg0=="pos_x") {
+    a_insh.out_num<double>(pos.x());
+    return;
+  }
+  if(arg0=="pos_y") {
+    a_insh.out_num<double>(pos.y());
+    return;
+  }
+  if(arg0=="pos_z") {
+    a_insh.out_num<double>(pos.z());
+    return;
+  }
+  if(arg0=="sigma_momentum") {
+    a_insh.out_num<double>(pg->sigma_momentum());
+    return;
+  }
+  if(arg0=="sigma_angle") {
+    a_insh.out_num<double>(pg->sigma_angle());
+    return;
+  }
+#ifdef EXLIB_HAS_PYTHIA8
+  if(arg0=="cmnd") {
+    a_insh.out(pg->cmnd());
+    return;
+  }    
+  if(arg0=="select_particle") {
+    a_insh.out(pg->select_particle());
+    return;
+  }    
+  if(arg0=="accept_event") {
+    a_insh.out(pg->accept_event());
+    return;
+  }    
+  if(arg0=="primary_particle") {
+    a_insh.out(pg->primary_particle());
+    return;
+  }    
+#endif
+}
+
+}
+
+#endif
+
