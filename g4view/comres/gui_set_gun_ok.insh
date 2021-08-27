@@ -1,0 +1,32 @@
+
+# should be sourced.
+
+deg=`unit deg`
+sigma_angle=`calc ${inlib_sg_entries_value_9}*${deg}`
+
+opts=
+opts="${opts} -reset"
+opts="${opts} -particle=${inlib_sg_entries_value_0}"
+opts="${opts} -momentum=${inlib_sg_entries_value_1}"
+opts="${opts} -pos_x=${inlib_sg_entries_value_2}"
+opts="${opts} -pos_y=${inlib_sg_entries_value_3}"
+opts="${opts} -pos_z=${inlib_sg_entries_value_4}"
+opts="${opts} -dir_x=${inlib_sg_entries_value_5}"
+opts="${opts} -dir_y=${inlib_sg_entries_value_6}"
+opts="${opts} -dir_z=${inlib_sg_entries_value_7}"
+opts="${opts} -sigma_momentum=${inlib_sg_entries_value_8}"
+opts="${opts} -sigma_angle=${sigma_angle}"
+
+if [ `g4_pythia_version` != none ] ; then
+if [ ${inlib_sg_entries_value_0} = "pythia8" ] ; then
+  opts="${opts} -cmnd=${inlib_sg_entries_value_10}"
+fi
+fi
+
+app_primary_generator_set ${opts}
+
+unset opts deg sigma_angle
+
+
+
+

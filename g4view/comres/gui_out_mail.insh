@@ -1,0 +1,23 @@
+#!insh
+
+out_dir=`app_out_dir`
+items=`ls ${out_dir}`
+#echo ${items}
+
+cmd="gui_push_list "
+for item in ${items} ; do
+  action="'gui_mail_file ${item}'"
+  cmd="${cmd} ${item} ${action} "
+done
+
+eval ${cmd}
+
+gui_show_main_menu
+
+unset out_dir
+unset items
+unset action
+unset cmd
+unset item
+
+

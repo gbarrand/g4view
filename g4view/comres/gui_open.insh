@@ -1,0 +1,9 @@
+#!insh
+
+path=`gui_open_panel`
+
+if [ ${path} != "" ] ; then
+  app_open ${path}
+fi
+
+unset path

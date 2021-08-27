@@ -1,0 +1,66 @@
+#!insh
+
+event_stop_anim
+
+#///////////////////////////////////////
+#/// g4: ///////////////////////////////
+#///////////////////////////////////////
+
+sep=`sys_file_sep`
+
+g4_read_gdml `app_res_dir`${sep}barrel.gdml
+#g4_pv_ls
+
+cmnd=`app_res_dir`${sep}h_gamma_gamma.cmnd
+
+opts=
+opts="${opts} -reset"
+opts="${opts} -particle=pythia8"
+opts="${opts} -cmnd=${cmnd}"
+opts="${opts} -select_particle=(id==22)&&(final==true)&&(pT>10)&&(fabs(eta)<2.5)"
+opts="${opts} -accept_event=number_selected==2"
+opts="${opts} -primary_particle=(id==22)&&(final==true)&&(pT>10)&&(fabs(eta)<2.5)"
+opts="${opts} -pos_x=0 -pos_y=0 -pos_z=0"
+opts="${opts} -dir_x=0 -dir_y=0 -dir_z=1"
+
+app_primary_generator_set ${opts}
+
+#///////////////////////////////////////
+#/// vis: //////////////////////////////
+#///////////////////////////////////////
+scene_set_clear_color black
+scene_clear_static
+scene_clear_dynamic
+scene_add_event_anim_stopper
+
+camera_set_ortho 10000
+camera_set_znear 100
+camera_set_zfar 100000
+camera_set_focal 10000
+camera_set_dx 10
+camera_set_da 0.017 # one degree.
+camera_set_ds 0.99
+camera_set_position 0 0 10000
+
+g4_scene_add_geo_volume -color=green p_barrel
+g4_scene_add_geo_volume -color=yellow p_front_endcap
+g4_scene_add_geo_volume -color=yellow p_back_endcap
+
+#///////////////////////////////////////
+#/// style:  ///////////////////////////
+#///////////////////////////////////////
+style_create -color=white -show_name=true -text_scale=5 primary.gamma
+style_create -color=red    trajectory.default
+style_create -color=blue   trajectory.gamma
+
+#///////////////////////////////////////
+#/// plots: ////////////////////////////
+#///////////////////////////////////////
+plots_hide
+
+#///////////////////////////////////////
+#///////////////////////////////////////
+#///////////////////////////////////////
+
+gui_hide_main_menu
+

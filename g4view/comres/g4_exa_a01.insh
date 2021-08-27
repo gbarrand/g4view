@@ -1,0 +1,94 @@
+#!insh
+
+event_stop_anim
+
+#///////////////////////////////////////
+#/// g4: ///////////////////////////////
+#///////////////////////////////////////
+mm=`unit mm`
+cm=`unit cm`
+m=`unit m`
+deg=`unit deg`
+MeV=`unit MeV`
+
+g4_exa_A01
+
+opts=
+opts="${opts} -reset"
+opts="${opts} -particle=e+"
+z=`calc -8.0*${m}`
+opts="${opts} -pos_x=0 -pos_y=0 -pos_z=${z}"
+opts="${opts} -dir_x=0 -dir_y=0 -dir_z=1"
+momentum=`calc 50*${MeV}`
+opts="${opts} -sigma_momentum=${momentum}"
+angle=`calc 2.0*${deg}`
+opts="${opts} -sigma_angle=${angle}"
+
+app_primary_generator_set ${opts}
+
+#///////////////////////////////////////
+#/// vis: //////////////////////////////
+#///////////////////////////////////////
+
+scene_set_clear_color black
+scene_clear_static
+scene_clear_dynamic
+scene_add_event_anim_stopper
+
+camera_set_ortho `calc 15*${m}`
+z=`calc 10*${m}`
+camera_set_znear `calc 0.01*${z}`
+camera_set_zfar `calc 100*${z}`
+camera_set_focal ${z}
+camera_set_dx `calc ${z}*0.003`
+camera_set_da 0.0085  # half a degree.
+
+camera_set_position 0 ${z} 0
+camera_set_orientation 1 0 0 -1.5708
+camera_zoom 1.4286
+
+g4_vis_geometry
+
+#///////////////////////////////////////
+#/// style:  ///////////////////////////
+#///////////////////////////////////////
+style_create -color=yellow -show_name=true -text_scale=5 -at_end=false primary.default
+style_create -color=red    trajectory.default
+style_create -color=yellow trajectory.e+
+style_create -color=yellow trajectory.e-
+style_create -color=blue   trajectory.gamma
+#///////////////////////////////////////
+#/// plots: ////////////////////////////
+#///////////////////////////////////////
+plots_show
+
+plots_set_grid 1 1
+plots_clear
+
+plots_set_layout 0.3 0.35 0.3 0.2   # up right.
+
+plots_set_field inlib::sg::plots.border_visible 1
+plots_set_field inlib::sg::plots.border_width   0.02
+plots_set_field inlib::sg::plots.border_height  0.02
+
+plotter_set_field background_style.visible true
+
+histo_plot -ref ecal_hcal_edep
+
+scene_add_plots_clearer
+
+#///////////////////////////////////////
+#///////////////////////////////////////
+#///////////////////////////////////////
+gui_hide_main_menu
+
+#///////////////////////////////////////
+#///////////////////////////////////////
+#///////////////////////////////////////
+unset momentum
+unset angle
+unset z
+unset mm
+unset m
+unset cm
+unset deg

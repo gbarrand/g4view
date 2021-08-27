@@ -1,0 +1,26 @@
+
+# should be sourced.
+
+cmd=g4_scene_add_geo_volume
+
+cmd="${cmd} -min_depth=${inlib_sg_entries_value_1}"
+cmd="${cmd} -max_depth=${inlib_sg_entries_value_2}"
+cmd="${cmd} -solid_depth=${inlib_sg_entries_value_3}"
+
+cmd="${cmd} -atb=${inlib_sg_entries_value_4}"
+cmd="${cmd} -color='${inlib_sg_entries_value_5}'"
+
+cmd="${cmd} -max_time=${inlib_sg_entries_value_6}"
+cmd="${cmd} -max_shapes=${inlib_sg_entries_value_7}"
+
+cmd="${cmd} ${inlib_sg_entries_value_0}"
+
+eval ${cmd}
+
+gui_hide_main_menu
+
+unset cmd
+
+
+
+

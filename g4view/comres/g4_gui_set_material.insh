@@ -1,0 +1,16 @@
+#!insh
+
+cmd=gui_push_list_items
+
+items=`g4_lv_ls`
+
+for item in ${items} ; do
+  cmd="${cmd} -item='${item}:white.jpg:gui_set_material_lv=${item}\n. g4_gui_set_material_ok.insh'"
+done
+
+eval ${cmd}
+
+gui_show_main_menu
+
+unset item items
+

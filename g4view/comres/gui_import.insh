@@ -1,0 +1,6 @@
+#!insh
+
+gui_push_list 'upload in app doc dir' "ems 'open_file_chooser();'" 'upload in app doc dir and open' "ems 'open_file_chooser_open();'"
+
+gui_show_main_menu
+

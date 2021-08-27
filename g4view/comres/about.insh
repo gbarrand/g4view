@@ -1,0 +1,14 @@
+#!insh
+
+vers=`app_version`
+g4vers=`g4_version`
+pythia_vers=`g4_pythia_version`
+
+line_0='App: g4view'
+line_1="Version: ${vers}"
+line_2='Author: Guy Barrand'
+line_3="On Geant4: ${g4vers}"
+line_4="On Pythia: ${pythia_vers}"
+
+gui_text "${line_0}" "${line_1}" "${line_2}" "${line_3}" "${line_4}"
+

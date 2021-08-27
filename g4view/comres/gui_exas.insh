@@ -1,0 +1,17 @@
+#!insh
+
+cmd=gui_push_list_items
+
+cmd="${cmd} -item='calorimeter:white.jpg:g4_exa_calorimeter.insh'"
+cmd="${cmd} -item='A01:white.jpg:g4_exa_a01.insh'"
+
+#cmd="${cmd} -item='H ZZ 4mu:white.jpg:g4_exa_h_zz_4mu.insh'"  # it crashes with geant4.10.03.p01
+
+cmd="${cmd} -item='H gamma gamma:white.jpg:g4_exa_h_gamma_gamma.insh'"
+cmd="${cmd} -item='icon:white.jpg:g4_exa_icon.insh'"
+
+eval ${cmd}
+
+unset cmd
+
+gui_show_main_menu

@@ -1,0 +1,5 @@
+#!insh
+
+gui_push_entries -uint='num events:100' -uint='next event sleep (msec):0' -script='gui_hide_main_menu\ng4_event_start_anim -number=${inlib_sg_entries_value_0} -sleep=${inlib_sg_entries_value_1}'
+
+gui_show_main_menu

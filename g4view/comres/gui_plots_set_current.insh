@@ -1,0 +1,17 @@
+#!insh
+
+cols=`plots_get_field -field=inlib::sg::plots.cols`
+rows=`plots_get_field -field=inlib::sg::plots.rows`
+
+last=`calc ${cols}*${rows}-1`
+
+cmd=gui_push_list
+for item in `seq 0 ${last}` ; do
+  cmd="${cmd} ${item} 'plots_set_current_plotter ${item}\ngui_hide_main_menu'"
+done
+
+eval ${cmd}
+
+gui_show_main_menu
+
+unset cmd

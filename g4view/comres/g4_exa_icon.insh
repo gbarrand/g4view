@@ -1,0 +1,68 @@
+#!insh
+
+event_stop_anim
+
+#///////////////////////////////////////
+#/// g4: ///////////////////////////////
+#///////////////////////////////////////
+mm=`unit mm`
+cm=`unit cm`
+
+calor_nb_of_layers=10
+calor_absorber_thickness=`calc 10.*${mm}`
+calor_gap_thickness=`calc 5*${mm}`
+calor_size_xy=`calc 10*${cm}`
+layer_thickness=`calc ${calor_absorber_thickness}+${calor_gap_thickness}`
+calor_thickness=`calc ${calor_nb_of_layers}*${layer_thickness}`
+world_size_z=`calc 1.2*${calor_thickness}`
+world_size_xy=`calc 1.2*${calor_size_xy}`
+
+g4_exa_calorimeter -icon
+
+opts=
+opts="${opts} -reset"
+opts="${opts} -particle=e+"
+z=`calc -(${world_size_z}/2.0)*1.5`
+opts="${opts} -pos_x=0 -pos_y=0 -pos_z=${z}"
+opts="${opts} -dir_x=0 -dir_y=0 -dir_z=1"
+
+app_primary_generator_set ${opts}
+#///////////////////////////////////////
+#/// vis: //////////////////////////////
+#///////////////////////////////////////
+
+scene_set_clear_color white
+scene_clear_static
+scene_clear_dynamic
+scene_add_event_anim_stopper
+
+camera_set_ortho `calc 3*${world_size_xy}`
+z=`calc 10*${world_size_z}`
+camera_set_znear `calc 0.01*${z}`
+camera_set_zfar `calc 100*${z}`
+camera_set_focal ${z}
+camera_set_dx `calc ${z}*0.003`
+camera_set_da 0.0085  # half a degree.
+
+camera_set_position -${z} 0 0
+camera_set_orientation 0 1 0 -1.5708
+
+#g4_scene_add_geo_volume -color=black absorber
+g4_vis_geometry
+
+#///////////////////////////////////////
+#/// style:  ///////////////////////////
+#///////////////////////////////////////
+style_create -color=black -show_name=true -text_scale=5 -at_end=false primary.default
+style_create -color=red    trajectory.default
+
+#///////////////////////////////////////
+#/// plots: ////////////////////////////
+#///////////////////////////////////////
+plots_hide
+
+#///////////////////////////////////////
+#///////////////////////////////////////
+#///////////////////////////////////////
+gui_hide_main_menu
+

@@ -1,0 +1,4 @@
+#!insh
+
+gui_push_keyboard -script='. gui_utils_show_console.insh'
+

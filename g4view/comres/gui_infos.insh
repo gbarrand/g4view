@@ -1,0 +1,72 @@
+#!insh
+
+cmd=gui_push_list
+
+label=`app_doc_dir`
+label="doc: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+# too long !
+#label=`app_res_dir`
+#label="res: ${label}"
+#cmd="${cmd} '${label}' ' '"
+
+label=`app_out_dir`
+label="out: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`app_tmp_dir`
+label="tmp: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`app_start_dir`
+label="start: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`sys_home_dir`
+label="home: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`cpp_sizeof_void_star`
+label="void*: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`cpp_sizeof_long`
+label="long: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`cpp_sizeof_long_long`
+label="long long: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`cpp_sizeof_off_t`
+label="off_t: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`sys_is_little_endian`
+label="is_little_endian: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`render_manager_infos GL_VENDOR`
+label="GL_VENDOR: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`render_manager_infos GL_VERSION`
+label="GL_VERSION: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`render_manager_infos GL_RENDERER`
+label="GL_RENDERER: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+label=`render_manager_infos GL_MAX_TEXTURE_SIZE`
+label="GL_MAX_TEXTURE_SIZE: ${label}"
+cmd="${cmd} '${label}' ' '"
+
+eval ${cmd}
+
+gui_show_main_menu
+
+unset label
+unset cmd
+

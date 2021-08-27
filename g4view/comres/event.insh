@@ -1,0 +1,8 @@
+#!insh
+
+scene_clear_dynamic
+
+g4_vis_trajectories
+
+plots_touch_plotters
+

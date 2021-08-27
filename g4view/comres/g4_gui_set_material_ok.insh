@@ -1,0 +1,20 @@
+
+# should be sourced.
+
+echo ${gui_set_material_lv}
+
+cmd=gui_push_list_items
+
+items=`g4_material_ls`
+
+for item in ${items} ; do
+  cmd="${cmd} -item='${item}:white.jpg:g4_lv_set_material ${gui_set_material_lv} ${item}'"
+done
+
+eval ${cmd}
+
+gui_show_main_menu
+
+unset item items
+
+

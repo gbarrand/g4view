@@ -1,0 +1,56 @@
+#!insh
+
+cmd=gui_push_list
+
+cmd="${cmd} 'window to out.jpeg' window_to_jpeg"
+cmd="${cmd} 'window to out.png'  window_to_png"
+
+#/////////////////////////
+#/// with zb: ////////////
+#/////////////////////////
+cmd="${cmd} 'scene to out_zb.ps'   'gui_hide_main_menu\nscene_write_to_paper -format=inzb_ps   -out_dir -scale=2 out_zb.ps'"
+cmd="${cmd} 'scene to out_zb.png'  'gui_hide_main_menu\nscene_write_to_paper -format=inzb_png  -out_dir -scale=2 out_zb.png'"
+cmd="${cmd} 'scene to out_zb.jpeg' 'gui_hide_main_menu\nscene_write_to_paper -format=inzb_jpeg -out_dir -scale=2 out_zb.jpeg'"
+
+
+#/////////////////////////
+#/// with gl2ps: /////////
+#/////////////////////////
+cmd="${cmd} 'scene to out_gl2ps.eps' 'gui_hide_main_menu\nscene_write_to_paper -format=gl2ps_eps -out_dir out_gl2ps.eps'"
+cmd="${cmd} 'scene to out_gl2ps.ps'  'gui_hide_main_menu\nscene_write_to_paper -format=gl2ps_ps  -out_dir out_gl2ps.ps'"
+cmd="${cmd} 'scene to out_gl2ps.pdf' 'gui_hide_main_menu\nscene_write_to_paper -format=gl2ps_pdf -out_dir out_gl2ps.pdf'"
+cmd="${cmd} 'scene to out_gl2ps.svg' 'gui_hide_main_menu\nscene_write_to_paper -format=gl2ps_svg -out_dir out_gl2ps.svg'"
+cmd="${cmd} 'scene to out_gl2ps.tex' 'gui_hide_main_menu\nscene_write_to_paper -format=gl2ps_tex -out_dir out_gl2ps.tex'"
+cmd="${cmd} 'scene to out_gl2ps.pgf' 'gui_hide_main_menu\nscene_write_to_paper -format=gl2ps_pdf -out_dir out_gl2ps.pgf'"
+
+#/////////////////////////
+#/// bsg: ////////////////
+#/////////////////////////
+cmd="${cmd} 'scene to out.bsg' 'scene_write_to_bsg -out_dir out.bsg'"
+cmd="${cmd} 'static scene in out_static.bsg'  'scene_write_static_to_bsg -out_dir out_static.bsg'"
+cmd="${cmd} 'dynamic scene in out_dynamic.bsg' 'scene_write_dynamic_to_bsg -out_dir out_dynamic.bsg'"
+
+#/////////////////////////
+#/////////////////////////
+#/////////////////////////
+if [ `sys_os` = emscripten ] ; then
+  cmd="${cmd} 'download doc file' gui_download_doc_file.insh"
+fi
+
+#/////////////////////////
+#/////////////////////////
+#/////////////////////////
+if [ `gui_has_mail_panel` = true ] ; then
+  cmd="${cmd} 'mail out file...' gui_out_mail.insh"
+fi
+
+#/////////////////////////
+#/////////////////////////
+#/////////////////////////
+
+eval ${cmd}
+
+gui_show_main_menu
+
+unset cmd
+

@@ -1,0 +1,65 @@
+
+cmd=gui_push_list_items
+
+cmd="${cmd}  -item='examples...:package_edutainment.jpg:gui_exas.insh'"
+
+cmd="${cmd} -item='files:files.jpg:gui_menu_files'"
+if [ `gui_has_open_panel` = true ] ; then
+  cmd="${cmd} -item='open...:files.jpg:gui_open.insh'"
+fi
+
+cmd="${cmd} -item='geometry:ioda_cube.jpg:g4_vis_geometry\ngui_hide_main_menu'"
+cmd="${cmd} -item='vis events:vis_events.jpg:g4_gui_vis_events.insh'"
+cmd="${cmd} -item='stop events:stop_events.jpg:event_stop_anim'"
+
+if [ `sys_os` != emscripten ] ; then
+  cmd="${cmd} -item='beam on...:event.jpg:g4_gui_beam_on.insh'"
+fi
+
+cmd="${cmd} -item='set gun:gun.jpg:gui_set_gun.insh'"
+cmd="${cmd} -item='set material:edit_geom.jpg:g4_gui_set_material.insh'"
+cmd="${cmd} -item='add geo:white.jpg:g4_gui_add_geo.insh'"
+
+cmd="${cmd} -item='clear event:clear_event.jpg:scene_clear_dynamic'"
+cmd="${cmd} -item='clear detector:clear_static.jpg:scene_clear_static'"
+cmd="${cmd} -item='camera reset:edit_undo.jpg:camera_reset\ngui_hide_main_menu'"
+
+cmd="${cmd} -item='startup.insh:white.jpg:startup.insh'"
+
+cmd="${cmd} -item='show plots:plot.jpg:plots_show\ngui_hide_main_menu'"
+cmd="${cmd} -item='hide plots:hide_plot.jpg:plots_hide\ngui_hide_main_menu'"
+cmd="${cmd} -item='plots:set_current_region.jpg:gui_plots.insh'"
+#    inlib::sg::add_image_item(*this,*list,s_edit_plots(),"edit_plot.jpg",inlib::cbk::action_menu_edit_plot);
+
+cmd="${cmd} -item='reset histos:clear_histo.jpg:reset_histos.insh\nplots_touch_plotters'"
+
+if [ `sys_os` = emscripten ] ; then
+  cmd="${cmd} -item='show terminal:white.jpg:gui_show_terminal'"
+  cmd="${cmd} -item='hide terminal:white.jpg:gui_hide_terminal'"
+#else
+#      //if(m_walls._walls().size()) {
+#    //inlib::sg::add_image_item(*this,*list,inlib::sg::s_to_serv(),"connect_to_wall.jpg",inlib::cbk::action_menu_sg_client);
+#      inlib::sg::add_white_item(*this,*list,inlib::sg::s_to_serv(),inlib::cbk::action_menu_sg_client);
+#      //}
+#      inlib::sg::add_white_item(*this,*list,inlib::sg::s_sg_serv(),inlib::cbk::action_menu_sg_serv);
+fi
+
+cmd="${cmd} -item='export:document_export.jpg:gui_export.insh'"
+
+if [ `sys_os` = emscripten ] ; then
+  cmd="${cmd} -item='import:document_import.jpg:gui_import.insh'"
+fi
+
+#cmd="${cmd} -item='colors:white.jpg:gui_show_colors\ngui_show_main_menu'"
+
+cmd="${cmd} -item='utils:tools.jpg:gui_utils.insh'"
+
+cmd="${cmd} -item='about:icon.jpg:about.insh'"
+
+if [ `sys_device_has_stop_app_button` = false ] ; then
+  cmd="${cmd} -item='exit:application_exit.jpg:gui_set_to_exit'"
+fi
+
+eval ${cmd}
+
+unset cmd

@@ -1,0 +1,65 @@
+#!insh
+
+event_stop_anim
+
+#///////////////////////////////////////
+#/// g4: ///////////////////////////////
+#///////////////////////////////////////
+
+sep=`sys_file_sep`
+
+g4_read_gdml `app_res_dir`${sep}lhcbvelo.gdml
+#g4_pv_ls
+
+#///////////////////////////////////////
+#/// vis: //////////////////////////////
+#///////////////////////////////////////
+scene_set_clear_color black
+scene_clear_static
+scene_clear_dynamic
+scene_add_event_anim_stopper
+
+camera_set_ortho 2000
+camera_set_znear 200
+camera_set_zfar 20000
+camera_set_focal 2000
+camera_set_dx 20
+camera_set_da 0.017 # one degree.
+camera_set_ds 0.99
+camera_set_position 0 2000 0
+camera_set_orientation 1 0 0 -1.570796
+
+opts=
+opts="${opts} -atb=by_depth -colormap=yellow:cyan:magenta:yellow"
+g4_scene_add_geo_volume -min_depth=2 -max_depth=4 ${opts}
+
+# G4 units : MeV, mm, radian:
+opts=
+opts="${opts} -reset"
+opts="${opts} -particle=e-"
+opts="${opts} -momentum=1000"
+opts="${opts} -pos_x=0 -pos_y=0 -pos_z=1000"
+opts="${opts} -dir_x=0 -dir_y=0 -dir_z=1"
+opts="${opts} -sigma_momentum=0"
+opts="${opts} -sigma_angle=0.034" # 1 degree = 0.017.
+
+app_primary_generator_set ${opts}
+
+#///////////////////////////////////////
+#/// style:  ///////////////////////////
+#///////////////////////////////////////
+style_create -color=red    trajectory.default
+style_create -color=yellow trajectory.e-
+style_create -color=yellow trajectory.e+
+style_create -color=blue   trajectory.gamma
+
+#///////////////////////////////////////
+#/// plots: ////////////////////////////
+#///////////////////////////////////////
+plots_hide
+
+#///////////////////////////////////////
+#///////////////////////////////////////
+#///////////////////////////////////////
+
+gui_hide_main_menu

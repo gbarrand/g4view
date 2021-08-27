@@ -1,0 +1,5 @@
+
+# must be sourced from gui_utils_console.insh.
+
+gui_show_console ${inlib_sg_keyboard_value}
+

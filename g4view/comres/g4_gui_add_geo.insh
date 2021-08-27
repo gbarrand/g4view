@@ -1,0 +1,37 @@
+#!insh
+
+cmd=gui_push_entries
+
+pvs=`g4_pv_ls`
+first_pv=
+opts=
+for pv in ${pvs} ; do
+  if [ ${first_pv} = "" ] ; then
+    first_pv=${pv}
+  fi
+  opts="${opts}:${pv}"
+done
+if [ ${first_pv} = "" ] ; then
+  gui_warn 'no pv'
+  exit
+fi
+
+cmd="${cmd} -opts='pv:${first_pv}:${opts}'"
+cmd="${cmd} -uint='min depth:0'"
+cmd="${cmd} -uint='max depth:1'"
+cmd="${cmd} -uint='solid depth:1'"
+
+cmd="${cmd} -opts='atb per:single:single:by_depth:by_material'"
+cmd="${cmd} -color='color:lightgrey'"
+
+cmd="${cmd} -uint='max time (sec):0'"
+cmd="${cmd} -uint='max shapes:0'"
+
+cmd="${cmd} -script='. g4_gui_add_geo_ok.insh'"
+
+eval ${cmd}
+
+gui_show_main_menu
+
+unset cmd opts pv pvs
+

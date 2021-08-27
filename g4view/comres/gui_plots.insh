@@ -1,0 +1,27 @@
+#!insh
+
+cmd=gui_push_list
+
+cmd="${cmd} 'set grid' gui_plots_grid.insh"
+
+cmd="${cmd} 'clear all plotters'  plots_clear\ngui_hide_main_menu"
+cmd="${cmd} 'plots toggle border' plots_toggle_border\ngui_hide_main_menu"
+cmd="${cmd} 'set current plotter' gui_plots_set_current.insh"
+
+cmd="${cmd} 'plotter to one'          plots_current_to_one\ngui_hide_main_menu"
+cmd="${cmd} 'plotter clear bins'      'plotter_clear -bins\ngui_hide_main_menu'"
+cmd="${cmd} 'plotter clear points'    'plotter_clear -points\ngui_hide_main_menu'"
+cmd="${cmd} 'plotter clear functions' 'plotter_clear -functions\ngui_hide_main_menu'"
+cmd="${cmd} 'plotter clear'           plotter_clear\ngui_hide_main_menu"
+cmd="${cmd} 'plotter toggle border'   plots_toggle_view_border\ngui_hide_main_menu"
+
+cmd="${cmd} 'plots map viewer'       plots_map_viewer\ngui_hide_main_menu"
+cmd="${cmd} 'plots map default'      'plots_set_layout -defaults\ngui_hide_main_menu'"
+
+#cmd="${cmd} 'plots adjust size'   plots_adjust_size\ngui_hide_main_menu"
+
+eval ${cmd}
+
+gui_show_main_menu
+
+unset cmd

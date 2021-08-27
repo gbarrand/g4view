@@ -1,0 +1,53 @@
+#!insh
+
+scene_create
+
+plots_create  # must be after scene_create
+
+#///////////////////////////////////////
+#/// vis: //////////////////////////////
+#///////////////////////////////////////
+
+scene_set_clear_color white
+scene_clear_static
+scene_clear_dynamic
+#scene_add_event_anim_stopper
+
+camera_set_ortho 40
+z=100
+camera_set_znear `calc 0.01*${z}`
+camera_set_zfar `calc 100*${z}`
+camera_set_focal ${z}
+camera_set_dx `calc ${z}*0.003`
+camera_set_da 0.0085  # half a degree.
+
+camera_set_position -${z} 0 0
+camera_set_orientation 0 0 1 0
+
+#///////////////////////////////////////
+#/// style:  ///////////////////////////
+#///////////////////////////////////////
+style_create -color=red    trajectory.default
+
+#///////////////////////////////////////
+#/// plots: ////////////////////////////
+#///////////////////////////////////////
+plots_show
+
+plots_set_grid 1 1
+plots_clear
+
+plots_set_layout 0.3 0.35 0.3 0.2   # up right.
+
+plots_set_field inlib::sg::plots.border_visible 1
+plots_set_field inlib::sg::plots.border_width   0.02
+plots_set_field inlib::sg::plots.border_height  0.02
+
+plotter_set_field background_style.visible true
+
+#///////////////////////////////////////
+#///////////////////////////////////////
+#///////////////////////////////////////
+
+
+

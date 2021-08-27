@@ -1,0 +1,19 @@
+#!insh
+
+doc_dir=`app_dir -doc`
+
+items=`ls ${doc_dir}`
+
+cmd=gui_push_list
+for item in ${items} ; do
+  action="'file_download -doc ${item}'"
+  cmd="${cmd} ${item} ${action}"
+done
+
+eval ${cmd}
+
+unset action
+unset item
+unset items
+unset cmd
+unset doc_dir

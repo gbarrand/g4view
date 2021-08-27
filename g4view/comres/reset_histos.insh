@@ -1,0 +1,9 @@
+#!insh
+
+items=`histo_ls`
+
+for item in ${items} ; do
+  histo_reset ${item}
+done
+
+unset item items

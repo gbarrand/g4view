@@ -1,0 +1,27 @@
+#!insh
+
+cmd=gui_push_list_items
+
+cmd="${cmd} -item='clear cache:white.jpg:scene_clear_tmp'"
+cmd="${cmd} -item='remove manips:white.jpg:scene_remove_manips'"
+cmd="${cmd} -item='disable anim:white.jpg:gui_disable_anim'"
+cmd="${cmd} -item='enable anim:white.jpg:gui_enable_anim'"
+cmd="${cmd} -item='clear scene:white.jpg:scene_clear'"
+
+cmd="${cmd} -item='set console:console.jpg:gui_utils_console.insh'"
+
+cmd="${cmd} -item='infos:routing_step.jpg:gui_infos.insh'"
+cmd="${cmd} -item='styles:white.jpg:gui_show_styles\ngui_show_main_menu'"
+cmd="${cmd} -item='clear doc dir:white.jpg:app_clear_doc_dir'"
+
+cmd="${cmd} -item='static sg to pts,lns,tris:white.jpg:scene_static_to_vertices'"
+cmd="${cmd} -item='dynamic sg to pts,lns,tris:white.jpg:scene_dynamic_to_vertices'"
+
+eval ${cmd}
+
+gui_show_main_menu
+
+unset cmd
+
+
+

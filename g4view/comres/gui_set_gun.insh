@@ -1,0 +1,59 @@
+#!insh
+
+cmd=gui_push_entries
+
+fields='random:e-:e+:mu-:mu+:gamma:proton:neutron:kaon-:kaon+:pi-:pi+:pi0'  # g4 names.
+if [ `g4_pythia_version` != none ] ; then
+  fields="${fields}:pythia8"
+fi
+parts=`g4_particle_ls`
+parts=`string_replace ' ' : "${parts}"`
+fields="${fields}:${parts}"
+default=`app_primary_generator_get particle`
+cmd="${cmd} -opts='particle:${default}:${fields}'"
+
+value=`app_primary_generator_get momentum`
+cmd="${cmd} -double='momentum (MeV):${value}'"
+
+value=`app_primary_generator_get pos_x`
+cmd="${cmd} -double='pos x (mm):${value}'"
+value=`app_primary_generator_get pos_y`
+cmd="${cmd} -double='pos y (mm):${value}'"
+value=`app_primary_generator_get pos_z`
+cmd="${cmd} -double='pos z (mm):${value}'"
+
+value=`app_primary_generator_get dir_x`
+cmd="${cmd} -double='dir x:${value}'"
+value=`app_primary_generator_get dir_y`
+cmd="${cmd} -double='dir y:${value}'"
+value=`app_primary_generator_get dir_z`
+cmd="${cmd} -double='dir z:${value}'"
+
+value=`app_primary_generator_get sigma_momentum`
+cmd="${cmd} -double='sigma momentum (MeV):${value}'"
+value=`app_primary_generator_get sigma_angle`
+deg=`unit deg`
+value_deg=`calc ${value}/${deg}`
+cmd="${cmd} -double='sigma angle (deg):${value_deg}'"
+
+sep=`sys_file_sep`
+if [ `g4_pythia_version` != none ] ; then
+  default=`app_res_dir`${sep}h_gamma_gamma.cmnd
+  exts='.cmnd'
+  dirs=`app_res_dir`;`app_doc_dir`
+  cmd="${cmd} -file='cmnd:${default}:${exts}:${dirs}'"
+fi
+
+cmd="${cmd} -script='. gui_set_gun_ok.insh'"
+
+eval ${cmd}
+
+gui_show_main_menu
+
+unset exts dirs
+unset parts
+unset default
+unset fields
+unset cmd
+unset value
+

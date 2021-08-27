@@ -1,0 +1,6 @@
+#!insh
+
+gui_push_entries -script='. gui_plots_grid_ok.insh' -uint='cols:1' -uint='rows:1' -bool='transfer:true'
+
+gui_show_main_menu
+

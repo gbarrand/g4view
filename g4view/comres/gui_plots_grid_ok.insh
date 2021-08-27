@@ -1,0 +1,7 @@
+
+# should be sourced.
+
+plots_set_grid ${inlib_sg_entries_value_0} ${inlib_sg_entries_value_1} ${inlib_sg_entries_value_2}
+
+gui_hide_main_menu
+
