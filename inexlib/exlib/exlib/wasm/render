@@ -1,0 +1,757 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_wasm_render
+#define exlib_wasm_render
+
+#include <inlib/sg/render_manager>
+#include <inlib/sg/render_action>
+#include <inlib/glprims>
+#include <inlib/vmanip>
+#include <inlib/path>
+#include <inlib/sep>
+#include <inlib/num2s>
+#include <inlib/mapmanip>
+#include <inlib/pointer>
+#include <inlib/srep>
+#include <inlib/base64>
+#include <inlib/mathf>
+
+#include <emscripten.h>
+
+//
+//#define EXLIB_WASM_GLOBAL_FLOAT_ARRAY
+
+#ifdef EXLIB_WASM_GLOBAL_FLOAT_ARRAY
+
+EM_JS(void, js_set_float_buffer, (const float* a_buffer,size_t a_size), {
+  set_float_buffer(a_buffer,a_size);
+});
+
+#define EXLIB_WASM_ALLOC(a__size)  float* buffer = m_mgr.get_float_buffer(a__size);
+#define EXLIB_WASM_FREE
+
+#else
+#define EXLIB_WASM_ALLOC(a__size)  float* buffer = new float[a__size];
+#define EXLIB_WASM_FREE            delete [] buffer;
+#endif
+
+#include <cstring> //memcpy
+
+namespace exlib {
+namespace wasm {
+
+EM_JS(void, js_create_texturea, (const char* a_sid,inlib::uint32 a_w,inlib::uint32 a_h,const inlib::byte* a_buffer,inlib::uint32 a_size), {
+  var sid = UTF8ToString(a_sid);
+  window[sid] = ctex();
+  ldtexba(window[sid],a_w,a_h,new Uint8Array(HEAP8.buffer,a_buffer,a_size));
+});
+
+EM_JS(void, js_create_texture, (const char* a_sid,inlib::uint32 a_w,inlib::uint32 a_h,const inlib::byte* a_buffer,inlib::uint32 a_size), {
+  var sid = UTF8ToString(a_sid);
+  window[sid] = ctex();
+  ldtexb(window[sid],a_w,a_h,new Uint8Array(HEAP8.buffer,a_buffer,a_size));
+});
+
+EM_JS(void, js_delete_texture, (const char* a_sid), {
+  var sid = UTF8ToString(a_sid);
+  dtex(window[sid]);
+});
+
+EM_JS(void, js_create_vbo, (const char* a_sid,const float* a_buffer,size_t a_size), {
+  var sid = UTF8ToString(a_sid);
+  window[sid] = cbuf();
+  bbd(window[sid],new Float32Array(HEAPF32.buffer,a_buffer,a_size),0);
+});
+
+EM_JS(void, js_delete_vbo, (const char* a_sid), {
+  var sid = UTF8ToString(a_sid);
+  dbuf(window[sid]);
+});
+
+EM_JS(void, js_begin_gsto, (const char* a_sid), {
+  var sid = UTF8ToString(a_sid);
+  bb(window[sid]);
+});
+
+EM_JS(void, js_color4f, (float a_r,float a_g,float a_b,float a_a), {
+  ldcol(a_r,a_g,a_b,a_a);
+});
+
+inline std::string get_mode(inlib::gl::mode_t a_mode) {
+       if(a_mode==inlib::gl::points())         return "md0()";
+  else if(a_mode==inlib::gl::lines())          return "md1()";
+  else if(a_mode==inlib::gl::line_loop())      return "md2()";
+  else if(a_mode==inlib::gl::line_strip())     return "md3()";
+  else if(a_mode==inlib::gl::triangles())      return "md4()";
+  else if(a_mode==inlib::gl::triangle_strip()) return "md5()";
+  else if(a_mode==inlib::gl::triangle_fan())   return "md6()";
+  else return "md1()"; //should not happen.
+}
+
+class manager : public virtual inlib::sg::render_manager {
+  typedef inlib::sg::render_manager parent;
+public:
+  INLIB_SCLASS(exlib::wasm::manager)
+  virtual void* cast(const std::string& a_class) const {
+    if(void* p = inlib::cmp_cast<manager>(this,a_class)) {return p;}
+    else return 0;
+  }
+public:
+  virtual bool begin_render(int a_x,int a_y,unsigned int a_w,unsigned int a_h,float a_r,float a_g,float a_b,float a_a,bool = true) {
+    EM_ASM({
+      begdraw($0,$1,$2,$3,$4,$5,$6,$7);
+    },a_x,a_y,a_w,a_h,a_r,a_g,a_b,a_a);
+    return true;
+  }
+
+  virtual void end_render() {}
+
+  virtual unsigned int create_texture(const inlib::img_byte& a_img,bool /*a_NEAREST*/) {
+    //::printf("debug : create_texture : size = %d, w = %d, h = %d, bpp %d\n",
+    //    a_img.size(),a_img.width(),a_img.height(),a_img.bpp());
+
+    inlib::img_byte* _img = 0;
+    bool _img_delete = false;
+
+    if(a_img.bpp()==1) { //exa eiffel-tower.png
+      _img = new inlib::img_byte;
+      _img_delete = true;
+      if(!a_img.bw2x(3,*_img)) {
+        m_out << "exlib::wasm::manager::create_texture :"
+              << " a_imgr.bw2x() failed."
+              << std::endl;
+        delete _img;
+        return 0;
+      }
+    } else if(a_img.bpp()==3) {
+      _img = const_cast<inlib::img_byte*>(&a_img);
+    } else if(a_img.bpp()==4) { //exa windusrf.png, text_freetype/font_pixmap.
+      _img = const_cast<inlib::img_byte*>(&a_img);
+    } else {
+      //should not happen.
+      m_out << "exlib::wasm::manager::create_texture :"
+            << " image with bpp " << a_img.bpp() << " not (yet) supported."
+            << std::endl;
+      if(_img_delete) delete _img;
+      return 0;
+    }
+    if(_img->is_empty()) {
+      if(_img_delete) delete _img;
+      return 0;
+    }
+
+    m_gen_id++;
+    std::string sid = "g_tex_";
+    if(!inlib::numas<unsigned int>(m_gen_id,sid)){}
+    //::printf("debug : create_texture : sid %s\n",sid.c_str());
+
+    //::printf("debug : ldtexb %d : %d %d\n",_img.size(),_img.width(),_img.height());
+    if(_img->bpp()==4) {
+      js_create_texturea(sid.c_str(),_img->width(),_img->height(),_img->buffer(),_img->size());
+    } else {
+      js_create_texture(sid.c_str(),_img->width(),_img->height(),_img->buffer(),_img->size());
+    }
+
+    m_gstos[m_gen_id] = new gsto_t(gsto_t::kind_texture,sid,"",_img->size(),m_out,*this);
+#ifdef INLIB_MEM
+    inlib::mem::increment(inlib::s_tex().c_str());
+#endif
+    if(_img_delete) delete _img;
+    return m_gen_id;
+  }
+
+  virtual unsigned int create_gsto_from_data(size_t a_floatn,const float* a_data) {
+    if(!a_floatn) return 0;
+
+    m_gen_id++;
+    std::string sid = "g_vbo_";
+    if(!inlib::numas<unsigned int>(m_gen_id,sid)){}
+
+    js_create_vbo(sid.c_str(),a_data,a_floatn);
+
+    // should check for errors.
+
+    m_gstos[m_gen_id] = new gsto_t(gsto_t::kind_vbo,sid,"",a_floatn,m_out,*this);
+#ifdef INLIB_MEM
+    inlib::mem::increment(inlib::s_gsto().c_str());
+#endif
+    return m_gen_id;
+  }
+
+  virtual bool is_gsto_id_valid(unsigned int a_id) const {
+    std::map<unsigned int,gsto_t*>::const_iterator it = m_gstos.find(a_id);
+    if(it==m_gstos.end()) return false;
+    return true;
+  }
+  virtual void delete_gsto(unsigned int a_id) {
+    inlib::delete_key<unsigned int,gsto_t>(m_gstos,a_id);
+  }
+
+  virtual inlib::sg::gsto_mode get_gsto_mode() const {return inlib::sg::gsto_gl_vbo;}
+  virtual void set_gsto_mode(inlib::sg::gsto_mode) {}
+  virtual void available_gsto_modes(std::vector<std::string>& a_v) {
+    a_v.clear();
+    a_v.push_back(inlib::sg::s_gsto_gl_vbo());
+  }
+  virtual void available_not_memory_gsto_mode(std::string& a_s) const {
+    a_s = inlib::sg::s_gsto_gl_vbo();
+  }
+  virtual size_t used_texture_memory() const {
+    size_t sz = 0;
+    std::map<unsigned int,gsto_t*>::const_iterator it;
+    for(it=m_gstos.begin();it!=m_gstos.end();++it) {
+       if((*it).second->m_kind==gsto_t::kind_texture) sz += (*it).second->m_size;
+    }
+    return sz;
+  }
+  virtual size_t gstos_size() const {
+    size_t sz = 0;
+    std::map<unsigned int,gsto_t*>::const_iterator it;
+    for(it=m_gstos.begin();it!=m_gstos.end();++it) sz += (*it).second->m_size;
+    return sz;
+  }
+
+public:
+  manager(std::ostream& a_out)
+  :m_out(a_out)
+  ,m_gen_id(0)
+#ifdef EXLIB_WASM_GLOBAL_FLOAT_ARRAY
+  ,m_size(0)
+  ,m_buffer(0)
+#endif
+  {
+#ifdef INLIB_MEM
+    inlib::mem::increment(s_class().c_str());
+#endif
+#ifdef EXLIB_WASM_GLOBAL_FLOAT_ARRAY
+    get_float_buffer(1000);
+#endif
+  }
+  virtual ~manager(){
+#ifdef EXLIB_WASM_GLOBAL_FLOAT_ARRAY
+    delete [] m_buffer;
+#endif
+    inlib::safe_clear<unsigned int,gsto_t>(m_gstos);
+#ifdef INLIB_MEM
+    inlib::mem::decrement(s_class().c_str());
+#endif
+  }
+private:
+  manager(const manager& a_from)
+  :parent(a_from)
+  ,m_out(a_from.m_out)
+  ,m_gen_id(a_from.m_gen_id)
+#ifdef EXLIB_WASM_GLOBAL_FLOAT_ARRAY
+  ,m_size(0)
+  ,m_buffer(0)
+#endif
+  {
+#ifdef INLIB_MEM
+    inlib::mem::increment(s_class().c_str());
+#endif
+  }
+  manager& operator=(const manager& a_from){
+    if(&a_from==this) return *this;
+    inlib::safe_clear<unsigned int,gsto_t>(m_gstos);
+    return *this;
+  }
+public:
+  void delete_gstos() {
+    inlib::safe_clear<unsigned int,gsto_t>(m_gstos);
+  }
+
+public:
+  bool find_sid(unsigned int a_id,std::string& a_sid) const {
+    std::map<unsigned int,gsto_t*>::const_iterator it = m_gstos.find(a_id);
+    if(it==m_gstos.end()) {a_sid.clear();return false;}
+    a_sid = (*it).second->m_id;
+    return true;
+  }
+
+  std::ostream& out() const {return m_out;}
+
+#ifdef EXLIB_WASM_GLOBAL_FLOAT_ARRAY
+  float* get_float_buffer(size_t a_size) {
+    //::printf("debug : get_float_buffer %lu\n",a_size);
+    if(a_size>m_size) {
+      ::printf("debug : get_float_buffer : realloc %lu\n",a_size);
+      delete [] m_buffer;
+      m_buffer = new float[a_size];
+      m_size = a_size;
+      /*js_set_float_buffer(m_buffer,m_size);*/
+    }
+    return m_buffer;
+  }
+#endif
+protected:
+  class gsto_t {
+#ifdef INLIB_MEM
+    INLIB_SCLASS(exlib::wasm::manager::gsto_t)
+#endif
+  public:
+    enum kind {
+      kind_texture,
+      kind_vbo
+    };
+  public:
+    gsto_t(kind a_kind,const std::string& a_id,const std::string& a_path,size_t a_size,
+           std::ostream& a_out,manager& a_mgr)
+    :m_kind(a_kind)
+    ,m_id(a_id)
+    ,m_path(a_path)
+    ,m_size(a_size)
+    ,m_out(a_out)
+    ,m_mgr(a_mgr)
+    {
+#ifdef INLIB_MEM
+      inlib::mem::increment(s_class().c_str());
+#endif
+    }
+    virtual ~gsto_t(){
+      if(m_kind==kind_texture) {
+        js_delete_texture(m_id.c_str());
+#ifdef INLIB_MEM
+        inlib::mem::decrement(inlib::s_tex().c_str());
+#endif
+      } else if(m_kind==kind_vbo) {
+        js_delete_vbo(m_id.c_str());
+#ifdef INLIB_MEM
+        inlib::mem::decrement(inlib::s_gsto().c_str());
+#endif
+      }
+#ifdef INLIB_MEM
+      inlib::mem::decrement(s_class().c_str());
+#endif
+    }
+  private:
+    gsto_t(const gsto_t& a_from)
+    :m_kind(a_from.m_kind)
+    ,m_id(a_from.m_id)
+    ,m_path(a_from.m_path)
+    ,m_size(a_from.m_size)
+    ,m_out(a_from.m_out)
+    ,m_mgr(a_from.m_mgr)
+    {
+#ifdef INLIB_MEM
+      inlib::mem::increment(s_class().c_str());
+#endif
+    }
+    gsto_t& operator=(const gsto_t& a_from){
+      m_kind = a_from.m_kind;
+      m_id = a_from.m_id;
+      m_path = a_from.m_path;
+      m_size = a_from.m_size;
+      return *this;
+    }
+  public:
+    kind m_kind;
+    std::string m_id;
+    std::string m_path;
+    size_t m_size;
+    std::ostream& m_out;
+    manager& m_mgr;
+  };
+protected:
+  std::ostream& m_out;
+  unsigned int m_gen_id;
+  std::map<unsigned int,gsto_t*> m_gstos;
+#ifdef EXLIB_WASM_GLOBAL_FLOAT_ARRAY
+  size_t m_size;
+  float* m_buffer;
+#endif
+};
+
+class render : public inlib::sg::render_action {
+  INLIB_ACTION(render,exlib::wasm::render,inlib::sg::render_action)
+public:
+  virtual void clear_color(float,float,float,float){}
+  virtual void draw_vertex_array(inlib::gl::mode_t a_mode,size_t a_floatn,const float* a_xyzs){
+    if(!inlib::gl::is_mode(a_mode)) return;
+    size_t num = a_floatn/3;
+    EM_ASM({
+      dva(mode($0),$1,new Float32Array(HEAPF32.buffer,$2,$3));
+    },a_mode,num,(char*)a_xyzs,a_floatn);
+  }
+
+  virtual void draw_vertex_array_xy(inlib::gl::mode_t a_mode,size_t a_floatn,const float* a_xys){
+    if(!inlib::gl::is_mode(a_mode)) return;
+    size_t num = a_floatn/2;
+    EM_ASM({
+      dvaxy(mode($0),$1,new Float32Array(HEAPF32.buffer,$2,$3));
+    },a_mode,num,(char*)a_xys,a_floatn);
+  }
+
+  virtual void draw_vertex_color_array(inlib::gl::mode_t a_mode,size_t a_floatn,const float* a_xyzs,const float* a_rgbas){
+    if(!inlib::gl::is_mode(a_mode)) return;
+    size_t num = a_floatn/3;
+
+    unsigned int lbuffer = a_floatn+num*4;
+    EXLIB_WASM_ALLOC(lbuffer)
+
+    ::memcpy(buffer,a_xyzs,a_floatn*4);
+    ::memcpy(buffer+a_floatn,a_rgbas,num*4*4);
+
+    //EM_ASM({
+    //  dvca(mode($0),$1,g_float_buffer,$2);
+    //},a_mode,num,a_floatn*4);
+
+    EM_ASM({
+      dvca(mode($0),$1,new Float32Array(HEAPF32.buffer,$2,$3),$4);
+    },a_mode,num,(char*)buffer,lbuffer,a_floatn*4);
+
+    EXLIB_WASM_FREE
+  }
+
+  virtual void draw_vertex_normal_array(inlib::gl::mode_t a_mode,size_t a_floatn,const float* a_xyzs,const float* a_nms){
+    if(!inlib::gl::is_mode(a_mode)) return;
+    size_t num = a_floatn/3;
+
+    unsigned int lbuffer = a_floatn+a_floatn;
+    EXLIB_WASM_ALLOC(lbuffer)
+
+    ::memcpy(buffer,a_xyzs,a_floatn*4);
+    ::memcpy(buffer+a_floatn,a_nms,a_floatn*4);
+
+//    EM_ASM({
+//      dvna(mode($0),$1,g_float_buffer,$2);
+//    },a_mode,num,a_floatn*4);
+
+    EM_ASM({
+      dvna(mode($0),$1,new Float32Array(HEAPF32.buffer,$2,$3),$4);
+    },a_mode,num,(char*)buffer,lbuffer,a_floatn*4);
+
+    EXLIB_WASM_FREE
+  }
+
+  virtual void draw_vertex_color_normal_array(inlib::gl::mode_t a_mode,
+                                              size_t a_floatn,const float* a_xyzs,const float* a_rgbas,const float* a_nms){
+    if(!inlib::gl::is_mode(a_mode)) return;
+
+    size_t num = a_floatn/3;
+
+    unsigned int lbuffer = a_floatn+a_floatn+num*4;
+    EXLIB_WASM_ALLOC(lbuffer)
+
+    ::memcpy(buffer,a_xyzs,a_floatn*4);
+    ::memcpy(buffer+a_floatn,a_nms,a_floatn*4);
+    ::memcpy(buffer+2*a_floatn,a_rgbas,num*4*4);
+
+//    EM_ASM({
+//      dvnca(mode($0),$1,g_float_buffer,$2,$3);
+//    },a_mode,num,a_floatn*4,a_floatn*4*2);
+
+    EM_ASM({
+      dvnca(mode($0),$1,new Float32Array(HEAPF32.buffer,$2,$3),$4,$5);
+    },a_mode,num,(char*)buffer,lbuffer,a_floatn*4,a_floatn*4*2);
+
+    EXLIB_WASM_FREE
+  }
+
+  virtual void draw_vertex_array_texture(inlib::gl::mode_t a_mode,
+                                         size_t a_floatn,
+                                         const float* a_xyzs,
+                                         gstoid a_id,
+                                         const float* a_tex_coords) {
+    //::printf("debug : draw_vertex_array_texture : dummy : %d %lu\n",a_mode,a_floatn);
+    if(!inlib::gl::is_mode(a_mode)) return;
+
+    size_t num = a_floatn/3;
+    if(!num) return;
+
+    //expect 2*num a_tex_coords.
+
+    ///////////////////////
+    /// get texture : /////
+    ///////////////////////
+    std::string sid;
+    if(!m_mgr.find_sid(a_id,sid)) {
+      m_out << "exlib::wasm::render::draw_vertex_array_texture :"
+            << " can't find texture " << sid << "."
+            << std::endl;
+      return;
+    }
+    //::printf("debug : draw_vertex_array_texture : use tex %s\n",sid.c_str());
+
+    unsigned int lbuffer = a_floatn+2*num;
+    EXLIB_WASM_ALLOC(lbuffer)
+
+    ::memcpy(buffer,a_xyzs,a_floatn*4);
+    ::memcpy(buffer+a_floatn,a_tex_coords,2*num*4);
+
+    EM_ASM({
+      var sid = UTF8ToString($1);
+      dvta(mode($0),window[sid],$2,new Float32Array(HEAPF32.buffer,$3,$4),$5);
+    },a_mode,sid.c_str(),num,(char*)buffer,lbuffer,a_floatn*4);
+
+    EXLIB_WASM_FREE
+  }
+
+  virtual void draw_vertex_normal_array_texture(inlib::gl::mode_t a_mode,
+                                         size_t a_floatn,
+                                         const float* a_xyzs,
+                                         const float* a_nms,
+                                         gstoid a_id,
+                                         const float* a_tex_coords) {
+    //::printf("debug : draw_vertex_normal_array_texture : dummy : %d %lu\n",a_mode,a_floatn);
+    if(!inlib::gl::is_mode(a_mode)) return;
+
+    size_t num = a_floatn/3;
+    if(!num) return;
+
+    //expect 2*num a_tex_coords.
+
+    ///////////////////////
+    /// get texture : /////
+    ///////////////////////
+    std::string sid;
+    if(!m_mgr.find_sid(a_id,sid)) {
+      m_out << "exlib::wasm::render::draw_vertex_array_texture :"
+            << " can't find texture " << sid << "."
+            << std::endl;
+      return;
+    }
+    //::printf("debug : draw_vertex_normal_array_texture : use tex %s\n",sid.c_str());
+
+    unsigned int lbuffer = a_floatn+a_floatn+2*num;
+    EXLIB_WASM_ALLOC(lbuffer)
+
+    ::memcpy(buffer,a_xyzs,a_floatn*4);
+    ::memcpy(buffer+a_floatn,a_nms,a_floatn*4);
+    ::memcpy(buffer+2*a_floatn,a_tex_coords,2*num*4);
+
+    EM_ASM({
+      var sid = UTF8ToString($1);
+      dvnta(mode($0),window[sid],$2,new Float32Array(HEAPF32.buffer,$3,$4),$5,$6);
+    },a_mode,sid.c_str(),num,(char*)buffer,lbuffer,a_floatn*4,a_floatn*2*4);
+
+    EXLIB_WASM_FREE
+  }
+
+  virtual void color4f(float a_r,float a_g,float a_b,float a_a){
+  //EM_ASM({
+  //  ldcol($0,$1,$2,$3);
+  //},a_r,a_g,a_b,a_a);
+    js_color4f(a_r,a_g,a_b,a_a);
+  }
+
+  virtual void line_width(float a_value) {
+    EM_ASM({
+      glw($0);
+    },a_value);
+  }
+  virtual void point_size(float a_value) {
+    EM_ASM({
+      gps($0);
+    },a_value);
+  }
+  virtual void set_polygon_offset(bool a_on) {
+    EM_ASM({
+      gpo($0);
+    },a_on);
+  }
+
+  virtual void normal(float a_x,float a_y,float a_z) {
+    EM_ASM({
+      ldnormal($0,$1,$2);
+    },a_x,a_y,a_z);
+  }
+
+  virtual void set_winding(inlib::sg::winding_type a_v) {
+    bool v = a_v==inlib::sg::winding_ccw?true:false;
+    EM_ASM({
+      gff($0);
+    },v);
+  }
+
+  virtual void set_shade_model(inlib::sg::shade_type a_v) {
+    if(a_v==inlib::sg::shade_smooth) {}
+    else {}
+  }
+
+  virtual void set_depth_test(bool a_on) {
+    EM_ASM({
+      gdt($0);
+    },a_on);
+  }
+
+  virtual void set_cull_face(bool a_on) {
+    EM_ASM({
+      gcf($0);
+    },a_on);
+  }
+
+  virtual void load_proj_matrix(const inlib::mat4f& a_mtx) {
+    m_proj = a_mtx;
+   {inlib::mat4f mtx(m_proj);
+    mtx.mul_mtx(m_model);
+    EM_ASM({
+      ldmatmp(new Float32Array(HEAPF32.buffer,$0,$1));
+    },(char*)mtx.data(),16);}
+  }
+
+  virtual void load_model_matrix(const inlib::mat4f& a_mtx) {
+    m_model = a_mtx;
+   {inlib::mat4f mtx(m_proj);
+    mtx.mul_mtx(m_model);
+    EM_ASM({
+      ldmatmp(new Float32Array(HEAPF32.buffer,$0,$1));
+    },(char*)mtx.data(),16);}
+
+    inlib::mat4f tmp(a_mtx);
+    tmp.no_translate();
+    inlib::mat4f normal_matrix;
+    if(!tmp.invert(normal_matrix)) {
+      m_out << "exlib::wasm::render::load_model_matrix :"
+            << " can't invert model matrix."
+            << std::endl;
+    }
+    normal_matrix.transpose();
+
+    EM_ASM({
+      ldmatn(new Float32Array(HEAPF32.buffer,$0,$1));
+    },(char*)normal_matrix.data(),16);
+  }
+
+  virtual unsigned int max_lights() {return 1000;}
+
+  virtual void enable_light(unsigned int,float a_dx,float a_dy,float a_dz,float a_r,float a_g,float a_b,float a_a){
+    float dl = inlib::fsqrt(a_dx*a_dx+a_dy*a_dy+a_dz*a_dz);
+    if(!dl) {
+      m_out << "exlib::wasm::render::enable_light :"
+            << " null light direction."
+            << std::endl;
+      return;
+    }
+    EM_ASM({
+      lgset($0,$1,$2,$3,$4,$5,$6);
+    },a_dx/dl,a_dy/dl,a_dz/dl,a_r,a_g,a_b,a_a);
+  }
+
+  virtual void set_lighting(bool a_on) {
+    EM_ASM({
+      lg($0);
+    },a_on);
+  }
+  virtual void set_blend(bool a_on) {
+    EM_ASM({
+      gbd($0);
+    },a_on);
+  }
+
+  virtual void restore_state(unsigned int /*a_ret_num_light*/) {
+    inlib::sg::state& _state = state();
+    render::load_model_matrix(_state.m_proj);
+    render::load_model_matrix(_state.m_model);
+
+    set_lighting(_state.m_GL_LIGHTING);
+    set_blend(_state.m_GL_BLEND);
+
+    set_depth_test(_state.m_GL_DEPTH_TEST);
+    set_cull_face(_state.m_GL_CULL_FACE);
+    set_polygon_offset(_state.m_GL_POLYGON_OFFSET_FILL);
+
+//    if(_state.m_GL_TEXTURE_2D) gl_enable(m_mgr.js(),"TEXTURE_2D");
+//    else                       gl_disable(m_mgr.js(),"TEXTURE_2D");
+
+    set_winding(_state.m_winding);
+
+    color4f(_state.m_color.r(),_state.m_color.g(),_state.m_color.b(),_state.m_color.a());
+
+    normal(_state.m_normal.x(),_state.m_normal.y(),_state.m_normal.z());
+
+    // The "return of separator" state had ret_num_light.
+    // The restored state has m_light.
+    // We have to glDisable lights with index in [m_light,ret_num_light-1]
+    //for(unsigned int index=_state.m_light;index<a_ret_num_light;index++) {
+    //  ::glDisable(GL_LIGHT0+index);
+    //}
+
+    line_width(_state.m_line_width);
+    point_size(_state.m_point_size);
+  }
+
+  /////////////////////////////////////////////////////////////////
+  /// VBO /////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////
+  virtual void begin_gsto(gstoid a_id) {
+    std::string sid;
+    if(!m_mgr.find_sid(a_id,sid)) {
+      m_out << "exlib::wasm::render::begin_gsto :"
+            << " can't find vbo " << sid << "."
+            << std::endl;
+      return;
+    }
+    //::printf("debug : begin_gsto : use gsto %s\n",sid.c_str());
+    js_begin_gsto(sid.c_str());
+  }
+
+  typedef inlib::sg::bufpos bufpos;
+  virtual void draw_gsto_v(inlib::gl::mode_t a_mode,size_t a_elems,bufpos a_pos_xyzs) {
+    if(!inlib::gl::is_mode(a_mode)) return;
+    EM_ASM({
+      dvb(mode($0),$1,$2);
+    },a_mode,a_elems,a_pos_xyzs);
+  }
+
+  virtual void draw_gsto_vc(inlib::gl::mode_t a_mode,size_t a_elems,bufpos a_pos_xyzs,bufpos a_pos_rgbas){
+    if(!inlib::gl::is_mode(a_mode)) return;
+    EM_ASM({
+      dvcb(mode($0),$1,$2,$3);
+    },a_mode,a_elems,a_pos_xyzs,a_pos_rgbas);
+  }
+
+  virtual void draw_gsto_vn(inlib::gl::mode_t a_mode,size_t a_elems,bufpos a_pos_xyzs,bufpos a_pos_nms){
+    if(!inlib::gl::is_mode(a_mode)) return;
+    EM_ASM({
+      dvnb(mode($0),$1,$2,$3);
+    },a_mode,a_elems,a_pos_xyzs,a_pos_nms);
+  }
+
+  virtual void draw_gsto_vcn(inlib::gl::mode_t a_mode,size_t a_elems,bufpos a_pos_xyzs,bufpos a_pos_rgbas,bufpos a_pos_nms){
+    if(!inlib::gl::is_mode(a_mode)) return;
+    EM_ASM({
+      dvncb(mode($0),$1,$2,$3,$4);
+    },a_mode,a_elems,a_pos_xyzs,a_pos_nms,a_pos_rgbas);
+  }
+
+  virtual void end_gsto() {}
+
+  /////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////
+  virtual void set_point_smooth(bool) {}
+  virtual void set_line_smooth(bool) {}
+  /////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////
+  virtual inlib::sg::render_manager& render_manager() {return m_mgr;}
+public:
+  render(manager& a_mgr,std::ostream& a_out,unsigned int a_ww,unsigned int a_wh)
+  :parent(a_out,a_ww,a_wh)
+  ,m_mgr(a_mgr)
+  {
+    m_model.set_identity();
+    m_proj.set_identity();
+  }
+  virtual ~render(){}
+protected:
+  render(const render& a_from)
+  :parent(a_from)
+  ,m_mgr(a_from.m_mgr)
+  {}
+  render& operator=(const render& a_from){
+    parent::operator=(a_from);
+    return *this;
+  }
+protected:
+  manager& m_mgr;
+  inlib::mat4f m_model;
+  inlib::mat4f m_proj;
+};
+
+//exlib_build_use inlib
+
+}}
+
+#endif

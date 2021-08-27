@@ -1,0 +1,42 @@
+  // it needs to have a std::ostream _term_out defined.
+
+  inlib::base_timer* _term_timer = 0;
+#ifdef EXLIB_APP_HAS_TERM
+  if(args.is_arg(inlib::s_arg_terminal())) {
+#ifdef _WIN32
+    if(!Gl_is_windows_console()) {
+       _term_out << "exlib_main : you have to run this program from a DOS prompt." << std::endl;
+       return EXIT_FAILURE;
+    }
+#endif
+#ifdef EXLIB_APP_TERM_INSH
+    std::string prompt = a_app_name+"_insh$ ";  //used if PS1 is not defined at this stage (by some .insh startup file).
+    std::string history_file = out_dir+inlib::sep()+".insh_history";
+#else
+    std::string prompt = a_app_name+"_term$ ";
+    std::string history_file = out_dir+inlib::sep()+".term_history";
+#endif
+    if(!inlib::file::exists(history_file)) {
+      if(!inlib::mkdirs(_term_out,out_dir)) {
+        _term_out << "exlib_main : can't create directory " << inlib::sout(out_dir) << "." << std::endl;
+        return EXIT_FAILURE;
+      }
+      if(!inlib::file::make_empty(history_file)) {
+        _term_out << "exlib_main : can't create history file " << inlib::sout(history_file) << "." << std::endl;
+        return EXIT_FAILURE;
+      }
+    }
+    
+    unsigned int term_timer_interval; 
+    args.find<unsigned int>
+      ("-term_timer_interval",term_timer_interval,4); //millisecs. //with 16, cut/paste is slow.
+    
+#ifdef EXLIB_APP_TERM_INSH
+    _term_timer = new exlib::insh_term_timer(term_timer_interval,_main,_main.insh(),prompt,history_file);
+#else
+    _term_timer = new exlib::dummy_term_timer(term_timer_interval,_term_out,_main,prompt,history_file);
+#endif
+    _term_timer->start();
+  }
+#endif
+

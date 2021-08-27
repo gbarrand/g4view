@@ -1,0 +1,52 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_sg_pv_hoder_offscreen
+#define exlib_sg_pv_hoder_offscreen
+
+#include "text_freetype"
+
+#include <inlib/sg/zb_manager>
+#include <inlib/sg/gl2ps_manager>
+#include <inlib/sg/selection>
+
+namespace exlib {
+namespace sg {
+
+class pv_holder_offscreen {
+public:
+  pv_holder_offscreen(std::ostream& a_out)
+  :m_out(a_out)
+  ,m_ttf()
+  ,m_selection()
+  {}
+  virtual ~pv_holder_offscreen(){}
+protected:
+  pv_holder_offscreen(const pv_holder_offscreen& a_from)
+  :m_out(a_from.m_out)
+  ,m_ttf(a_from.m_ttf)
+  ,m_selection(a_from.m_selection)
+  {}
+  pv_holder_offscreen& operator=(const pv_holder_offscreen& a_from) {
+    m_ttf = a_from.m_ttf;
+    m_selection = a_from.m_selection;
+    return *this;
+  }
+public:
+  //inlib::sg::render_manager& zb_manager() {return m_zb_mgr;}
+  //inlib::sg::render_manager& gl2ps_manager() {return m_gl2ps_mgr;}
+  inlib::sg::base_freetype& ttf() {return m_ttf;}
+  inlib::sg::selection& selection() {return m_selection;}
+protected:
+  std::ostream& m_out;
+  text_freetype m_ttf;
+  inlib::sg::selection m_selection;
+  inlib::sg::zb_manager m_zb_mgr;
+  inlib::sg::gl2ps_manager m_gl2ps_mgr;
+};
+
+}}
+
+//exlib_build_use inlib exlib freetype
+
+#endif

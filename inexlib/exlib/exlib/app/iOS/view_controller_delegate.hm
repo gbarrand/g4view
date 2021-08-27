@@ -1,0 +1,172 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_app_iOS_view_controller_delegate_hm
+#define exlib_app_iOS_view_controller_delegate_hm
+
+#import "GLView.hm"
+
+#include <inlib/sg/gui_viewer>
+
+#import <MessageUI/MessageUI.h>
+//#import <AddressBook/AddressBook.h>
+//#import <AddressBookUI/AddressBookUI.h>
+#import <CoreMotion/CoreMotion.h>
+
+@interface view_controller_delegate : UIViewController<MFMailComposeViewControllerDelegate> {
+  CMMotionManager* m_motion_manager;
+  inlib::sg::gui_viewer* m_gui_viewer;
+}
+- (void)mailComposeController:(MFMailComposeViewController*)a_controller
+          didFinishWithResult:(MFMailComposeResult)a_result
+                        error:(NSError*)a_error;
+- (void)set_gui_viewer:(inlib::sg::gui_viewer*)a_viewer;
+@end
+
+@implementation view_controller_delegate
+- (id)init {
+  if(self = [super init]) {
+    m_gui_viewer = 0;
+    m_motion_manager = [[CMMotionManager alloc] init];
+      /*
+    if(m_motion_manager.accelerometerAvailable) {
+      m_motion_manager.accelerometerUpdateInterval = .2; //sec
+      [m_motion_manager startAccelerometerUpdatesToQueue:[NSOperationQueue currentQueue]
+                                             withHandler:
+^(CMAccelerometerData* a_data,NSError* a_error) {
+ [self output_acceleration_data:a_data];if(a_error)NSLog(@"%@",a_error);
+}
+      ];
+    }
+    if(m_motion_manager.gyroAvailable) {
+      m_motion_manager.gyroUpdateInterval = .2;          //sec
+      [m_motion_manager startGyroUpdatesToQueue:[NSOperationQueue currentQueue]
+                                    withHandler:
+^(CMGyroData* a_data,NSError* a_error) {[self output_gyro_data:a_data];}
+      ];
+    }
+      */
+    /*uuuu
+    if(m_motion_manager.deviceMotionAvailable) {
+    //m_motion_manager.deviceMotionUpdateInterval = .2;          //sec
+      m_motion_manager.deviceMotionUpdateInterval = .1;          //sec
+    //[m_motion_manager startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXArbitraryCorrectedZVertical
+      [m_motion_manager startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXArbitraryZVertical
+                                                            toQueue:[NSOperationQueue currentQueue]
+                                                        withHandler:
+^(CMDeviceMotion* a_device_motion,NSError* a_error) {[self output_device_motion_data:a_device_motion];}
+      ];
+    }
+    */
+  }
+  return self;
+}
+- (void)dealloc {
+//NSLog(@"debug : view_controller_delegate::dealloc");
+  [m_motion_manager stopAccelerometerUpdates];
+  [m_motion_manager stopGyroUpdates];
+  [m_motion_manager release];
+  [super dealloc];
+}
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 60000  //__IPHONE_OS_VERSION_6_0
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)a_interfaceOrientation {
+  //NSLog(@"debug : view_controller_delegate::shouldAutorotateToInterfaceOrientation");
+  (void)a_interfaceOrientation;
+  return YES;
+}
+#else
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {return YES;}
+- (BOOL)shouldAutorotate {return YES;}
+- (NSUInteger)supportedInterfaceOrientations {return UIInterfaceOrientationMaskAll;}
+//- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {return UIInterfaceOrientationPortrait;}
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {return UIInterfaceOrientationLandscapeLeft;}
+#endif
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+- (void)mailComposeController:(MFMailComposeViewController*)a_controller
+          didFinishWithResult:(MFMailComposeResult)a_result
+                        error:(NSError*)a_error {
+
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 60000  //__IPHONE_OS_VERSION_6_0
+  [self dismissModalViewControllerAnimated:YES];
+#else
+  [self dismissViewControllerAnimated:YES completion:nil];
+#endif
+
+  //if(a_error) {
+  //  NSLog(@"debug : view_controller_delegate::mailComposeController: error %@",[a_error localizedDescription]);
+  //}
+
+  switch(a_result){
+  case MFMailComposeResultCancelled:
+    break;
+  case MFMailComposeResultSaved:
+    break;
+  case MFMailComposeResultSent:
+    break;
+  case MFMailComposeResultFailed:
+    break;
+  default:{
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Email"
+                                                    message:@"Sending Failed - Unknown Error :-("
+                                                   delegate:self cancelButtonTitle:@"OK" otherButtonTitles: nil];
+    [alert show];
+    [alert release];
+    }break;
+  }
+  (void)a_controller;
+  (void)a_error;
+}
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+- (void)set_gui_viewer:(inlib::sg::gui_viewer*)a_viewer {m_gui_viewer = a_viewer;}
+- (void)output_acceleration_data:(CMAccelerometerData*)a_data {
+  //NSLog(@"debug : view_controller_delegate::output_acceleration_data %f %f %f",
+  //  100*a_data.acceleration.x,-100*a_data.acceleration.y,100*a_data.acceleration.z);
+}
+- (void)output_gyro_data:(CMGyroData*)a_data {
+  //NSLog(@"debug : view_controller_delegate::output_gyro_data %f %f %f",
+  //  a_data.rotationRate.x*180/M_PI,a_data.rotationRate.y*180/M_PI,a_data.rotationRate.z*180/M_PI);
+}
+- (void)output_device_motion_data:(CMDeviceMotion*)a_data {
+  //NSLog(@"debug : view_controller_delegate::output_device_motion_data %f %f %f",
+  //  a_data.gravity.x,-a_data.gravity.y,a_data.gravity.z);
+  //NSLog(@"debug : view_controller_delegate::output_device_motion_data pitch %f, roll %f, yaw %f",
+  //  a_data.attitude.pitch,a_data.attitude.roll,a_data.attitude.yaw);
+  //  a_data.rotationMatrix.[m11,m12,m13,m21,m22,m23,m31,m32,m33];
+
+  // In docs, it is said that Y points bottom (home button) to top (where is the camera) along the device,
+  // X points at right, and Z pointing toward user.
+
+  // VR is in landscape, and in landscape it looks as if X/Y are swapped.
+  // At least the below code does what is expected.
+
+  /*
+  */
+  inlib::rotf   _yaw(inlib::vec3f(0,0,1),a_data.attitude.yaw);
+  inlib::rotf _pitch(inlib::vec3f(0,1,0),a_data.attitude.pitch);
+  inlib::rotf  _roll(inlib::vec3f(1,0,0),a_data.attitude.roll);
+  inlib::rotf  _q = _yaw*_pitch*_roll;
+
+  /*
+  inlib::rotf  _q;
+ {inlib::mat4f _m;
+  _m.set_identity();
+  _m.mul_rotate(0,0,1,a_data.attitude.yaw);
+  _m.mul_rotate(0,1,0,a_data.attitude.pitch);
+  _m.mul_rotate(1,0,0,a_data.attitude.roll);
+  _q.set_value(_m);
+  }
+  */
+
+  inlib::sg::base_camera* _camera = m_gui_viewer->scene_camera();
+  if(_camera) {
+    _camera->orientation = _q;
+    [(GLView*)[self view] window_render];
+  }
+}
+@end
+
+//exlib_build_use inlib
+
+#endif

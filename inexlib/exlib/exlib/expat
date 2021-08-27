@@ -1,0 +1,15 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_expat
+#define exlib_expat
+
+#ifdef EXLIB_USE_NATIVE_EXPAT
+#include <expat.h>
+#else
+#include <ourex_expat.h>
+#endif
+
+//exlib_build_use expat
+
+#endif

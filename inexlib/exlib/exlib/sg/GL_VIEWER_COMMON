@@ -1,0 +1,63 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_sg_GL_VIEWER_COMMON
+#define exlib_sg_GL_VIEWER_COMMON
+
+#include "GL_action"
+
+#define EXLIB_GL_VIEWER_METHODS \
+public:/*public for iOS*/\
+  virtual unsigned char* get_pixels(unsigned int a_w,unsigned int a_h,bool a_rgbas = true) {\
+    if(a_rgbas) {\
+      return exlib::sg::GL_manager::get_rgbas(a_w,a_h);\
+    } else {\
+      return exlib::sg::GL_manager::get_rgbs(a_w,a_h);\
+    }\
+  }\
+public:\
+  virtual void render() {\
+    parent::check_gui_cursor();\
+    if(!parent::m_ww||!parent::m_wh) return;\
+    if(parent::m_vr_mode) {\
+      unsigned int half_ww = parent::m_ww*0.5;\
+      if(m_mgr_gra.begin_render(0,0,half_ww,parent::m_wh,\
+                                       parent::m_clear_color.r(),\
+                                       parent::m_clear_color.g(),\
+                                       parent::m_clear_color.b(),\
+                                       parent::m_clear_color.a(),true)) {\
+        exlib::sg::GL_action action(m_mgr_gra,parent::m_out,half_ww,parent::m_wh);\
+        action.state().m_use_gsto = parent::m_use_gsto;\
+        parent::m_sg.render(action);\
+        if(!action.end()) parent::m_out << "EXLIB_GL_VIEWER_METHODS::render() : bad gl_action end." << std::endl;\
+      }\
+      if(m_mgr_gra.begin_render(half_ww,0,half_ww,parent::m_wh,\
+                                       parent::m_clear_color.r(),\
+                                       parent::m_clear_color.g(),\
+                                       parent::m_clear_color.b(),\
+                                       parent::m_clear_color.a(),false)) {\
+        exlib::sg::GL_action action(m_mgr_gra,parent::m_out,half_ww,parent::m_wh);\
+        action.state().m_use_gsto = parent::m_use_gsto;\
+        parent::m_sg.render(action);\
+        if(!action.end()) parent::m_out << "EXLIB_GL_VIEWER_METHODS::render() : bad gl_action end." << std::endl;\
+      }\
+      m_mgr_gra.end_render();\
+    } else {\
+      if(m_mgr_gra.begin_render(0,0,parent::m_ww,parent::m_wh,\
+                                       parent::m_clear_color.r(),\
+                                       parent::m_clear_color.g(),\
+                                       parent::m_clear_color.b(),\
+                                       parent::m_clear_color.a())) {\
+        exlib::sg::GL_action action(m_mgr_gra,parent::m_out,parent::m_ww,parent::m_wh);\
+        action.state().m_use_gsto = parent::m_use_gsto;\
+        parent::m_sg.render(action);\
+        if(!action.end()) parent::m_out << "EXLIB_GL_VIEWER_METHODS::render() : bad gl_action end." << std::endl;\
+        m_mgr_gra.end_render();\
+        parent::after_render();\
+      }\
+    }\
+  }
+
+//exlib_build_use inlib png jpeg zlib GL
+
+#endif

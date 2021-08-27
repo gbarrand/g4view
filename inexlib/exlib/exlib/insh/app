@@ -1,0 +1,69 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_insh_app
+#define exlib_insh_app
+
+#include "web_png_style"
+#include "rbsg"
+#include "sg_add"
+
+#include <inlib/insh/ishell_args_cmd>
+
+#include <inlib/insh/unit>
+#include <inlib/insh/physical_constant>
+#include <inlib/insh/calc>
+#include <inlib/insh/pdg>
+
+#include <inlib/insh/random>
+#include <inlib/insh/histo>
+#include <inlib/insh/function>
+#include <inlib/insh/rroot>
+
+#include <inlib/insh/omanager>
+#include <inlib/insh/node>
+#include <inlib/insh/sg_add>
+#include <inlib/insh/node_to_bsg>
+#include <inlib/insh/histo>
+#include <inlib/insh/cloud>
+#include <inlib/insh/plots>
+
+#include <inlib/insh/gui_viewer>
+#include <inlib/insh/view_evd>
+#include <inlib/insh/plotarea>
+#include <inlib/insh/view_evd_plotarea>
+
+#define EXLIB_INSH_APP_HEADER(a__holder)\
+protected:\
+  void insh_app_add_cmds() {\
+    INLIB_INSH_ADD_ISHELL_ARGS_CMD_COMPLETE(insh(),unit,inlib::insh_unit,inlib::insh_unit_help(),inlib::unit_complete)\
+    INLIB_INSH_ADD_ISHELL_ARGS_CMD_COMPLETE(insh(),physical_constant,inlib::insh_physical_constant,inlib::insh_physical_constant_help(),inlib::physical_constant_complete)\
+    INLIB_INSH_ADD_ISHELL_ARGS_CMD(insh(),calc,inlib::insh_calc,inlib::insh_calc_help())\
+    INLIB_INSH_PDGS_ADDS(insh(),m_pdgs)\
+    \
+    INLIB_INSH_RANDOM_ADDS(insh(),get_omanager())\
+    INLIB_INSH_HISTO_ADDS(insh(),get_omanager())\
+    INLIB_INSH_CLOUD_ADDS(insh(),get_omanager())\
+    INLIB_INSH_FUNCTION_ADDS(insh(),get_omanager())\
+    INLIB_INSH_RROOT_ADDS(insh(),get_omanager())\
+    \
+    INLIB_INSH_OMANAGER_ADDS(insh(),get_omanager())\
+    INLIB_INSH_NODE_ADDS(insh(),get_omanager())\
+    \
+    INLIB_INSH_SG_ADD_ADDS(insh(),*this)\
+    INLIB_INSH_PLOTS_ADDS(insh(),*this)\
+    \
+    INLIB_INSH_GUI_VIEWER_ADDS(insh(),*this)\
+    INLIB_INSH_VIEW_EVD_ADDS(insh(),*this)\
+    INLIB_INSH_PLOTAREA_ADDS(insh(),*this)\
+    INLIB_INSH_VIEW_EVD_PLOTAREA_ADDS(insh(),*this)\
+    \
+    EXLIB_INSH_WEB_PNG_STYLE_ADDS(insh(),*this)\
+    EXLIB_INSH_RBSG_ADDS(insh(),*this)\
+    EXLIB_INSH_SG_ADD_ADDS(insh(),*this)\
+  }
+
+//exlib_build_use inlib expat inlib_glutess freetype zlib png jpeg kernel
+//exlib_build_use zip
+
+#endif

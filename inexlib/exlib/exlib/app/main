@@ -1,0 +1,345 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_app_main
+#define exlib_app_main
+
+//////////////////////////////////////
+//////////////////////////////////////
+//////////////////////////////////////
+
+#include "../xml/xml_style"
+#include "../xml/xml_ftp"
+#include "../xml/xml_srv"
+#include "../xml/xml_wall"
+#include "../xml/LOAD"
+#include "../zlib"
+
+#include "../png_opener"
+#include "../jpeg_opener"
+
+#include <inlib/help/wrap_description_help>
+#include <inlib/help/wrap_usage_help>
+#include <inlib/help/wrap_top_menu_help>
+#include <inlib/help/wrap_files_help>
+#include <inlib/help/wrap_exas_help>
+#include <inlib/help/wrap_camera_panel_help>
+#include <inlib/help/wrap_styles_help>
+#include <inlib/help/wrap_fits_help>
+#include <inlib/help/wrap_web_help>
+
+#include <inlib/touplow>
+//#include <inlib/web>
+
+#include <inlib/cbk/background_popup>
+#include <inlib/cbk/image_popup>
+#include <inlib/cbk/help>
+
+#include <inlib/sg/view_sg_client>
+#include <inlib/sg/gl2ps_manager>
+
+#include <inlib/sg/view_sg_serv>
+#include <inlib/path_env>
+
+#include <inlib/insh/insh>
+#include <inlib/insh/opener>
+
+namespace exlib {
+namespace app {
+
+class main
+:public inlib::sg::gui_viewer
+,public inlib::sg::view_sg_serv
+,public inlib::sg::view_sg_client
+{
+  typedef inlib::sg::gui_viewer parent;
+  typedef inlib::sg::view_sg_serv parent_sg_serv;
+  typedef inlib::sg::view_sg_client parent_sg_client;
+protected:
+  //const gui_viewer& get_me() const {return *this;}
+  gui_viewer& get_me() {return *this;}
+public:
+  virtual void* cast(const std::string& a_class) const {
+    //if(void* p = inlib::cmp_cast<main>(this,a_class)) return p;
+    if(void* p = inlib::cmp_cast<parent_sg_serv>(this,a_class)) return p;
+    if(void* p = inlib::cmp_cast<parent_sg_client>(this,a_class)) return p;
+    return parent::cast(a_class);
+  }
+protected:
+  INLIB_CLASS_STRING(scene)
+  INLIB_CLASS_STRING(gui_Apple_black_on_white)
+public:
+  virtual bool windowing(std::string&) const = 0;
+  virtual void render() = 0;
+public:
+  main(const std::string& a_app_name,const std::string& a_app_version,
+       std::ostream& a_out,
+       inlib::sg::render_manager& a_gl_mgr,
+       const inlib::sg::base_freetype& a_ttf,
+       const inlib::sg::selection& a_selection,
+       const std::string& a_doc_dir,
+       const std::string& a_res_dir,
+       const std::string& a_out_dir,
+       const std::string& a_tmp_dir,
+       bool a_verbose,
+       unsigned int a_mem_limit)
+  :parent(a_out,a_gl_mgr,a_ttf,a_selection,0,0,a_verbose)
+  ,parent_sg_serv(get_me(),a_verbose)
+  ,parent_sg_client(a_out,a_app_name,a_doc_dir,compress_buffer,a_ttf)
+  //,m_web_cache(a_out,false) //false = no verbose
+  ,m_main_insh(get_me())
+  {
+    m_main_insh.set_decompress_func(exlib::decompress_buffer);
+    
+    m_res_dir = a_res_dir;
+    m_out_dir = a_out_dir;
+    m_tmp_dir = a_tmp_dir;
+    m_doc_dir = a_doc_dir;
+
+   {std::string _pwd;
+    if(!inlib::dir::pwd(_pwd)) {
+      m_out << "exlib::app::main::main : can't get pwd." << std::endl;
+    } else {
+      //m_out << "pwd : " << _pwd << std::endl;
+    }
+    m_start_dir = _pwd;}
+
+  //m_data_dirs.clear();
+  //m_data_dirs.push_back(a_doc_dir);
+
+    // res_dir :
+    //   desktop : <install_path>/<app>/<version>/res.
+    //   Cocoa : <app>.app/Contents/Resources.
+    //   Android : /data/data/fr.in2p3.lal.<app>/files
+    //   iPhone : <app>.app/res
+   {std::vector<std::string> vals;
+    vals.push_back(a_res_dir);
+    vals.push_back(a_doc_dir); // So that user can download a font if needed :
+    inlib::env_path_append("EXLIB_FONT_PATH",vals);}
+
+    m_app_name = a_app_name;
+
+    m_app_version = a_app_version;
+
+    //m_web_cache.set_tmp_dir(a_tmp_dir);
+
+    ////////////////////////////////////////////
+    /// openers ////////////////////////////////
+    ////////////////////////////////////////////
+    m_opener.add_ext(inlib::file::s_ext_insh());
+    m_opener.add_opener(inlib::file::s_format_insh(),new inlib::insh_opener(m_main_insh));
+
+    m_opener.add_ext(inlib::file::s_ext_jpeg());
+    m_opener.add_ext(inlib::file::s_ext_jpg());
+    m_opener.add_opener(inlib::file::s_format_jpeg(),new jpeg_opener(a_mem_limit));
+
+    m_opener.add_ext(inlib::file::s_ext_png());
+    m_opener.add_opener(inlib::file::s_format_png(),new png_opener(a_mem_limit));
+
+    ////////////////////////////////////////////
+    /// image : ////////////////////////////////
+    ////////////////////////////////////////////
+    m_image_readers.add_reader(inlib::file::s_format_jpeg(),new jpeg::reader());
+    m_image_readers.add_reader(inlib::file::s_format_png(),new png::reader());
+    m_png_writer = exlib::png::write;
+    m_jpeg_writer = exlib::jpeg::write;
+
+    ////////////////////////////////////////////
+    /// help ///////////////////////////////////
+    ////////////////////////////////////////////
+    typedef inlib::cbk::help::help_item help_item;
+    m_help.push_back(help_item("description",description_help));
+    m_help.push_back(help_item("usage",usage_help));
+    m_help.push_back(help_item("web",web_help));
+    m_help.push_back(help_item(inlib::sg::s_files(),files_help));
+    m_help.push_back(help_item("examples",exas_help));
+    m_help.push_back(help_item("top menu",top_menu_help));
+    m_help.push_back(help_item("camera panel",camera_panel_help));
+    m_help.push_back(help_item("styles",styles_help));
+    m_help.push_back(help_item("fits",fits_help));
+
+    ////////////////////////////////////////////
+    /// cmaps //////////////////////////////////
+    ////////////////////////////////////////////
+    m_styles.add_colormap("default",inlib::sg::style_default_colormap());
+    m_styles.add_colormap("ROOT",inlib::sg::style_ROOT_colormap());
+
+    ////////////////////////////////////////////
+    /// <app>.style ////////////////////////////
+    ////////////////////////////////////////////
+    EXLIB_XML_LOAD(style)
+
+    ////////////////////////////////////////////
+    ////////////////////////////////////////////
+    m_styles.res_color(s_scene(),"screen_color",m_params.m_scene_screen_color);
+    set_gui_style(s_gui());
+
+    // old ioda.style in doc_dir : if gui_Apple_white_on_black gui style,
+    // avoid orange back on m_gui_label_back_color.
+   {std::string alias;
+    if(m_styles.is_alias(s_gui(),alias)){
+      if(alias==s_gui_Apple_black_on_white()) {
+        if(m_params.m_gui_label_back_color==inlib::colorf_orange()){
+          m_params.m_gui_label_back_color = inlib::colorf(0.97f,.97f,0.97f);
+        }
+      }
+    }}
+
+    //if(m_verbose) m_styles.dump();
+
+    ////////////////////////////////////////////
+    /// <app>.ftp //////////////////////////////
+    ////////////////////////////////////////////
+    EXLIB_XML_LOAD(ftp)
+
+    ////////////////////////////////////////////
+    /// <app>.srv //////////////////////////////
+    ////////////////////////////////////////////
+    EXLIB_XML_LOAD(srv)
+
+    ////////////////////////////////////////////
+    /// <app>.wall /////////////////////////////
+    ////////////////////////////////////////////
+    EXLIB_XML_LOAD(wall)
+
+    ////////////////////////////////////////////
+    ////////////////////////////////////////////
+    ////////////////////////////////////////////
+    m_popup_cbks.add(new inlib::cbk::background_popup(*this));
+    m_popup_cbks.add(new inlib::cbk::image_popup(*this,inlib::sg::base_tex::s_class()));
+
+    ////////////////////////////////////////////
+    /// insh : /////////////////////////////////
+    ////////////////////////////////////////////    
+   {std::string HOME;
+    inlib::dir::home(HOME);
+    m_main_insh.add_env("HOME",HOME);}
+    
+   {std::string PATH;
+    doc_res_dirs_to_PATH(PATH);
+    m_main_insh.add_env("PATH",PATH);}
+
+  // avoid too much envs, use cmds.
+  //m_insh.add_env("RES_DIR",m_res_dir);
+  //m_insh.add_env("DOC_DIR",m_doc_dir);
+  //m_insh.add_env("TMP_DIR",m_tmp_dir);
+  //m_insh.add_env("OUT_DIR",m_out_dir);
+  //m_insh.add_env("START_DIR",m_start_dir);
+  //m_insh.add_env("FILE_SEP",inlib::sep());
+  //m_insh.add_env("PATH_SEP",inlib::psep());
+  
+    m_main_insh.add_command("app_windowing",new main_cmd(*this,&main::_app_windowing,insh_app_windowing_help));
+  
+    ////////////////////////////////////////////
+    ////////////////////////////////////////////
+    ////////////////////////////////////////////
+    if(inlib::device::is_emscripten()) set_use_gsto(true);
+  }
+  virtual ~main() {
+    //m_web_cache.clear();
+  }
+protected:
+  main(const main& a_from)
+  :inlib::sg::ui(a_from)
+  ,inlib::sg::alert(a_from)
+  ,parent(a_from)
+  ,parent_sg_serv(a_from)
+  ,parent_sg_client(a_from)
+  ,m_ftps(a_from.m_ftps)
+  ,m_srvs(a_from.m_srvs)
+  //,m_web_cache(m_out,false)
+  ,m_tmp_dirs(a_from.m_tmp_dirs)
+  ,m_main_insh(a_from.m_main_insh)
+  {}
+  main& operator=(const main& a_from){
+    parent::operator=(a_from);
+    m_tmp_dirs = a_from.m_tmp_dirs;
+    m_main_insh = a_from.m_main_insh;
+    return *this;
+  }
+
+public:
+  void clear_tmp() {
+    inlib_vforcit(std::string,m_tmp_dirs,it){
+      if(!inlib::dir::rmdir(*it)){
+        viewer::m_out << "exlib::app::main::clear_tmp :"
+                      << " can't remove directory "
+                      << inlib::sout(*it)
+                      << std::endl;
+      } /*else {
+        viewer::m_out << "exlib::app_main::clear_tmp :"
+                      << " remove directory "
+                      << inlib::sout(*it)
+                      << std::endl;
+      }*/
+    }
+    m_tmp_dirs.clear();
+  }
+
+public: //insh:
+  const inlib::insh& insh() const {return m_main_insh;}
+  inlib::insh& insh() {return m_main_insh;}
+
+  void source_dot_insh() {
+    // home/.insh :
+    std::string home_path;
+    inlib::dir::home(home_path);
+    home_path += inlib::sep()+".insh";
+    if(inlib::file::exists(home_path)) m_main_insh.exec_line_reset_to_stop(". "+home_path); //sourced.
+    // doc_dir/.insh :
+    std::string doc_path = doc_dir()+inlib::sep()+".insh";
+    if( (doc_path!=home_path) && inlib::file::exists(doc_path) ) m_main_insh.exec_line_reset_to_stop(". "+doc_path); //sourced.
+  }
+  void exec_startup_insh() {
+    if(is_doc_res_file("startup.insh")) {  //for app without a startup.insh in doc_res.
+      m_main_insh.exec_line_reset_to_stop("startup.insh");
+    }
+  }
+
+  void _app_windowing(const std::vector<std::string>&) {
+    std::string sw;
+    if(!windowing(sw)) {
+      m_main_insh.warn("exlib::app::main : windowing() failed.");
+      return;
+    }
+    m_main_insh.out(sw);
+  }
+  static const std::string& insh_app_windowing_help() {
+    static const std::string s_help("\
+app_windowing: app_windowing\n\
+  Print the windowing system of the application.\n\
+  It could be [Cocoa,Windows,X11,UIKit,Android,offscreen,web].\n\
+");
+    return s_help;
+  }
+
+  INLIB_INSH_CLASS_CMD(main)
+
+protected:
+  class _insh : public inlib::insh {
+    typedef inlib::insh parent;
+  public:
+    virtual void map_warn(const std::string& a_msg,bool a_warn = true) {m_gv.map_warn(a_msg,a_warn);}
+  public:
+    _insh(inlib::sg::gui_viewer& a_gv):parent(a_gv.out()),m_gv(a_gv) {}
+    virtual ~_insh() {}
+  public:
+    _insh(const _insh& a_from):parent(a_from),m_gv(a_from.m_gv) {}
+    _insh& operator=(const _insh& a_from) {parent::operator=(a_from);return *this;}
+  protected:
+    inlib::sg::gui_viewer& m_gv;
+  };
+protected:
+  inlib::ftp::ftps m_ftps;
+  inlib::xml::srvs m_srvs;
+  //inlib::web::cache m_web_cache;
+  inlib::cbk::help::help_t m_help;
+  std::vector<std::string> m_tmp_dirs;
+  _insh m_main_insh;
+};
+
+}}
+
+//exlib_build_use inlib inlib_glutess freetype expat png zlib jpeg kernel
+
+#endif

@@ -1,0 +1,117 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_insh_g4exas
+#define exlib_insh_g4exas
+
+#include "../geant4/calorimeter"
+#include "../geant4/physics_list"
+
+#include "../geant4/utils"
+
+#include <G4GeometryManager.hh>
+
+#include <inlib/insh/ishell>
+#include <inlib/args>
+#include <inlib/omanager>
+
+namespace exlib {
+
+inline void insh_g4_exa_calorimeter(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::omanager& a_mgr) {
+  static const std::string s_cmd("g4_exa_calorimeter");
+  G4RunManager* rmgr = G4RunManager::GetRunManager();
+  if(!rmgr) {
+    a_insh.warn(s_cmd+": G4RunManager::GetRunManager() is null.");
+    return;
+  }
+  inlib::args _args(a_args);
+  bool icon;
+  INLIB_ISHELL_IS_ARG(icon)
+  
+  geant4::calorimeter::construct_materials();
+  
+  G4GeometryManager::GetInstance()->OpenGeometry();
+  geant4::clean_geom_stores();
+  
+  G4VPhysicalVolume* physi_absorber;
+  G4VPhysicalVolume* world = geant4::calorimeter::construct_geometry(a_insh.out(),icon,physi_absorber);
+  if(!world) {
+    a_insh.warn(s_cmd+": construct_geometry failed.");
+    return;
+  }
+  rmgr->DefineWorldVolume(world);
+
+  delete rmgr->GetUserSteppingAction();
+  geant4::calorimeter::stepping_action* sa = new geant4::calorimeter::stepping_action(physi_absorber);
+  rmgr->SetUserAction(sa);
+  
+  bool own = false; //important
+ {inlib::histo::h1d* h = &(sa->histo_de());
+  a_mgr.manage_object<inlib::histo::h1d>(h,"de",true,true,false,own);}
+ {inlib::histo::h1d* h = &(sa->histo_z_de());
+  a_mgr.manage_object<inlib::histo::h1d>(h,"z_de",true,true,false,own);}
+}
+
+}
+
+#include "../geant4/A01"
+
+namespace exlib {
+
+inline void insh_g4_exa_A01(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::omanager& a_mgr) {
+  static const std::string s_cmd("g4_exa_A01");
+  G4RunManager* rmgr = G4RunManager::GetRunManager();
+  if(!rmgr) {
+    a_insh.warn(s_cmd+": G4RunManager::GetRunManager() is null.");
+    return;
+  }
+  geant4::A01::construct_materials();
+  
+  G4GeometryManager::GetInstance()->OpenGeometry();
+  geant4::clean_geom_stores();
+  
+  geant4::A01::stepping_action* sa;
+  G4VPhysicalVolume* world = geant4::A01::construct_geometry(a_insh.out(),sa);
+  if(!world) {
+    a_insh.warn(s_cmd+": construct_geometry failed.");
+    return;
+  }
+  rmgr->DefineWorldVolume(world);
+
+  delete rmgr->GetUserSteppingAction();
+  rmgr->SetUserAction(sa);
+  
+  bool own = false; //important
+ {inlib::histo::h1d* h = &(sa->ecal_hcal_edep());
+  a_mgr.manage_object<inlib::histo::h1d>(h,"ecal_hcal_edep",true,true,false,own);}
+}
+
+}
+
+#include <inlib/insh/ishell_args_omanager_cmd>
+#include <inlib/insh/ishell_args_cmd>
+
+#define EXLIB_INSH_G4EXAS_ADDS(a__insh,a__holder)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,(a__holder).get_omanager(),g4_exa_calorimeter,\
+    exlib::insh_g4_exa_calorimeter,\
+"g4_exa_calorimeter: g4_exa_calorimeter command\n\
+  Construct the exlib::geant4::calorimenter example.\n\
+  It declares also histograms to the object manager.\n\
+  Example:\n\
+    g4_exa_calorimeter\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,(a__holder).get_omanager(),g4_exa_A01,\
+    exlib::insh_g4_exa_A01,\
+"g4_exa_A01: g4_exa_A01 command\n\
+  Construct the exlib::geant4::A01 example.\n\
+  Example:\n\
+    g4_exa_A01\n\
+")
+
+//exlib_build_use inlib
+//exlib_build_use geant4
+//exlib_build_use pythia8
+//exlib_build_cppflags -DEXLIB_HAS_PYTHIA8
+
+#endif

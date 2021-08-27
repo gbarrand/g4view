@@ -1,0 +1,25 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#import <Cocoa/Cocoa.h>
+
+// this file needs the typedef app_main_t :
+//   typedef some_app_namespace>::main app_main_t;
+
+#include <inlib/sg/cursor_shape>
+
+@interface GLView : NSOpenGLView {
+  app_main_t* m_main;
+  NSCursor* m_cursor_default;
+  NSCursor* m_cursor_target;
+  NSCursor* m_cursor_current;
+}
+- (id)initWithFrame:(NSRect)rect;
+- (void)dealloc;
+- (void)drawRect:(NSRect)rect;
+- (void)set_main:(app_main_t*)a_main;
+- (void)set_cursor:(inlib::sg::cursor_shape)a_cursor;
+@end
+
+// skip because of app_main_t.
+//exlib_build_use skip

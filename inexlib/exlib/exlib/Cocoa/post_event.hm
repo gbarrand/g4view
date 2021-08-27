@@ -1,0 +1,55 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_Cocoa_post_event_hm
+#define exlib_Cocoa_post_event_hm
+
+#import <Cocoa/Cocoa.h>
+
+#define EXLIB_NSEVENT_CONNECT     1
+#define EXLIB_NSEVENT_DISCONNECT  2
+#define EXLIB_NSEVENT_FILE_HANDLE 3
+
+namespace exlib {
+
+inline void post_event(NSWindow* a_window,short a_event) {
+  //NSLog(@"debug : exlib::post_event : send %d ...",a_event);
+
+  NSPoint location;location.x = 0;location.y = 0;
+  NSUInteger flags = 0;
+  NSTimeInterval time = 0;
+  NSInteger windowNum = [a_window windowNumber];
+#if MAC_OS_X_VERSION_MAX_ALLOWED < 1014
+  NSGraphicsContext* context = [(NSWindow*)a_window graphicsContext];
+#else
+  NSGraphicsContext* context = nil;
+#endif
+
+  short subtype = a_event;
+  NSInteger data1 = 0;
+  NSInteger data2 = 0;
+
+  NSEvent* event = [NSEvent
+//#if MAC_OS_X_VERSION_MAX_ALLOWED < 1012
+#if MAC_OS_X_VERSION_MAX_ALLOWED <= 1060   //macarts.
+    otherEventWithType:NSApplicationDefined
+#else
+    otherEventWithType:NSEventTypeApplicationDefined
+#endif
+              location:location
+         modifierFlags:flags
+             timestamp:time
+          windowNumber:windowNum
+               context:context
+               subtype:subtype
+                 data1:data1
+                 data2:data2];
+  [NSApp postEvent:event atStart:YES];
+
+}
+
+}
+
+//exlib_build_use inlib
+
+#endif

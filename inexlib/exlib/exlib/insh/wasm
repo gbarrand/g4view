@@ -1,0 +1,117 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_insh_wasm
+#define exlib_insh_wasm
+
+#ifdef EMSCRIPTEN
+
+#include <emscripten.h>
+
+EM_JS(void, js_download_file, (const char* a_s), {download_app_file(UTF8ToString(a_s));});
+
+EM_JS(void, js_gui_show_terminal, (), {gui_show_terminal();});
+EM_JS(void, js_gui_hide_terminal, (), {gui_hide_terminal();});
+EM_JS(void, js_gui_set_terminal_rows, (unsigned int a_rows), {term_set_rows(a_rows);});
+
+EM_JS(void, js_open_file_chooser, (), {open_file_chooser();});
+
+#include <inlib/insh/ishell>
+#include <inlib/args>
+#include <inlib/sg/gui_viewer>
+#include <inlib/insh/guib>
+
+namespace exlib {
+
+inline void insh_file_download(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("file_download");
+  inlib::args _args(a_args);
+  std::string path;
+  if(!insh_args_file(a_insh,a_gv,_args,s_cmd,path)) return;
+  js_download_file(path.c_str());
+}
+
+inline const std::string& insh_file_download_help() {
+  static const std::string s_help("\
+file_download: file_download [-doc_res,-res,-doc] path\n\
+  Download a file from the wasm to the local machine.\n\
+  The web browser puts the file in the user standard Downloads directory.\n\
+  If no directory is given in path, the -doc_res option permits to search a file first\n\
+  in the document directory declared to the app, and then in the app (internal) resource directory.\n\
+  -res for the resource directory only, -doc for the document directory only.\n\
+  See also:\n\
+    app_dir\n\
+");
+  return s_help;
+}
+
+inline const std::string& insh_file_upload_help() {
+  static const std::string s_help("\
+file_upload: file_upload\n\
+  Open a file chooser of the web browser to choose a file on the local\n\
+  machine and upload it in the wasm app documents directory.\n\
+  Note that it is not possible, due to web browser security, to have a\n\
+  command retrieving straight a file from the local machine given its path.\n\
+");
+  return s_help;
+}
+
+inline const std::string& insh_gui_show_terminal_help() {
+  static const std::string s_help("\
+gui_show_terminal: gui_show_terminal\n\
+  In the app web page, show the terminal below the app GL canvas.\n\
+  Example:\n\
+    gui_show_terminal\n\
+");
+  return s_help;
+}
+inline const std::string& insh_gui_hide_terminal_help() {
+  static const std::string s_help("\
+gui_hide_terminal: gui_hide_terminal\n\
+  In the app web page, hide the terminal.\n\
+  Example:\n\
+    gui_hide_terminal\n\
+");
+  return s_help;
+}
+
+inline void insh_gui_set_terminal_rows(inlib::ishell& a_insh,const std::vector<std::string>& a_args) {
+  static const std::string s_cmd("gui_set_terminal_rows");
+  if(a_args.size()!=1) {
+    a_insh.warn(s_cmd+": one argument expected.");
+    return;
+  }
+  unsigned int rows;
+  if(!inlib::to(a_args[0],rows)) {
+    a_insh.warn(s_cmd+": argument "+inlib::sout(a_args[0])+" is not a uint.");
+    return;
+  }
+  js_gui_set_terminal_rows(rows);
+}
+inline const std::string& insh_gui_set_terminal_rows_help() {
+    static const std::string s_help("\
+gui_set_terminal_rows: gui_set_terminal_rows rows\n\
+  In the app web page, set the number of rows of the terminal.\n\
+  Example:\n\
+    gui_set_terminal_rows 15\n\
+");
+    return s_help;
+  }
+
+}
+
+#include <inlib/insh/void_cmd>
+#include <inlib/insh/ishell_args_cmd>
+#include <inlib/insh/ishell_args_gui_viewer_cmd>
+#include <inlib/file_complete>
+
+#define EXLIB_INSH_WASM_ADDS(a__insh,a__holder)\
+  INLIB_INSH_ADD_VOID_CMD(a__insh,file_upload,js_open_file_chooser,exlib::insh_file_upload_help())\
+  INLIB_INSH_ADD_VOID_CMD(a__insh,gui_show_terminal,js_gui_show_terminal,exlib::insh_gui_show_terminal_help())\
+  INLIB_INSH_ADD_VOID_CMD(a__insh,gui_hide_terminal,js_gui_hide_terminal,exlib::insh_gui_hide_terminal_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,gui_set_terminal_rows,exlib::insh_gui_set_terminal_rows,exlib::insh_gui_set_terminal_rows_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD_COMPLETE(a__insh,a__holder,file_download,exlib::insh_file_download,exlib::insh_file_download_help(),inlib::file::complete)
+
+#endif
+
+#endif

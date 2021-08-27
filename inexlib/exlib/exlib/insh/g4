@@ -1,0 +1,443 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_insh_g4
+#define exlib_insh_g4
+
+#include "../geant4/event_timer"
+
+#include <G4PhysicalVolumeStore.hh>
+#include <G4LogicalVolumeStore.hh>
+#include <G4FieldManagerStore.hh>
+#include <G4ParticleTable.hh>
+#include <G4Material.hh>
+#include <G4UImanager.hh>
+#include <G4Version.hh>
+
+#ifdef EXLIB_HAS_PYTHIA8
+#include <pythia/pythia_version.h>
+#endif
+
+#include <inlib/insh/ishell>
+#include <inlib/forit>
+
+#include <inlib/sout>
+
+namespace exlib {
+
+inline void insh_g4_apply_command(inlib::ishell& a_insh,const std::vector<std::string>& a_args) {
+  static const std::string s_cmd("g4_apply_command");
+  G4UImanager* ui_mgr = G4UImanager::GetUIpointer();
+  if(!ui_mgr) return;
+  if(a_args.size()!=1) {
+    a_insh.warn(s_cmd+": one argument expected.");
+    return;
+  }
+  ui_mgr->ApplyCommand(a_args[0]);
+}
+
+inline void insh_g4_pv_ls(inlib::ishell& a_insh) {
+  static const std::string s_cmd("g4_pv_ls");
+  G4PhysicalVolumeStore* pvs = G4PhysicalVolumeStore::GetInstance();
+  if(!pvs) {
+    a_insh.warn(s_cmd+": no PV store");
+    return;
+  }
+  a_insh.out_begin();
+  inlib_vforcit(G4VPhysicalVolume*,*pvs,it) a_insh.out((*it)->GetName(),true);
+}
+
+inline void insh_g4_lv_ls(inlib::ishell& a_insh) {
+  static const std::string s_cmd("g4_lv_ls");
+  G4LogicalVolumeStore* lvs = G4LogicalVolumeStore::GetInstance();
+  if(!lvs) {
+    a_insh.warn(s_cmd+": no LV store");
+    return;
+  }
+  a_insh.out_begin();
+  inlib_vforcit(G4LogicalVolume*,*lvs,it) a_insh.out((*it)->GetName(),true);
+}
+
+inline void insh_g4_material_ls(inlib::ishell& a_insh) {
+  static const std::string s_cmd("g4_material_ls");
+  const G4MaterialTable* table = G4Material::GetMaterialTable();
+  if(!table) {
+    a_insh.warn(s_cmd+": no material table");
+    return;
+  }
+  a_insh.out_begin();
+  inlib_vforcit(G4Material*,*table,it) a_insh.out((*it)->GetName(),true);
+}
+
+inline void insh_g4_field_manager_ls(inlib::ishell& a_insh) {
+  static const std::string s_cmd("g4_field_manager_ls");
+  G4FieldManagerStore* fms = G4FieldManagerStore::GetInstance();
+  if(!fms) {
+    a_insh.warn(s_cmd+": no FeildManager store");
+    return;
+  }
+  a_insh.out_begin();
+  inlib_vforcit(G4FieldManager*,*fms,it) a_insh.out_num<void*>(*it,true);
+}
+
+inline void insh_g4_particle_ls(inlib::ishell& a_insh) {
+  static const std::string s_cmd("g4_particle_ls");
+  G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+  if(!particleTable) {
+    a_insh.warn(s_cmd+": no particle table.");
+    return;
+  }
+  a_insh.out_begin();
+  int number = particleTable->entries();
+  for(int i=0;i<number;i++) {
+    G4ParticleDefinition* pd = particleTable->GetParticle(i);
+//    if(!(pd->IsShortLived()) || pd->GetDecayTable()) opts.push_back(pd->GetParticleName());
+    a_insh.out(pd->GetParticleName(),true);
+  }
+}
+
+inline void insh_g4_lv_set_material(inlib::ishell& a_insh,const std::vector<std::string>& a_args) {
+  static const std::string s_cmd("g4_lv_set_material");
+  if(a_args.size()!=2) {
+    a_insh.warn(s_cmd+": two arguments expected.");
+    return;
+  }
+  const std::string& slv = a_args[0];
+  const std::string& smat = a_args[1];
+  
+  G4LogicalVolumeStore* lvs = G4LogicalVolumeStore::GetInstance();
+  if(!lvs) {a_insh.warn(s_cmd+": no LV store");return;}
+  G4LogicalVolume* lv = 0;
+ {inlib_vforcit(G4LogicalVolume*,*lvs,it) {
+    if(std::string((*it)->GetName())==slv) {lv = *it;break;}
+  }}
+  if(!lv) {a_insh.warn(s_cmd+": G4LogicalVolume "+inlib::sout(slv)+" not found.");return;}
+  
+  const G4MaterialTable* table = G4Material::GetMaterialTable();
+  if(!table) {a_insh.warn(s_cmd+": no material table");return;}
+  G4Material* mat = 0;
+ {inlib_vforcit(G4Material*,*table,it) {
+    if(std::string((*it)->GetName())==smat) {mat = *it;break;}
+  }}
+  if(!mat) {a_insh.warn(s_cmd+": G4Material "+inlib::sout(smat)+" not found.");return;}
+  lv->SetMaterial(mat);
+}
+
+inline void insh_g4_version(inlib::ishell& a_insh) {
+  a_insh.out_num(G4VERSION_NUMBER);
+}
+
+inline void insh_g4_pythia_version(inlib::ishell& a_insh) {
+#ifdef EXLIB_HAS_PYTHIA8
+  a_insh.out(PYTHIA_VERSION);
+#else    
+  a_insh.out("none");
+#endif
+}
+
+}
+
+#include "../geant4/rgdml"
+#include "../geant4/utils"
+#include "../gzip"
+
+#include <G4GeometryManager.hh>
+
+namespace exlib {
+
+inline void insh_g4_read_gdml(inlib::ishell& a_insh,const std::vector<std::string>& a_args) {
+  static const std::string s_cmd("g4_read_gdml");
+  G4RunManager* rmgr = G4RunManager::GetRunManager();
+  if(!rmgr) {
+    a_insh.warn(s_cmd+": G4RunManager::GetRunManager() is null.");
+    return;
+  }
+  inlib::args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no path given.");
+    return;
+  }
+  _args.remove(fnh);
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  G4GeometryManager::GetInstance()->OpenGeometry();
+  geant4::clean_geom_stores();
+  G4VPhysicalVolume* world = 0;
+ {inlib::xml::default_factory fac;
+  bool verbose = false;
+  geant4::rgdml ml(fac,a_insh.out(),verbose);
+ {bool _is = false;
+  if(inlib::file::is_gzip(fnh,_is)) {
+    if(_is) {
+      ml.set_compressed_reader(new gzip_reader());//ml takes ownership
+    }
+  }}
+  if(!ml.load_file(fnh,false,world)) {
+    a_insh.warn(s_cmd+": rgdml::load_file("+inlib::sout(fnh)+") failed.");
+    return;
+  }}
+  if(!world) {
+    a_insh.warn(s_cmd+": no physical volume found");
+    return;
+  }
+
+ {G4LogicalVolume* vol = world->GetLogicalVolume();
+  if(vol && vol->GetNoDaughters()) {
+    //NOTE : there is a G4VisAttributes leaking...
+    //vol->SetVisAttributes(G4VisAttributes::Invisible);
+    G4VisAttributes* atb = new G4VisAttributes(false);
+    vol->SetVisAttributes(atb);
+  }}
+
+  rmgr->DefineWorldVolume(world);
+}
+
+}
+
+#include "../geant4/viewer"
+
+namespace exlib {
+
+inline void insh_g4_beam_on(inlib::ishell& a_insh,const std::vector<std::string>& a_args,geant4::viewer& a_viewer) {
+  static const std::string s_cmd("g4_beam_on");
+  inlib::args _args(a_args);
+  unsigned int number = 1;
+  INLIB_ISHELL_GET_ARG_UINT(number)
+  unsigned int sleep = 0;
+  INLIB_ISHELL_GET_ARG_UINT(sleep)
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  std::string serr;
+  if(!a_viewer.beam_on(number,sleep,serr)) {
+    a_insh.warn(s_cmd+": "+serr);
+    return;
+  }
+}
+
+inline void insh_g4_event_start_anim(inlib::ishell& a_insh,const std::vector<std::string>& a_args,geant4::viewer& a_viewer) {
+  static const std::string s_cmd("g4_event_start_anim");
+  inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(a_viewer);
+  if(!_evd) return;
+  inlib::args _args(a_args);
+  unsigned int number = 1;
+  INLIB_ISHELL_GET_ARG_UINT(number)
+  unsigned int sleep = 0;
+  INLIB_ISHELL_GET_ARG_UINT(sleep)
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  if(!number) {
+    a_insh.warn(s_cmd+": nothing to do.");
+    return;
+  }
+  if(!inlib::check_env_dir(geant4::s_G4LEDATA())){
+    a_insh.warn(s_cmd+": g4 data not found");
+    return;
+  }
+#ifdef EXLIB_HAS_PYTHIA8
+  if(!inlib::check_env_dir(geant4::s_PYTHIA8DATA())){
+    a_insh.warn(s_cmd+": pythia8 data not found");
+    return;
+  }
+#endif
+ {std::string serr;
+  if(!geant4::set_store_trajectory(serr)) {
+    a_insh.warn(s_cmd+": "+serr);
+    return;
+  }}
+  _evd->event_index() = 0;
+  a_viewer.stop_event_anim();
+  geant4::event_timer* timer = new geant4::event_timer(a_viewer,number,sleep);
+  a_viewer.set_event_anim(timer);
+}
+
+}
+
+#include "../geant4/output"
+
+namespace exlib {
+
+inline void insh_g4_output(inlib::ishell& a_insh,const std::vector<std::string>& a_args,geant4::output& a_output) {
+  static const std::string s_cmd("g4_output");
+  if(a_args.size()!=1) {
+    a_insh.warn(s_cmd+": one argument expected.");
+    return;
+  }
+  const std::string& arg0 = a_args[0];
+  if(arg0=="enable") {
+    a_output.enable_geant4_output();
+  } else if(arg0=="disable") {
+    a_output.disable_geant4_output();
+  } else {
+    a_insh.warn(s_cmd+": unknown argument "+inlib::sout(arg0)+".");
+    return;
+  }
+}
+
+}
+
+#include "g4vis"
+
+#include <inlib/insh/ishell_cmd>
+#include <inlib/insh/ishell_args_cmd>
+#include <inlib/insh/ishell_args_gui_viewer_cmd>
+#include <inlib/insh/ishell_args_class_cmd>
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_GEANT4_OUTPUT_CMD(a__insh,a__output,a__name,a__func,a__help)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_class_cmd<exlib::geant4::output>(a__insh,a__output,a__func,a__help));
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_GEANT4_OUTPUT_CMD_COMPLETE(a__insh,a__output,a__name,a__func,a__help,a__complete)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_class_cmd<exlib::geant4::output>(a__insh,a__output,a__func,a__help,a__complete));
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_GEANT4_VIEWER_CMD(a__insh,a__viewer,a__name,a__func,a__help)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_class_cmd<exlib::geant4::viewer>(a__insh,a__viewer,a__func,a__help));
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_GEANT4_VIEWER_CMD_COMPLETE(a__insh,a__viewer,a__name,a__func,a__help,a__complete)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_class_cmd<exlib::geant4::viewer>(a__insh,a__viewer,a__func,a__help,a__complete));
+
+#define EXLIB_INSH_G4_ADDS(a__insh,a__holder)\
+/*INLIB_INSH_ADD_ISHELL_CMD(a__insh,g4_run_manager_initialize,\
+    exlib::insh_g4_run_manager_initialize,\
+"g4_run_manager_initialize: g4_run_manager_initialize\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_CMD(a__insh,g4_set_physics_list,\
+    exlib::insh_g4_set_physics_list,\
+"g4_set_physics_list: g4_set_physics_list\n\
+")*/\
+\
+  INLIB_INSH_ADD_ISHELL_CMD(a__insh,g4_pv_ls,\
+    exlib::insh_g4_pv_ls,\
+"g4_pv_ls: g4_pv_ls\n\
+  Print the list of G4PhysicalVolumes.\n\
+  Example:\n\
+    g4_pv_ls\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_CMD(a__insh,g4_lv_ls,\
+    exlib::insh_g4_lv_ls,\
+"g4_lv_ls: g4_lv_ls\n\
+  Print the list of G4LogicalVolumes.\n\
+  Example:\n\
+    g4_lv_ls\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_CMD(a__insh,g4_material_ls,\
+    exlib::insh_g4_material_ls,\
+"g4_material_list: g4_material_ls\n\
+  Print the list of G4Materials.\n\
+  Example:\n\
+    g4_material_ls\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_CMD(a__insh,g4_field_manager_ls,\
+    exlib::insh_g4_field_manager_ls,\
+"g4_field_manager_ls: g4_field_manager_ls\n\
+  Print the list of G4FieldManagers.\n\
+  Example:\n\
+    g4_field_manager_ls\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_CMD(a__insh,g4_particle_ls,\
+    exlib::insh_g4_particle_ls,\
+"g4_particle_ls: g4_particle_ls\n\
+  Print the list of particle names.\n\
+  Example:\n\
+    g4_particle_ls\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_CMD(a__insh,g4_version,\
+    exlib::insh_g4_version,\
+"g4_version: g4_version\n\
+  Print Geant4 version.\n\
+  Example:\n\
+    g4_version\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_CMD(a__insh,g4_pythia_version,\
+    exlib::insh_g4_pythia_version,\
+"g4_pythia_version: g4_pythia_version\n\
+  Print Pythia version.\n\
+  Print 'none' if app not built with Pythia.\n\
+  Example:\n\
+    g4_pythia_version\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,g4_apply_command,\
+    exlib::insh_g4_apply_command,\
+"g4_apply_command: g4_apply_command command\n\
+  Execute a Geant4 command.\n\
+  Example:\n\
+    g4_apply_command '/run/beamOn 1'\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,g4_lv_set_material,\
+    exlib::insh_g4_lv_set_material,\
+"g4_lv_set_material: g4_lv_set_material logical_volume material\n\
+  Set material of a logical volume.\n\
+  Example:\n\
+    g4_lv_set_material absorber copper\n\
+  See also:\n\
+    g4_lv_ls\n\
+    g4_material_ls\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__holder,g4_vis_geometry,\
+    exlib::insh_g4_vis_geometry,\
+"g4_vis_geometry: g4_vis_geometry\n\
+  Visualize the Geant4 geometry.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GEANT4_VIEWER_CMD(a__insh,a__holder,g4_beam_on,\
+    exlib::insh_g4_beam_on,\
+"g4_beam_on: g4_beam_on [-number,-sleep]\n\
+  Do a G4RunManager::BeamOn(number).\n\
+  -number=uint number of events to produce (default 1).\n\
+  -sleep=uint sleep time, in millisec, between events (default 0).\n\
+  Example:\n\
+    g4_beam_on  # produce one event.\n\
+    g4_beam_on -number=10 -sleep=100\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GEANT4_VIEWER_CMD(a__insh,a__holder,g4_event_start_anim,\
+    exlib::insh_g4_event_start_anim,\
+"g4_event_start_anim: g4_event_start_anim [-start,-number,-bof,-sleep]\n\
+  Loop 'number' of time doing G4RunManager::DoEventLoop(1,0,-1).\n\
+  -number=uint do it number times (default 1).\n\
+  -sleep=uint time, in msec, to sleep between each event (default 0).\n\
+  Use event_stop_anim to stop looping.\n\
+  Example:\n\
+    g4_event_start_anim\n\
+    g4_event_start_anim -number=100 -sleep=100\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,g4_read_gdml,\
+    exlib::insh_g4_read_gdml,\
+"g4_read_gdml: g4_read_gdml file\n\
+  Read a gdml file and put its content as the run manager geometry.\n\
+  Example:\n\
+    g4_read_gdml `add_res_dir`/barrel.gdml\n\
+    g4_pv_ls\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__holder,g4_scene_add_geo_volume,\
+    exlib::insh_g4_scene_add_geo_volume,\
+"g4_scene_add_geo_volume: g4_scene_add_geo_volume [-min_depth,-max_depth,-volume_depth,-atb,-colormap] [pv]\n\
+  Add a G4PhysicalVolume (pv) tree representation in the static scene.\n\
+  Each shape is represented by a inlib::sg::polyhedron.\n\
+  If no pv name is given, the top 'world volume' is taken.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__holder,g4_vis_trajectories,\
+    exlib::insh_g4_vis_trajectories,\
+"g4_vis_trajectories: g4_vis_trajectories\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__holder,g4_vis_primary_vertices,\
+    exlib::insh_g4_vis_primary_vertices,\
+"g4_vis_primary_vertices: g4_vis_primary_vertices\n\
+")
+
+//exlib_build_use geant4 inlib expat zlib png jpeg freetype
+
+//exlib_build_use pythia8
+//exlib_build_cppflags -DEXLIB_HAS_PYTHIA8
+
+#endif
+

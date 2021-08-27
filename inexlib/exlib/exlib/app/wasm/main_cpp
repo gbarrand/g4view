@@ -1,0 +1,357 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_app_wasm_main_cpp
+#define exlib_app_wasm_main_cpp
+
+// this file needs the cpp macros :
+// - APP_NAME : for exa #define APP_NAME pmx
+// It needs also to have included before it a :
+//    #include "../<app>/main"
+
+#include "../../wasm/term_streambuf"
+static exlib::wasm::term_streambuf g_term_buf;
+static std::streambuf* g_old_std_cout_buf = 0;
+static std::streambuf* g_old_std_cerr_buf = 0;
+
+#include <iostream>
+
+#include "main"
+
+EM_JS(int, js_gui_get_terminal_cols, (), {return g_term.cols;});
+
+static app_wasm::main<APP_NAME::main>* g_main = 0;
+
+extern "C" {
+
+
+int app_initialize(const char* a_app_name,int a_width,int a_height) {
+  //::printf("debug : app_initialize : %d %d\n",a_width,a_height);
+  //std::cout << "debug : app_initialize : 000" << std::endl;
+  //std::cout << "debug : app_initialize : 001" << std::endl;
+
+  std::string app_name(a_app_name);
+
+  std::string pwd_dir;
+  inlib::dir::pwd(pwd_dir);  // It is /
+  if(pwd_dir.empty()) {
+    std::cout << "app_initialize : can't get pwd directory." << std::endl;
+    return 0;
+  }
+  //::printf("debug : app_initialize : pwd dir \"%s\"\n",pwd_dir.c_str());
+
+  std::string home_dir;
+  inlib::dir::home(home_dir);  // It is /home/web_user
+  if(home_dir.empty()) {
+    std::cout << "app_initialize : can't get home directory." << std::endl;
+    return 0;
+  }
+  //::printf("debug : app_initialize : home dir \"%s\"\n",home_dir.c_str());
+  std::string doc_app_dir = "Documents";
+  doc_app_dir += inlib::sep();
+  doc_app_dir += app_name;
+
+  std::string doc_dir = home_dir;
+  doc_dir += inlib::sep();
+  doc_dir += doc_app_dir;
+
+  std::string res_dir = pwd_dir+"res";  // It must be in sync with the emcc --preload-file option.
+                                        // It must be an absolute path for g4exa unfold res files.
+                                        // pwd_dir is /, then no need to have a inlib::sep().
+//inlib::app_res_dir(exe_path,res_dir);
+  std::string out_dir = doc_dir;
+
+  std::string tmp_dir;
+  if(!inlib::tmpdir(tmp_dir)) {
+    std::cout << "app_initialize : inlib::tmpdir() failed." << std::endl;
+    return 0;
+  }
+
+  bool verbose = false;
+
+  g_main = new app_wasm::main<APP_NAME::main>(std::cout,app_name,doc_dir,res_dir,out_dir,tmp_dir,verbose);
+
+  app_wasm::main<APP_NAME::main>& _main = *g_main;
+//_main.set_argcv(args);
+//if(args.is_arg(inlib::s_arg_black())) _main.m_params.m_scene_screen_color = inlib::colorf_black();
+
+  _main.set_size(a_width,a_height);
+
+  //////////////////////////////////////////////////////////////////
+  /// insh default scripts : ///////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
+  _main.source_dot_insh();
+  _main.exec_startup_insh();
+  /*_main.exec_insh_startup();*/
+  //////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
+
+  g_main->do_works();
+  g_main->win_render();
+
+  //::printf("debug : app_initialize : end.\n");
+
+  return 1;
+}
+
+void app_win_render() {g_main->win_render();}
+void app_after_render() {g_main->after_render();}
+int app_do_works() {return g_main->do_works()?1:0;}
+void app_set_size(int a_w,int a_h) {g_main->set_size(a_w,a_h);}
+
+void app_button_down(int a_button,int a_x,int a_y) {
+  //::printf("debug : app_button_down : %d : %d %d\n",a_button,a_x,a_y);
+  unsigned int wh = g_main->height();
+  bool to_render = g_main->touch_down(a_x,wh-1-a_y);
+  if(g_main->do_works()) to_render = true;
+  if(to_render) g_main->win_render();
+}
+
+void app_button_up(int a_button,int a_x,int a_y) {
+  //::printf("debug : app_button_up : %d : %d %d\n",a_button,a_x,a_y);
+  g_main->add_work_check_arm_buttons();
+  unsigned int wh = g_main->height();
+  bool to_render = g_main->touch_up(a_x,wh-1-a_y);
+  if(g_main->do_works()) to_render = true;
+  if(to_render) g_main->win_render();
+}
+
+void app_button_move(int a_button,int a_x,int a_y) {
+  //::printf("debug : app_button_move : %d : %d %d\n",a_button,a_x,a_y);
+  unsigned int wh = g_main->height();
+  bool to_render = g_main->touch_move(a_x,wh-1-a_y);
+  if(g_main->do_works()) to_render = true;
+  if(to_render) g_main->win_render();
+}
+
+void app_upload_file(const char* a_file_name,char* a_buffer,size_t a_size,bool a_warn) {
+  //::printf("debug : app_upload_file : \"%s\" %lu\n",a_file_name,(unsigned long)a_size);
+  //std::string file_name;
+  //inlib::base_name(a_file_name,file_name);
+  if(!inlib::check_dir(g_main->out(),g_main->doc_dir())) {
+    g_main->map_warn("app_upload_file : check_dir(doc dir) failed.");
+    g_main->win_render();
+    return;
+  }
+  std::string path = g_main->doc_dir()+inlib::sep()+std::string(a_file_name);
+  if(!inlib::file::write_bytes(path,a_buffer,a_size)) {
+    g_main->map_warn("app_upload_file : can't write bytes in file "+inlib::sout(path)+".");
+    if(!inlib::file::std_remove(path)) {}
+    g_main->win_render();
+    return;
+  }
+  if(a_warn) {
+    if(a_size) {
+      std::string _s;
+      inlib::size_t2s(a_size,_s);
+      g_main->map_warn(std::string(a_file_name)+" uploaded "+_s+" bytes.",false);
+    } else {
+      g_main->map_warn(std::string(a_file_name)+" uploaded 0 bytes.",false);
+    }
+    g_main->win_render();
+  }
+}
+
+void app_open_doc_file(const char* a_file_name,const char* a_sargs) {
+  std::string path = g_main->doc_dir()+inlib::sep()+std::string(a_file_name);
+  std::string fmt = inlib::file::s_format_guessed();
+  if(g_main->opener().preferred_format().size()) fmt = g_main->opener().preferred_format();
+  bool done;
+  inlib::args _args(a_sargs,"\n",true);
+  if(!g_main->opener().open(path,fmt,_args,done)) {
+    g_main->map_warn("app_open_doc_file : open("+inlib::sout(path)+") failed.");
+    if(!inlib::file::std_remove(path)) {}
+    g_main->win_render();
+    return;
+  }
+  if(!done) {
+    g_main->map_warn("app_doc_file : opener().open("+inlib::sout(path)+") not done.");
+    g_main->win_render();
+    return;
+  }
+  g_main->win_render();
+}
+
+void app_upload_buffer(char* a_buffer,size_t a_size,const char* a_sargs) {
+  //::printf("debug : app_upload_buffer : %lu \"%s\"\n",(unsigned long)a_size,a_sargs);
+  bool done;
+  inlib::args _args(a_sargs,"\n",true);
+  if(!g_main->opener().open((inlib::uint64)a_size,(char*)a_buffer,_args,done)) {
+    g_main->map_warn("app_upload_buffer : open(buffer) failed.");
+    g_main->win_render();
+    return;
+  }
+  /*else {
+    //::printf("debug : app_upload_buffer : open(buffer) not done, try with a file...\n");
+    if(!done) {
+      std::string path;
+      if(!inlib::tmpname(g_main->tmp_dir(),g_main->app_name()+"_","",path)) {
+        g_main->map_warn("app_upload_buffer : can't get a tmpname.");
+      } else {
+        if(!inlib::file::write_bytes(path,a_buffer,a_size)) {
+          g_main->map_warn("app_upload_buffer : can't write bytes in tmp file "+inlib::sout(path)+".");
+        } else {
+          std::string fmt = inlib::file::s_format_guessed();
+          if(g_main->opener().preferred_format().size()) fmt = g_main->opener().preferred_format();
+          if(!g_main->opener().open(path,fmt,_args,done)) {
+            g_main->map_warn("app_upload_buffer : open(file) failed.");
+	  } else {
+            if(!done) g_main->map_warn("app_upload_buffer : opener().open() not done.");
+	  }
+          if(!inlib::file::std_remove(path)) {}
+	}
+      }
+    }
+  }*/
+  g_main->win_render();
+}
+
+#include <inlib/fsize>
+
+int app_get_file_size(const char* a_file) {
+  std::string file_name(a_file);
+  std::string from = file_name;
+  long length;
+  if(!inlib::file::size(from,length)) {
+    g_main->map_warn("app_get_doc_file_size : can't get file size of "+inlib::sout(from)+".");
+    return -1;
+  }
+  return (int)length;
+}
+
+char* app_get_file(const char* a_file) {
+  //returned buffer have to be deleted with delete [].
+  std::string file_name(a_file);
+  std::string from = file_name;
+  char* buffer;
+  long length;
+  if(!inlib::file::read_bytes(from,buffer,length)) {
+    g_main->map_warn("app_get_doc_file : can't read bytes of "+inlib::sout(from)+".");
+    return 0;
+  }
+  return buffer;
+}
+
+void app_delete_buffer(char* a_buffer) {
+#ifdef INLIB_MEM
+  inlib::mem::decrement(inlib::s_new().c_str());
+#endif
+  delete [] a_buffer;
+}
+
+void app_source_insh(const char* a_string) {
+  //::printf("debug : app_source_insh : %lu\n",(unsigned long)a_size);
+  int cols = js_gui_get_terminal_cols();
+  if(cols<=0) cols = 80;
+  g_main->insh().set_unix_cols((size_t)cols);
+  std::vector<std::string> lines;
+  inlib::get_lines(a_string,lines);
+  g_main->insh().exec_lines_reset_to_stop(lines);
+  g_main->do_works();
+  g_main->win_render();
+}
+
+void app_upload_rgbas(char* a_buffer,size_t a_size) {
+  //::printf("debug : app_upload_rgbas : %lu\n",(unsigned long)a_size);
+  std::string path = g_main->tmp_dir()+"/g_gl_rgbas";
+  if(!inlib::file::write_bytes(path,a_buffer,a_size)) {
+    g_main->map_warn("app_upload_rgbas : can't write bytes in tmp file "+inlib::sout(path)+".");
+    return;
+  }
+}
+
+void app_map_warn(const char* a_message,bool a_warn) {
+  g_main->map_warn(a_message,a_warn);
+//g_main->win_render();
+}
+void app_pop_list() {
+  g_main->pop_list();
+//g_main->win_render();
+}
+
+}
+
+#include <inlib/dirmanip> //windows.h
+#include <inlib/sort>
+
+extern "C" {
+
+void app_doc_files_to_ui() {
+  const std::string& dir = g_main->doc_dir();
+  if(!inlib::dir::is_a(dir)) {
+    std::string script("alert('app doc dir does not exist.');");
+    ::emscripten_run_script(script.c_str());
+    return;
+  }
+  std::vector<std::string> ls;
+  if(!inlib::dir::entries(dir,ls,true)) { //true = full path.
+    std::string script("alert(\"can't get files in app doc dir.\");");
+    ::emscripten_run_script(script.c_str());
+    return;
+  }
+  inlib::sort::sort(ls);
+  std::string script;
+  script += "var elem = document.getElementById('app_doc_files');";
+  script += "while(elem.options.length) elem.remove(0);";
+  inlib_vforcit(std::string,ls,it) {
+    const std::string& item = *it;
+    std::string _base;
+    inlib::base_name(item,_base);
+    if(_base.size()&&(_base[0]=='.')) continue;
+    bool is_dir;
+    if(!inlib::dir::is_a(item,is_dir)) continue;
+    if(is_dir) continue;
+    script += "var option = document.createElement('option');";
+    script += "option.text = '"+_base+"';";
+    script += "elem.add(option);";
+  }
+  ::emscripten_run_script(script.c_str());
+}
+
+//////////////////////////////////////////////////////////////////
+/// terminal related : ///////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+void app_enable_terminal() {
+  //::printf("debug : app_enable_terminal\n");
+  if(!g_old_std_cout_buf) g_old_std_cout_buf = std::cout.rdbuf(&g_term_buf);
+  if(!g_old_std_cerr_buf) g_old_std_cerr_buf = std::cerr.rdbuf(&g_term_buf);
+}
+void app_disable_terminal() {
+  //::printf("debug : app_disable_terminal\n");
+  if(g_old_std_cout_buf) {
+    std::cout.rdbuf(g_old_std_cout_buf);
+    g_old_std_cout_buf = 0;
+  }
+  if(g_old_std_cerr_buf) {
+    std::cerr.rdbuf(g_old_std_cerr_buf);
+    g_old_std_cerr_buf = 0;
+  }
+}
+
+static std::string g_tab_completion;
+
+int app_tab(const char* a_string,int a_loc) {
+  //::printf("debug : app_tab : \"%s\" %d\n",a_string,a_loc);
+  inlib::insh& _insh = g_main->insh();
+  size_t max_completion = 1024;
+  char* buffer = new char[::strlen(a_string)+max_completion];
+  ::strcpy(buffer,a_string);
+  int old_a_loc = a_loc;
+  inlib::insh::tab_hook(buffer,0,&a_loc,&_insh);
+  if(a_loc!=old_a_loc) {
+    g_tab_completion = buffer;
+  } else {
+    g_tab_completion.clear();
+  }
+  delete [] buffer;
+  return a_loc;
+}
+
+char* app_tab_completion() {return (char*)g_tab_completion.c_str();}
+
+}
+
+//exlib_build_use skip
+
+#endif

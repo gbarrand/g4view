@@ -1,0 +1,350 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_insh_web_png_style
+#define exlib_insh_web_png_style
+
+#include <inlib/insh/ishell>
+#include <inlib/insh/guib>
+#include <inlib/sg/gui_viewer>
+#include <inlib/path>
+
+#ifdef EMSCRIPTEN
+#include <emscripten.h>
+#else
+#include <inlib/net/wget>
+#include <inlib/get_lines>
+#endif
+
+namespace exlib {
+
+inline void insh_web_get_file(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("web_get_file");
+  if(a_args.empty()) {
+    a_insh.warn(s_cmd+": no url given.");
+    return;
+  }
+  std::string url;
+  url = a_args[a_args.size()-1];
+  inlib::args _args(a_args);
+  _args.remove_last();
+//if(!_args.first_not_hyphen(url)) {  //no, url may contains '=' through a cgi-bin request.
+//  a_insh.warn(s_cmd+": no url given.");
+//  return;
+//}
+  bool warn = _args.is_arg("-no_warn")?false:true;
+  std::string sout;
+  INLIB_ISHELL_GET_ARG_STRING(out)
+  if(sout.empty()) {
+    inlib::base_name(url,sout);
+  }
+  std::string sinsh;
+  INLIB_ISHELL_GET_ARG_STRING(insh)
+#ifdef EMSCRIPTEN
+  // request.readyState :
+  // 0  UNSENT           Client has been created. open() not called yet.
+  // 1  OPENED           open() has been called.
+  // 2  HEADERS_RECEIVED send() has been called, and headers and status are available.
+  // 3  LOADING          Downloading; responseText holds partial data.
+  // 4  DONE
+  std::ostringstream script;
+  script << "var request = new XMLHttpRequest();"
+         << "request.open('GET','" << url << "',true);"
+         << "request.responseType = 'arraybuffer';"
+         << "request.onreadystatechange = () => {"
+         << "  if (request.readyState == 4) {"
+         << "    if (request.status == 200 || request.status == 0) {"
+         << "      Module.app_pop_list();"
+         << "      upload_file('" << sout << "',new Int8Array(request.response)," << (warn?"true":"false") << ");";
+ if(sinsh.size()) {
+   script  << "      Module.app_source_insh('" << sinsh << "');";
+ }	   
+ script  << "    } else {"
+         << "      /*console.log('request.status '+request.status);*/"
+         << "    }"
+         << "  } else {"
+         << "    /*console.log('request.readyState '+request.readyState);*/"
+         << "  }"
+         << "};"
+         << "Module.app_map_warn('downloading...',false);"
+         << "request.send();";
+  ::emscripten_run_script(script.str().c_str());
+#else
+  std::string host;
+  unsigned int port;
+  std::string request;
+  if(!inlib::url_parse(url,host,port,request)) {
+    a_insh.warn(s_cmd+": url_parse() failed for url "+inlib::sout(url)+".");
+    return;
+  }
+  if((host.size()>=8)&&(host.substr(0,8)=="https://")) {
+    a_insh.warn(s_cmd+": we can't do https for the moment.");
+    return;
+  }
+  if(!port) {
+    if((host.size()>=8)&&(host.substr(0,8)=="https://")) {
+      port = 8080;
+    } else {
+      port = 80;
+    }
+  }
+  inlib::net::wget _wget(a_insh.out());
+  std::string path = a_gv.doc_dir()+inlib::sep()+sout;
+  char* doc;
+  inlib::uint64 ldoc;
+  std::string icookie,ocookie;
+  if(!_wget.get(host,port,request,doc,ldoc,icookie,ocookie)) {
+    a_insh.warn(s_cmd+": web get failed for url "+inlib::sout(url)+".");
+    return;
+  }
+  if(!ldoc) {
+    a_insh.warn(s_cmd+": ldoc is zero..");
+    return;
+  }
+  //::printf("debug : get %lu bytes. Write in \"%s\"\n",ldoc,path.c_str());
+  bool status = inlib::file::write_bytes(path,doc,(size_t)ldoc);
+  delete [] doc;
+  if(!status) {
+    a_insh.warn(s_cmd+": file::write_bytes() failed for file "+inlib::sout(path)+".");
+    return;
+  }
+  if(warn) {
+    std::string _s;
+    inlib::size_t2s(ldoc,_s);
+    a_insh.warn("done "+_s+" bytes.",false);
+  }
+  if(sinsh.size()) {
+    std::vector<std::string> lines;
+    inlib::get_lines(sinsh,lines);
+    a_insh.exec_lines_reset_to_stop(lines);
+  }      
+#endif
+}
+
+inline const std::string& insh_web_get_file_help() {
+  static const std::string s_help("\
+web_get_file: web_get_file [-out] url\n\
+  Get url and put the content in the doc dir.\n\
+  -out=string to give an output file name.\n\
+  If no -out is given, it is assumed that url finishes with\n\
+  the name of a file, which is then taken as output file name.\n\
+  WARNING : on wasm, the request is asynchronous.\n\
+");
+  return s_help;
+}
+
+#ifdef EMSCRIPTEN
+inline void insh_ems(inlib::ishell&,const std::vector<std::string>& a_args) {
+  if(a_args.empty()) return;
+  ::emscripten_run_script(a_args[0].c_str());
+}
+
+inline const std::string& insh_ems_help() {
+  static const std::string s_help("\
+ems: ems command\n\
+  Do a ::emscripten_run_script(command).\n\
+  Example:\n\
+    ems 'alert(\"hello world!\")'\n\
+");
+  return s_help;
+}
+
+#endif
+
+}
+
+#include "../xml/xml_style"
+#include <inlib/sg/gui_viewer>
+
+namespace exlib {
+
+inline void insh_style_load_file(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("style_load_file");
+  inlib::args _args(a_args);
+  std::string path;
+  if(!insh_args_file(a_insh,a_gv,_args,s_cmd,path)) return;
+  if(!xml::load_style_file(a_gv.out(),path,a_gv.styles())) {
+    a_insh.warn(s_cmd+": xml parsing of "+path+" failed.");
+    return;
+  }
+}
+
+inline const std::string& insh_style_load_file_help() {
+    static const std::string s_help("\
+style_load_file: style_load_file [-doc_res,-res,-doc] path\n\
+  Load a XML style file.\n\
+  If no directory is given in path, the -doc_res option permits to search a file first\n\
+  in the document directory declared to the app, and then in the app (internal) resource directory.\n\
+  -res for the resource directory only, -doc for the document directory only.\n\
+  See also:\n\
+    app_dir\n\
+");
+  return s_help;
+}
+
+}
+
+#include "../png"
+
+namespace exlib {
+
+inline void insh_png_diff(inlib::ishell& a_insh,const std::vector<std::string>& a_args) {
+  static const std::string s_cmd("png_diff");
+  inlib::args _args(a_args);
+
+  bool verbose = _args.is_arg("-verbose");
+
+  std::vector<std::string> fnhs;
+  _args.not_hyphens(fnhs);
+  if(fnhs.size()!=2) {
+    a_insh.warn(s_cmd+": give two png files to compare.");
+    return;
+  }
+
+  if(!exlib::png::is(fnhs[0])) {
+    a_insh.warn(s_cmd+": file "+inlib::sout(fnhs[0])+" is not a png file.");
+    return;
+  }
+
+  if(!exlib::png::is(fnhs[1])) {
+    a_insh.warn(s_cmd+": file "+inlib::sout(fnhs[1])+" is not a png file.");
+    return;
+  }
+
+  unsigned int w0,h0,bpp0;
+  unsigned char* b0 = exlib::png::read(a_insh.out(),fnhs[0],w0,h0,bpp0);
+  if(!b0) {
+    a_insh.warn(s_cmd+": can't read file "+inlib::sout(fnhs[0])+".");
+    return;
+  }
+
+  unsigned int w1,h1,bpp1;
+  unsigned char* b1 = exlib::png::read(a_insh.out(),fnhs[1],w1,h1,bpp1);
+  if(!b1) {
+    a_insh.warn(s_cmd+": can't read file "+inlib::sout(fnhs[1])+".");
+    delete [] b0;
+    return;
+  }
+
+  if(w1!=w0) {
+    std::string swarn = s_cmd;
+    swarn += ": not same width. ";
+    inlib::numas(w0,swarn);
+    swarn += " != ";
+    inlib::numas(w1,swarn);
+    swarn += " .";
+    a_insh.warn(swarn);
+    delete [] b0;
+    delete [] b1;
+    return;
+  }
+  if(h1!=h0) {
+    std::string swarn = s_cmd;
+    swarn += ": not same height. ";
+    inlib::numas(h0,swarn);
+    swarn += " != ";
+    inlib::numas(h1,swarn);
+    swarn += " .";
+    a_insh.warn(swarn);
+    delete [] b0;
+    delete [] b1;
+    return;
+  }
+  if(bpp1!=bpp0) {
+    std::string swarn = s_cmd;
+    swarn += ": not same bpp. ";
+    inlib::numas(bpp0,swarn);
+    swarn += " != ";
+    inlib::numas(bpp1,swarn);
+    swarn += " .";
+    a_insh.warn(swarn);
+    delete [] b0;
+    delete [] b1;
+    return;
+  }
+
+  unsigned int sz0 = w0*h0*bpp0;
+  if(!sz0) {
+    if(verbose) a_insh.out() << "empty image." << std::endl;
+    delete [] b0;
+    delete [] b1;
+    return;
+  }
+
+  unsigned char* bo = new unsigned char[sz0];
+
+  unsigned int diff_found = 0;
+
+  unsigned char* p0 = b0;
+  unsigned char* p1 = b1;
+  unsigned char* po = bo;
+  for(size_t i0=0;i0<sz0;i0++,p0++,p1++,po++) {
+    if((*p0)==(*p1)) *po = 0xff;
+    else {
+      diff_found++;
+      *po = 0x00;
+      if(verbose) {
+	a_insh.out() << "png_diff : diff at index " << i0 << " (sz " << sz0 << ") : "
+	             << (unsigned int)(*p0) << " != " << (unsigned int)(*p1) << " ." << std::endl;	
+      }
+    }
+  }
+  if(diff_found) {
+    a_insh.out() << "png_diff : diff found : " << diff_found << " on " << sz0 << " pixels." << std::endl;
+
+    std::string out_file;
+    _args.find("-out",out_file,"diff.png");
+    
+    if(!exlib::png::write(a_insh.out(),out_file,bo,w0,h0,bpp0)) {
+      a_insh.warn(s_cmd+": can't write "+out_file+".");
+      delete [] bo;
+      delete [] b0;
+      delete [] b1;
+      return;
+    }
+  }
+
+  delete [] bo;
+  delete [] b0;
+  delete [] b1;
+
+  //return diff_found?EXIT_FAILURE:EXIT_SUCCESS;
+}
+
+inline const std::string& insh_png_diff_help() {
+  static const std::string s_help("\
+png_diff: png_diff [-out] file1 file2\n\
+  Compare png images in file1, file2.\n\
+  If differences are found a diff.png is created with them.\n\
+  -out=string to change the name of the output file.\n\
+");
+  return s_help;
+}
+
+}
+
+#include <inlib/insh/ishell_args_cmd>
+#include <inlib/insh/ishell_args_gui_viewer_cmd>
+
+#define EXLIB_INSH_ADDS_BASE(a__insh,a__holder)\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__holder,web_get_file,exlib::insh_web_get_file,exlib::insh_web_get_file_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,png_diff,exlib::insh_png_diff,exlib::insh_png_diff_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__holder,style_load_file,exlib::insh_style_load_file,exlib::insh_style_load_file_help())
+
+#ifdef EMSCRIPTEN
+
+#define EXLIB_INSH_WEB_PNG_STYLE_ADDS(a__insh,a__holder)\
+  EXLIB_INSH_ADDS_BASE(a__insh,a__holder)\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,ems,exlib::insh_ems,exlib::insh_ems_help())
+
+#else
+
+#define EXLIB_INSH_WEB_PNG_STYLE_ADDS(a__insh,a__holder)\
+  EXLIB_INSH_ADDS_BASE(a__insh,a__holder)
+
+#endif
+
+//exlib_build_use exlib inlib expat
+//exlib_build_use png zlib
+
+#endif

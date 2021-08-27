@@ -1,0 +1,533 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_insh_g4vis
+#define exlib_insh_g4vis
+
+#include <inlib/insh/ishell>
+
+#include <inlib/sg/view_evd>
+#include <inlib/sg/view_sg_client>
+
+#include "../geant4/utils"
+#include "../geant4/visited_volume"
+#include "../geant4/geom_visitor"
+
+namespace exlib {
+
+inline void insh_g4_vis_geometry(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("g4_vis_geometry");
+  inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(a_gv);
+  if(!_evd) return;
+  
+  //////////////////////////////////////
+  //////////////////////////////////////
+  //////////////////////////////////////
+  std::string serr;
+  G4VPhysicalVolume* top = geant4::get_top_physical_volume(serr);
+  if(!top) {
+    a_insh.warn(s_cmd+": "+serr);
+    return;
+  }
+
+  //////////////////////////////////////
+  //// args: ///////////////////////////
+  //////////////////////////////////////
+  inlib::args _args(a_args);
+  bool solid;
+  INLIB_ISHELL_IS_ARG(solid)
+  bool full_wire_frame;
+  INLIB_ISHELL_IS_ARG(full_wire_frame)
+  // default is then:
+  //   solid false
+  //   reduced_wire_frame true.
+  
+  unsigned int max_depth = 9999;
+  INLIB_ISHELL_GET_ARG_UINT(max_depth)
+  inlib::colorf color = inlib::colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+  
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  //////////////////////////////////////
+  //////////////////////////////////////
+  //////////////////////////////////////
+  
+  inlib::sg::separator* sep = new inlib::sg::separator;
+
+ {inlib::sg::draw_style* ds = new inlib::sg::draw_style;
+  ds->style = solid?inlib::sg::draw_lines:inlib::sg::draw_filled;
+  ds->line_width = 1;
+  sep->add(ds);}
+
+  //NOTE : the overall procedure will create G4Polyhedron
+  //       for each visible G4VSolid within the G4 hierachy
+  //       and they are going to be replicated within
+  //       the sg. All this is very memory
+  //       consuming...
+
+  geant4::visited_volume vv(a_insh.out(),*sep);
+  vv.m_solid = solid;
+  vv.m_reduced_wire_frame = full_wire_frame?false:true;
+  vv.m_color = color;
+
+  inlib::mat4d identity;
+  identity.set_identity();
+
+  geant4::geom_visitor gv(a_insh.out());
+  gv.m_max_depth = max_depth;
+  gv.visit(*top,identity,vv,0);
+
+  //other passes for transparent volumes.
+ {inlib_vforcit(float,vv.m_as,it) {
+    vv.m_do_transparents = *it;
+    gv.visit(*top,identity,vv,0);
+  }}
+
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+}
+
+#include "../geant4/geo"
+#include <inlib/insh/args_to_style>
+
+namespace exlib {
+
+inline void insh_g4_scene_add_geo_volume(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("g4_scene_add_geo_volume");
+  inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  //////////////////////////////////////
+  //////////////////////////////////////
+  //////////////////////////////////////
+  std::string serr;
+  G4VPhysicalVolume* world = geant4::get_top_physical_volume(serr);
+  if(!world) {
+    a_insh.warn(s_cmd+": "+serr);
+    return;
+  }
+
+  //////////////////////////////////////
+  //// args: ///////////////////////////
+  //////////////////////////////////////
+  inlib::args _args(a_args);
+
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    //a_insh.warn(s_cmd+": no volume name given.");
+    //return;
+    fnh = world->GetName();
+  }
+  _args.remove(fnh);
+
+  INLIB_ISHELL_SET_SG_STYLE
+
+  unsigned int min_depth = 0;
+  INLIB_ISHELL_GET_ARG_UINT(min_depth)
+  unsigned int max_depth = 1;
+  INLIB_ISHELL_GET_ARG_UINT(max_depth)
+  unsigned int solid_depth = 1;
+  INLIB_ISHELL_GET_ARG_UINT(solid_depth)
+  int volume_depth = -1;
+  INLIB_ISHELL_GET_ARG_INT(volume_depth)
+
+  unsigned int max_time = 0;  //seconds
+  INLIB_ISHELL_GET_ARG_UINT(max_time)
+  unsigned int max_shapes = 0;
+  INLIB_ISHELL_GET_ARG_UINT(max_shapes)
+  
+  std::string satb;
+  INLIB_ISHELL_GET_ARG_STRING(atb)
+  inlib::sg::atb_type _atb = inlib::sg::atb_single;
+       if(satb=="single")      _atb = inlib::sg::atb_single;
+  else if(satb=="by_depth")    _atb = inlib::sg::atb_by_depth;
+  else if(satb=="by_material") _atb = inlib::sg::atb_by_material;
+  else if(satb.size()) {
+    a_insh.warn(s_cmd+": bad -atb value.");
+    return;
+  }
+  
+  std::string scolormap;
+  INLIB_ISHELL_GET_ARG_STRING(colormap)
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+  
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+  geant4::geo* geo = new geant4::geo(*world);
+  geo->volume = fnh;
+
+  geo->volume_depth = volume_depth;
+  geo->min_depth = min_depth;
+  geo->max_depth = max_depth;
+  
+  if(_style.modeling.value().empty()) {
+    geo->solid_depth = solid_depth;
+  } else if(_style.modeling==inlib::sg::modeling_solid()) {
+    geo->solid_depth = 0;
+  } else if(_style.modeling==inlib::sg::modeling_wire_frame()) {
+    geo->solid_depth = 10;
+  } else {
+    delete geo;
+    a_insh.warn(s_cmd+": unknown modeling style "+_style.modeling.value()+".");
+    return;
+  }
+
+  if((satb=="single")||satb.empty()) {
+    geo->atb = inlib::sg::atb_single;
+    geo->color = _style.color.value();
+
+  } else if(satb=="by_material") {
+    geo->atb = inlib::sg::atb_by_material;
+    std::string serr;
+    if(!geant4::set_default_colors(serr)) {
+      delete geo;
+      a_insh.warn(s_cmd+": ser_default_colors: "+serr);
+      return;
+    }
+    geo->set_cmap(inlib::sg::style_ROOT_colormap());
+
+  } else if(satb=="by_depth") {
+    inlib::sg::style_colormap cmap;
+   {std::vector<std::string> vs;
+    inlib::words(scolormap,":",false,vs);
+    inlib_vforcit(std::string,vs,it) {
+      inlib::colorf _color;
+      if(!inlib::sg::find_color(a_gv.styles().cmaps(),*it,_color)) {
+        delete geo;
+        a_insh.warn(s_cmd+": "+inlib::sout(*it)+" is not a color.");
+        return;
+      }
+      cmap.add(inlib::sg::style_color(*it,_color));
+    }}
+    geo->atb = inlib::sg::atb_by_depth;
+    geo->set_cmap(cmap);
+  } else {
+    delete geo;
+    a_insh.warn(s_cmd+": unknow atb_type "+inlib::sout(satb)+".");
+    return;
+  }
+
+  geo->max_time = max_time;
+  geo->max_shapes = max_shapes;
+
+  //force an update now:
+  geo->update_sg(a_insh.out());
+  geo->reset_touched(); //avoid another update_sg at first render().
+
+  std::string swarn;
+  if(geo->stopped_by_max_time())   {
+    swarn = "stopped by max time.";
+  } else if(geo->stopped_by_max_shapes()) {
+    swarn = "stopped by max shapes.";
+  } else if(geo->volume_not_found()) {
+    swarn = "volume not found.";
+  }
+
+  if(swarn.size()) {
+    delete geo;
+    a_insh.warn(s_cmd+": "+swarn);
+    return;
+  }
+  
+  inlib::sg::separator* sep = new inlib::sg::separator;
+  sep->add(new inlib::sg::matrix()); //for manip.
+  sep->add(geo);
+
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+}
+
+#include <G4RunManager.hh>
+#include <G4VTrajectoryPoint.hh>
+
+#include "../sg/text_freetype_marker"
+
+#include <inlib/sg/separator>
+#include <inlib/sg/draw_style>
+#include <inlib/sg/view_sg_client>
+#include <inlib/sg/text_dumper>
+#include <inlib/sg/hep_arrow>
+#include <inlib/sg/sphere>
+
+namespace exlib {
+
+inline void insh_g4_vis_primary_vertices(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("g4_vis_primary_vertices");
+  inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(a_gv);
+  if(!_evd) return;
+  
+  //////////////////////////////////////
+  //////////////////////////////////////
+  //////////////////////////////////////
+  G4RunManager* rmgr = G4RunManager::GetRunManager();
+  if(!rmgr) {
+    a_insh.warn(s_cmd+": G4RunManager::GetRunManager() is null.");
+    return;
+  }
+
+  const G4Event* event = rmgr->GetCurrentEvent();
+  if(!event) return;
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  inlib::args _args(a_args);
+
+  INLIB_ISHELL_SET_SG_STYLE
+  
+  float radius = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(radius)
+
+  INLIB_ISHELL_GET_PLACEMENT_DYNAMIC
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  
+  inlib::sg::group* sep = new inlib::sg::separator;
+
+  inlib::sg::rgba* mat = new inlib::sg::rgba();
+  mat->color = _style.color;
+  sep->add(mat);
+
+  G4int nprimv = event->GetNumberOfPrimaryVertex();
+  for(int iprimv=0;iprimv<nprimv;iprimv++) {
+    G4PrimaryVertex* primv = event->GetPrimaryVertex(iprimv);
+    if(primv) {
+      G4double x = primv->GetX0();
+      G4double y = primv->GetY0();
+      G4double z = primv->GetZ0();
+
+      inlib::sg::matrix* mtx = new inlib::sg::matrix;
+      mtx->set_translate(float(x),float(y),float(z));
+      sep->add(mtx);
+
+      inlib::sg::sphere* shape = new inlib::sg::sphere;
+      shape->radius = radius;
+      sep->add(shape);
+
+    }
+  }
+
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+}
+
+#include <inlib/particle_style>
+
+namespace exlib {
+
+inline void insh_g4_vis_trajectories(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("g4_vis_trajectories");
+  inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(a_gv);
+  if(!_evd) return;
+  
+  //////////////////////////////////////
+  //////////////////////////////////////
+  //////////////////////////////////////
+  G4RunManager* rmgr = G4RunManager::GetRunManager();
+  if(!rmgr) {
+    a_insh.warn(s_cmd+": G4RunManager::GetRunManager() is null.");
+    return;
+  }
+
+  const G4Event* event = rmgr->GetCurrentEvent();
+  if(!event) return;
+    
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  inlib::args _args(a_args);
+
+  bool pickable;
+  INLIB_ISHELL_IS_ARG(pickable)
+  bool primaries;
+  INLIB_ISHELL_IS_ARG(primaries)
+
+  INLIB_ISHELL_GET_PLACEMENT_DYNAMIC
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  
+  TrajectoryVector* vec = 0;
+ {G4TrajectoryContainer* tcont = event->GetTrajectoryContainer();
+  if(!tcont) return;
+  vec = tcont->GetVector();
+  if(!vec) return;
+  if(vec->empty()) return;}
+
+  inlib::sg::separator* sep = new inlib::sg::separator;
+
+  inlib::sg::draw_style* ds = new inlib::sg::draw_style;
+  ds->style = inlib::sg::draw_lines;
+  ds->line_width = 1;
+  sep->add(ds);
+
+  inlib::xml::styles::style_t prim_def_sty;
+  inlib::map_sty_t prim_styles;
+  bool prim_found_style = inlib::get_particles_styles(a_gv.styles(),"primary",prim_styles,prim_def_sty);
+
+  inlib::xml::styles::style_t traj_def_sty;
+  inlib::map_sty_t traj_styles;
+  inlib::get_particles_styles(a_gv.styles(),"trajectory",traj_styles,traj_def_sty);
+
+  inlib::sg::atb_vertices* vtcs_all = 0;
+  if(!pickable) { //one node with all segments of all selected trajectories.
+    vtcs_all = new inlib::sg::atb_vertices;
+    vtcs_all->mode = inlib::gl::lines();
+    sep->add(vtcs_all);
+  }
+
+  G4ParticleTable* particleTable = 0;
+  if(pickable) {
+    particleTable = G4ParticleTable::GetParticleTable();
+    if(!particleTable) {
+      a_insh.warn(s_cmd+": no particle table.");
+      return;
+    }
+  }
+
+ {inlib::colorf col;
+  bool show_name;
+  float text_scale;
+  bool at_end;
+  inlib_vforcit(G4VTrajectory*,*vec,it) {
+    G4VTrajectory* obj = *it;
+
+    //obj->GetParticleName()
+    //obj->GetTrackID()
+    //obj->GetParentID()
+    //obj->GetCharge()
+    //obj->GetPDGEncoding()
+    //obj->GetInitialMomentum().x();
+    //obj->GetInitialMomentum().y();
+    //obj->GetInitialMomentum().z();
+
+    int pointn = obj->GetPointEntries();
+    if(pointn<=0) continue;
+
+    if(primaries) {
+      if(obj->GetParentID()) continue; //skip not primaries.
+    }
+
+    if(!obj->GetParentID() && prim_found_style) {
+      inlib::find_particle_style(a_gv.styles(),prim_styles,prim_def_sty,
+                                 obj->GetParticleName(),
+                                 col,show_name,text_scale,at_end);
+    } else {
+      inlib::find_particle_style(a_gv.styles(),traj_styles,traj_def_sty,
+                                 obj->GetParticleName(),
+                                 col,show_name,text_scale,at_end);
+    }
+
+    if(!pickable) {
+      float ox,oy,oz;
+     {G4VTrajectoryPoint* tp = obj->GetPoint(0);
+      const G4ThreeVector& pos = tp->GetPosition();
+      ox = float(pos.x());
+      oy = float(pos.y());
+      oz = float(pos.z());}
+      float x,y,z;
+      for (int i = 1; i < pointn ; i++) {
+        G4VTrajectoryPoint* tp = obj->GetPoint(i);
+        const G4ThreeVector& pos = tp->GetPosition();
+        x = float(pos.x());
+        y = float(pos.y());
+        z = float(pos.z());
+
+        vtcs_all->add(ox,oy,oz);
+        vtcs_all->add_color(col);
+        vtcs_all->add(x,y,z);
+        vtcs_all->add_color(col);
+
+        ox = x;
+        oy = y;
+        oz = z;
+      }
+
+    } else {
+
+      //if(!show_name)
+      {
+        std::string sobj;
+        inlib::p2s(obj,sobj);
+        inlib::sg::infos* infos = new inlib::sg::infos;
+        infos->strings.add(sobj);
+        infos->strings.add("no_tag");
+        sep->add(infos);
+
+        std::vector<std::string> vinfos;
+        vinfos.push_back(obj->GetParticleName());
+
+        double px = obj->GetInitialMomentum().x();
+        double py = obj->GetInitialMomentum().y();
+        double pz = obj->GetInitialMomentum().z();
+
+       {std::string sval("init momentum (MeV) : ");
+        inlib::numas(px,sval);
+        sval += " ";
+        inlib::numas(py,sval);
+        sval += " ";
+        inlib::numas(pz,sval);
+        vinfos.push_back(sval);}
+
+       {std::string sval("energy (MeV) : ");
+        G4ParticleDefinition* pdef = particleTable->FindParticle(obj->GetParticleName());
+        G4double mass = pdef->GetPDGMass();
+        G4double energy = ::sqrt(px*px+py*py+pz*pz+mass*mass); //MeV
+        inlib::numas(energy,sval);
+        vinfos.push_back(sval);}
+
+        a_gv.add_dumper(sobj,new inlib::sg::text_dumper(a_gv,vinfos));
+      }
+
+      inlib::sg::atb_vertices* vtcs = new inlib::sg::atb_vertices;
+      vtcs->mode = inlib::gl::line_strip();
+      sep->add(vtcs);
+
+      for (int i = 0; i < pointn ; i++) {
+        G4VTrajectoryPoint* tp = obj->GetPoint(i); //?
+        const G4ThreeVector& pos = tp->GetPosition();
+        vtcs->add((float)pos.x(),(float)pos.y(),(float)pos.z());
+        vtcs->add_color(col);
+      }
+    }
+
+    if(show_name) {
+      exlib::sg::text_freetype_marker ttf_marker; //used as a factory in add_marker_text.
+    //exlib::sg::text_freetype_marker* ttf_marker = new exlib::sg::text_freetype_marker;
+    //sep->add(new inlib::sg::holder<exlib::sg::text_freetype_marker>(ttf_marker));
+    
+      if(at_end) {
+        const G4ThreeVector& pe = obj->GetPoint(pointn-1)->GetPosition();
+        inlib::sg::add_marker_text(*sep,(float)pe.x(),(float)pe.y(),(float)pe.z(),
+                                   col,text_scale,obj->GetParticleName(),ttf_marker);
+      } else {
+        const G4ThreeVector& pb = obj->GetPoint(0)->GetPosition();
+        inlib::sg::add_marker_text(*sep,(float)pb.x(),(float)pb.y(),(float)pb.z(),
+                                   col,text_scale,obj->GetParticleName(),ttf_marker);
+      }
+    }
+
+  }}
+
+  INLIB_ISHELL_SEP_PLACEMENT
+
+}
+
+}
+
+//exlib_build_use geant4 inlib freetype
+
+#endif
+

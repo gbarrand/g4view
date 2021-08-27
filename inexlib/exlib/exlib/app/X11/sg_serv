@@ -1,0 +1,56 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_app_X11_sg_serv
+#define exlib_app_X11_sg_serv
+
+#include <inlib/net/sg_serv_main>
+
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>      //XA_INTEGER
+
+#define EXLIB_XEVENT_CONNECT    1
+#define EXLIB_XEVENT_DISCONNECT 2
+
+namespace exlib {
+
+inline void sg_serv_connect_func(inlib::net::sg_serv_args& a_args){
+  Display* _display = (Display*)a_args.m_data_1;
+  Window _win = (Window)a_args.m_data_2;
+  XEvent event;
+  event.type = ClientMessage;
+  event.xclient.display = _display;
+  event.xclient.window = _win;
+  event.xclient.message_type = XA_INTEGER;
+  event.xclient.format = 8;    /* put 8 because bug with 32 on VMCMS */
+  event.xclient.data.l[0] = EXLIB_XEVENT_CONNECT;
+  event.xclient.data.l[1] = 0;
+  event.xclient.data.l[2] = 0;
+  event.xclient.data.l[3] = 0;
+  event.xclient.data.l[4] = 0;
+  Status stat = ::XSendEvent(_display,_win,False,0L,&event);
+  ::XFlush(_display);
+}
+inline void sg_serv_disconnect_func(inlib::net::sg_serv_args& a_args){
+  Display* _display = (Display*)a_args.m_data_1;
+  Window _win = (Window)a_args.m_data_2;
+  XEvent event;
+  event.type = ClientMessage;
+  event.xclient.display = _display;
+  event.xclient.window = _win;
+  event.xclient.message_type = XA_INTEGER;
+  event.xclient.format = 8;    /* put 8 because bug with 32 on VMCMS */
+  event.xclient.data.l[0] = EXLIB_XEVENT_DISCONNECT;
+  event.xclient.data.l[1] = 0;
+  event.xclient.data.l[2] = 0;
+  event.xclient.data.l[3] = 0;
+  event.xclient.data.l[4] = 0;
+  Status stat = ::XSendEvent(_display,_win,False,0L,&event);
+  ::XFlush(_display);
+}
+
+}
+
+//exlib_build_use inlib X11
+
+#endif

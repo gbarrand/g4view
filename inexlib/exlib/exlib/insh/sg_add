@@ -1,0 +1,101 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_insh_sg_add
+#define exlib_insh_sg_add
+
+#include "../sg/text_freetype"
+
+#include <inlib/insh/ishell>
+
+#include <inlib/sg/view_evd>
+#include <inlib/sg/view_sg_client>
+#include <inlib/sg/args2fields>
+#include <inlib/sg/hep_strings>
+
+namespace exlib {
+
+inline void insh_scene_add_text_freetype(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_text_freetype");
+  inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  inlib::args _args(a_args);
+
+  bool do_color = _args.is_arg("-color");
+  inlib::colorf color = inlib::colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+
+  std::string suniline;
+  INLIB_ISHELL_GET_ARG_STRING(uniline)
+  
+  INLIB_ISHELL_GET_ARGS_MATRIX
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  exlib::sg::text_freetype* text = new exlib::sg::text_freetype;
+ {std::string serr;
+  if(!inlib::sg::args2fields(_args,*text,serr)) {
+    delete text;
+    a_insh.warn(s_cmd+": "+serr);
+    return;
+  }}
+  if(suniline.size()) {
+    text->font = inlib::sg::font_stixgeneral_otf();
+    std::vector<exlib::sg::text_freetype::unichar> line;
+    if(!inlib::sg::cvt2stix("nu",line)) {}
+    text->unitext.add(line);
+  }
+  
+  if(do_color||do_mtx) {
+    inlib::sg::separator* sep = new inlib::sg::separator;
+
+    INLIB_ISHELL_SEP_ADD_MATRIX
+
+    if(do_color) {
+      inlib::sg::rgba* mat = new inlib::sg::rgba();
+      mat->color = color;
+      sep->add(mat);
+    }
+    
+    sep->add(text);
+
+    INLIB_ISHELL_ARGS_UNEXPECTED_DELETE(sep)
+    INLIB_ISHELL_SEP_PLACEMENT
+  } else {
+    INLIB_ISHELL_ARGS_UNEXPECTED_DELETE(text)
+    inlib::sg::node* sep = text;
+    INLIB_ISHELL_SEP_PLACEMENT
+  }
+}
+
+inline const std::string& insh_scene_add_text_freetype_help() {
+  static const std::string s_help("\
+scene_add_text_freetype: scene_add_text_freetype [options]\n\
+  Add a exlib::sg::text_freetype in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  -color=string color of the cone (default lightgrey).\n\
+  Example:\n\
+    scene_add_text_freetype -text='hello world!\n\
+");
+  return s_help;
+}
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+#include <inlib/insh/ishell_args_gui_viewer_cmd>
+
+#define EXLIB_INSH_SG_ADD_ADDS(a__insh,a__gv)\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_text_freetype,exlib::insh_scene_add_text_freetype,exlib::insh_scene_add_text_freetype_help())
+
+//exlib_build_use inlib freetype
+
+#endif

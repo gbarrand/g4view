@@ -1,0 +1,231 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_app_wasm_main
+#define exlib_app_wasm_main
+
+#include "../../wasm/render"
+
+#include "../../sg/text_freetype"
+
+//#include "../../zlib"
+
+#include <inlib/sg/selection>
+#include <inlib/sg/cursor_shape>
+#include <inlib/event_timer>
+#include <inlib/dirs>
+#include <inlib/carray>
+
+#include <inlib/file_std>
+#include <inlib/insh/insh>
+
+EM_JS(void, js_set_cursor_auto, (), {set_gl_canvas_cursor('auto');});
+EM_JS(void, js_set_cursor_crosshair, (), {set_gl_canvas_cursor('crosshair');});
+
+EM_JS(void, js_start_anim_timer, (unsigned int a_interval), {
+  if(g_anim_timer_id==null) g_anim_timer_id = setInterval(anim_proc,a_interval);
+});
+EM_JS(void, js_clear_anim_timer, (), {
+  if(g_anim_timer_id!=null) {clearInterval(g_anim_timer_id);g_anim_timer_id = null;}
+});
+
+EM_JS(void, js_start_event_anim_timer, (unsigned int a_interval), {
+  if(g_event_anim_timer_id==null) g_event_anim_timer_id = setInterval(anim_proc,a_interval);
+});
+EM_JS(void, js_clear_event_anim_timer, (), {
+  if(g_event_anim_timer_id!=null) {clearInterval(g_event_anim_timer_id);g_event_anim_timer_id = null;}
+});
+
+//EM_JS(void, js_show_hide_gui_area, (), {
+//  toggle_gui_visible_height();
+//  gl_canvas_resize();
+//  Module.app_set_size(canvas.width, canvas.height);
+//});
+
+#include "../../insh/wasm"
+
+namespace app_wasm {
+
+class pv_holder {
+public:
+  pv_holder(std::ostream& a_out)
+  :m_ttf()
+  ,m_selection()
+  ,m_mgr_gra(a_out)
+  {}
+  virtual ~pv_holder(){}
+protected:
+  pv_holder(const pv_holder& a_from)
+  :m_ttf(a_from.m_ttf)
+  ,m_selection(a_from.m_selection)
+  ,m_mgr_gra(a_from.m_mgr_gra.out())
+  {}
+  pv_holder& operator=(const pv_holder& a_from) {
+    m_ttf = a_from.m_ttf;
+    m_selection = a_from.m_selection;
+    //m_mgr_gra = a_from.m_mgr_gra;
+    return *this;
+  }
+public:
+  inlib::sg::render_manager& gra_mgr() {return m_mgr_gra;}
+  inlib::sg::base_freetype& ttf() {return m_ttf;}
+  inlib::sg::selection& selection() {return m_selection;}
+protected:
+  exlib::sg::text_freetype m_ttf;
+  inlib::sg::selection m_selection;
+  exlib::wasm::manager m_mgr_gra;
+};
+
+//IMPORTANT : pv_holder must come first.
+
+template <class APP_MAIN>
+class main : protected pv_holder, public APP_MAIN {
+  typedef pv_holder parent_pv_holder;
+  typedef APP_MAIN parent;
+public:
+  virtual void render() {
+    //::printf("debug : main::render : 000 %d %d\n",m_ww,m_wh);
+    parent::check_gui_cursor();
+    if(!parent::m_ww||!parent::m_wh) return;
+    const inlib::colorf& bk = parent::m_clear_color;
+    if(m_mgr_gra.begin_render(0,0,parent::m_ww,parent::m_wh,bk.r(),bk.g(),bk.b(),bk.a())) {
+      exlib::wasm::render _action(m_mgr_gra,parent::m_out,parent::m_ww,parent::m_wh);
+      _action.state().m_use_gsto = parent::m_use_gsto;
+      parent::m_sg.render(_action);
+      m_mgr_gra.end_render();
+    }
+  }
+  virtual bool windowing(std::string& a_value) const {a_value = "web";return true;}
+public: //exlib::sg::viewer
+  virtual bool set_cursor_shape(inlib::sg::cursor_shape a_shape) {
+    if(!parent::set_cursor_shape(a_shape)) return false;
+    if(a_shape==inlib::sg::cursor_default) {
+      //EM_ASM({
+      //  set_gl_canvas_cursor('auto');
+      //});
+      js_set_cursor_auto();
+      return true;
+    } else if(a_shape==inlib::sg::cursor_target) {
+      //std::string _s("crosshair");
+      //EM_ASM({
+      //  let s = UTF8ToString($0);
+      //  set_gl_canvas_cursor(s);
+      //  console.log('debug : 001 : cursor '+s);
+      //},_s.c_str());
+      js_set_cursor_crosshair();
+      return true;
+    } else {
+      return false;
+    }
+  }
+  virtual void enable_anim() {
+    //::printf("debug : enable_anim\n");
+    parent::enable_anim();
+    js_start_anim_timer(parent::m_params.m_anim_interval);
+  }
+  virtual void disable_anim() {
+    parent::disable_anim();
+    js_clear_anim_timer();
+  }
+  virtual void set_event_anim(inlib::event_timer* a_timer) {
+    parent::set_event_anim(a_timer);
+    js_start_event_anim_timer(parent::m_params.m_anim_interval);
+  }
+  virtual void stop_event_anim() {
+    parent::stop_event_anim();
+    js_clear_event_anim_timer();
+  }
+public:
+  virtual void win_render() {
+    //::printf("debug : main::win_render : begin : camenu %d\n",parent::is_camera_menu_hidden());
+    //inlib::atime begin_render = inlib::atime::now();
+    render();
+    parent::after_render();
+    //std::string stime_render = inlib::atime2s(inlib::atime::elapsed(begin_render));
+    //::printf("debug : main::win_render : end : %s\n",stime_render.c_str());
+  }
+
+  virtual unsigned char* get_pixels(unsigned int a_w,unsigned int a_h,bool a_rgbas) {
+    EM_ASM({
+      let data = get_rgbas($0,$1);
+      const num_bytes = data.length * data.BYTES_PER_ELEMENT;
+      const data_ptr = Module._malloc(num_bytes);
+      const data_on_heap = new Int8Array(Module.HEAP8.buffer, data_ptr, num_bytes);
+      data_on_heap.set(data);
+      Module.app_upload_rgbas(data_on_heap.byteOffset,data.length);
+      Module._free(data_ptr);
+    },a_w,a_h);
+
+    std::string path = parent::tmp_dir()+"/g_gl_rgbas";
+    char* buffer;
+    long length;
+    if(!inlib::file::read_bytes(path,buffer,length)) return 0;
+#ifdef INLIB_MEM
+    inlib::mem::decrement(inlib::s_new().c_str());
+#endif
+    if(!inlib::file::std_remove(path)) {}
+    if(a_rgbas) {
+      return (unsigned char*)buffer;
+    } else {
+      unsigned char* rgbs = inlib::_4s_to_3s<unsigned char,unsigned int>((unsigned char*)buffer,a_w,a_h);
+      delete [] buffer;
+      return rgbs;
+    }
+  }
+/*
+protected:
+  static inlib::sg::return_action action_show_hide_gui_area(inlib::sg::gui_viewer& a_gv) {
+    js_show_hide_gui_area();
+    return inlib::sg::return_to_render;
+  }
+public:
+  virtual void create_control_items(float a_wcw,float a_wch,
+                                    float a_wb,float a_hb,float a_roffset) {
+    parent::create_control_items(a_wcw,a_wch,a_wb,a_hb,a_roffset);
+    unsigned int row = parent::params_button_visible.value()?2:1;
+    inlib::sg::create_main_button(parent::m_out,parent::m_res_dir,parent::m_params,parent::m_image_readers,parent::m_ttf,
+                                  parent::m_full_sep,a_wcw,a_wch,a_hb,a_hb,0,
+                                  0,row,
+                                  "show/hide","","beos_menu.jpg",
+                                  new inlib::sg::gv_cbk(*this,action_show_hide_gui_area));
+  }
+  */
+public:
+  main(std::ostream& a_out
+       ,const std::string& a_app_name
+       ,const std::string& a_doc_dir
+       ,const std::string& a_res_dir
+       ,const std::string& a_out_dir
+       ,const std::string& a_tmp_dir
+       ,bool a_verbose)
+  :parent_pv_holder(a_out)
+  ,parent(a_out,
+          parent_pv_holder::gra_mgr(),parent_pv_holder::ttf(),parent_pv_holder::selection(),
+          a_doc_dir,a_res_dir,a_out_dir,a_tmp_dir,a_verbose,0)
+  {
+    EXLIB_INSH_WASM_ADDS(parent::m_main_insh,*this)
+    //parent::m_params.m_gsto_mode = inlib::sg::s_gsto_gl_vbo();
+    //this->set_use_gsto(true);
+    parent::push_home(); //NOTE : it can't call a potential push_home() done on an inheriting class.
+  }
+  virtual ~main(){}
+protected:
+  main(const main& a_from)
+  :parent_pv_holder(a_from)
+  ,parent(a_from)
+  {}
+  main& operator=(const main& a_from){
+    parent::operator=(a_from);
+    return *this;
+  }
+public:
+  //void set_position(int a_x,int a_y) {m_win_x = a_x;m_win_y = a_y;}
+  //void position(int& a_x,int& a_y) const {a_x = m_win_x;a_y = m_win_y;}
+  //exlib::wasm::manager& webgl_mgr() {return m_mgr_gra;}
+};
+
+}
+
+//exlib_build_use inlib inlib_glutess freetype png jpeg zlib expat
+
+#endif

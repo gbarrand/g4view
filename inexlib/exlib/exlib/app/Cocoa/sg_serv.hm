@@ -1,0 +1,24 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_app_Cocoa_sg_serv_hm
+#define exlib_app_Cocoa_sg_serv_hm
+
+#include <inlib/net/sg_serv_main>
+
+#include "../../Cocoa/post_event.hm"
+
+inline void sg_serv_connect_func(inlib::net::sg_serv_args& a_args){
+  //NSLog(@"debug : sg_serv_connect_func : send EXLIB_NSEVENT_CONNECT ...");
+  NSWindow* window = (NSWindow*)a_args.m_data_1;
+  exlib::post_event(window,EXLIB_NSEVENT_CONNECT);
+}
+inline void sg_serv_disconnect_func(inlib::net::sg_serv_args& a_args){
+  //NSLog(@"debug : sg_serv_disconnect_func : send EXLIB_NSEVENT_DISCONNECT ...");
+  NSWindow* window = (NSWindow*)a_args.m_data_1;
+  exlib::post_event(window,EXLIB_NSEVENT_DISCONNECT);
+}
+
+//exlib_build_use inlib
+
+#endif

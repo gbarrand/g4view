@@ -1,0 +1,122 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_app_iOS_main
+#define exlib_app_iOS_main
+
+// this file needs the cpp macros :
+// - EXLIB_APP : for exa #define EXLIB_APP ioda
+// It needs also to have included before it a :
+//    #include "../<app>/main"
+
+#include "view_controller_delegate.hm"
+
+#include "../../Cocoa/NSLog_streambuf.hm"
+
+#include "../../png"
+#include "../../jpeg"
+
+#include "../../sg/GL_VIEWER_COMMON"
+#include "../../sg/pv_holder"
+
+namespace app_iOS {
+
+// we can't template EXLIB_APP, since Objective-C does not have template.
+
+class main : protected exlib::sg::pv_holder, public EXLIB_APP::main {
+  typedef EXLIB_APP::main parent;
+public:
+  EXLIB_GL_VIEWER_METHODS
+  virtual bool windowing(std::string& a_value) const {a_value = "UIKit";return true;}
+public:
+  virtual void win_render() {[m_GLView window_render];}
+  virtual bool has_mail_panel() {return true;}
+  virtual bool mail_panel(const std::string& /*a_to*/,
+                          const std::string& a_subject,
+                          const std::string& a_msg,
+                          const std::string& a_path,
+                          const std::string& a_mime){
+    if ([MFMailComposeViewController canSendMail]) {
+
+
+      NSString* nsubj = [NSString stringWithUTF8String:a_subject.c_str()];
+      NSString* nmsg = [NSString stringWithUTF8String:a_msg.c_str()];
+
+      view_controller_delegate* _view_controller_delegate = [m_GLView get_view_controller_delegate];
+
+      MFMailComposeViewController* mcvc  = [[MFMailComposeViewController alloc] init];
+      mcvc.mailComposeDelegate = _view_controller_delegate;
+
+      [mcvc setModalPresentationStyle:UIModalPresentationFormSheet];
+      [mcvc setSubject:nsubj];
+      [mcvc setMessageBody:nmsg isHTML:NO];
+
+      if(a_path.size()) {
+        NSString* npath = [NSString stringWithUTF8String:a_path.c_str()];
+        NSData* ndata = [NSData dataWithContentsOfFile:npath];
+        NSString* nmime = [NSString stringWithUTF8String:a_mime.c_str()];
+        std::string file_name = inlib::base_name(a_path); //receiver file name.
+        NSString* ntofile = [NSString stringWithUTF8String:file_name.c_str()];
+        [mcvc addAttachmentData:ndata mimeType:nmime fileName:ntofile];
+      }
+
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 60000  //__IPHONE_OS_VERSION_6_0
+      [_view_controller_delegate presentModalViewController:mcvc animated:YES];
+#else
+      [_view_controller_delegate presentViewController:mcvc animated:YES completion:nil];
+#endif
+
+      [mcvc release];
+
+      return true;
+
+    }else {
+      UIAlertView *alert =
+        [[UIAlertView alloc]
+         initWithTitle:@"Status:"
+         message:@"Your phone is not currently configured to send mail."
+         delegate:nil
+         cancelButtonTitle:@"ok"
+         otherButtonTitles:nil];
+
+      [alert show];
+      [alert release];
+      return false;
+
+   }
+  }
+public:
+  main(std::ostream& a_out,
+       const std::string& a_doc_dir,
+       const std::string& a_res_dir,
+       const std::string& a_out_dir,
+       const std::string& a_tmp_dir,
+       bool a_verbose)
+  :exlib::sg::pv_holder(a_out)
+  ,parent(a_out,
+          exlib::sg::pv_holder::m_mgr_gra,exlib::sg::pv_holder::m_ttf,exlib::sg::pv_holder::m_selection,
+          a_doc_dir,a_res_dir,a_out_dir,a_tmp_dir,
+          a_verbose,200000000) //have a mem limit (for reading big jpeg).
+  ,m_GLView(0)
+  {
+    push_home();
+  }
+  virtual ~main(){}
+public:
+  void set_GLView(GLView* a_GLView) {m_GLView = a_GLView;}
+  //GLView* get_GLView() const {return m_GLView;}
+protected:
+  GLView* m_GLView;
+};
+
+}
+
+// skip because of EXLIB_APP
+//exlib_build_use skip
+
+//exlib_build_use inlib expat
+//exlib_build_use exlib png jpeg zlib inlib_glutess freetype
+//exlib_build_use GL
+
+#endif
+

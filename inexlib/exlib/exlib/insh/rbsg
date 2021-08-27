@@ -1,0 +1,111 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_insh_rbsg
+#define exlib_insh_rbsg
+
+#include "../read_bsg_file"
+#include "../sg/rbsg_factories"
+
+#include <inlib/sg/view_evd>
+#include <inlib/sg/view_sg_client>
+#include <inlib/sg/rbsg_factories>
+#include <inlib/sg/astro_fac_args>
+#include <inlib/insh/ishell>
+
+namespace exlib {
+
+inline void insh_scene_read_bsg(inlib::ishell& a_insh,const std::vector<std::string>& a_args,inlib::sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_read_bsg");
+  inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  inlib::args _args(a_args);
+  //_args.remove_string_delimiters_in_values();
+
+  std::string sfile;
+  if(!_args.find("-file",sfile)) {
+    a_insh.warn(s_cmd+": no -file=<string> argument given.");
+    return;
+  }
+
+  inlib::vec3f translate(0,0,0);
+  INLIB_ISHELL_GET_ARG_VEC3F(translate)
+  inlib::vec4f rotate(0,0,1,0);
+  INLIB_ISHELL_GET_ARG_VEC4F(rotate)
+  float scale = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(scale)
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  std::string path;
+  if(inlib::file::exists(sfile)) {
+    path = sfile;
+  } else if(!a_gv.find_doc_res_file(sfile,path)) {
+    a_insh.warn(s_cmd+": no "+sfile+" file found 'as is' or in doc and res dirs.");
+    return;
+  }
+
+  inlib::sg::separator& dsep = _evd->static_sg();
+
+  inlib::sg::separator* sep = new inlib::sg::separator;
+  dsep.add(sep);
+
+  inlib::sg::matrix* _mtx = new inlib::sg::matrix;
+  sep->add(_mtx);
+
+  _mtx->mul_translate(translate);  //applied third.
+  _mtx->mul_rotate(rotate);        //applied second.
+  _mtx->mul_scale(scale);          //applied first.
+
+  inlib::sg::bsg_factories bfac;
+  inlib::sg::add_factories(bfac);
+  exlib::sg::add_factories(bfac);
+  inlib::sg::field_factory ffac;
+  exlib::sg::text_freetype_marker* ttf = new exlib::sg::text_freetype_marker;
+  inlib::sg::astro_fac_args _fargs(a_gv,*ttf);
+  inlib::sg::group* node = new inlib::sg::group;
+  sep->add(node);
+  if(!exlib::read_bsg_file(a_gv.out(),bfac,_fargs,path,*node,false)) {
+    a_insh.warn(s_cmd+": load "+inlib::sout(path)+" failed.");
+    delete sep;
+    return;
+  }
+  sep->add(new inlib::sg::holder<exlib::sg::text_freetype_marker>(ttf));
+
+  inlib::args opts;
+  opts.add(inlib::sg::s_send_placement(),inlib::sg::s_placement_static());
+  inlib::sg::view_sg_client* wc = inlib::sg::cast_view_sg_client(a_gv);
+  if(wc) {if(!wc->send_sg(*sep,opts)){}}
+}
+
+inline const std::string& insh_scene_read_bsg_help() {
+  static const std::string s_help("\
+scene_read_bsg: scene_read_bsg [-file,-scale,-translate,-rotate]\n\
+  Read a bsg file and add its contents in the static scene graph.\n\
+  -file=string file at the bsg (binary scene graph) format. The file is searched first\n\
+  in the document directory of the application, then in its resource directory.\n\
+  -scale=real overall scale (default 1).\n\
+  -rotate='real real real real' overall rotation (default '0 0 1 0'). First\n\
+  three numbers specify the axis, the last one the angle in radians.\n\
+  -transtale='real real real' overall translation (default '0 0 0').\n\
+  Scale, rotation, translation are applied in this order.\n\
+  Example:\n\
+    scene_read_bsg -file=avatar_plant.bsg -translate='460 -300 430' -rotate='0 1 0 -1.570796' -scale=0.03\n\
+");
+  return s_help;
+}
+
+}
+
+#include <inlib/insh/ishell_args_gui_viewer_cmd>
+
+#define EXLIB_INSH_RBSG_ADDS(a__insh,a__holder)\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__holder,scene_read_bsg,exlib::insh_scene_read_bsg,exlib::insh_scene_read_bsg_help())
+
+//exlib_build_use inlib freetype zlib
+
+#endif

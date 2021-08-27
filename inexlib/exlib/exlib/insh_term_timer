@@ -1,0 +1,128 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_insh_term_timer
+#define exlib_insh_term_timer
+
+#include <inlib/sys/base_timer>
+
+#include <inlib/S_STRING>
+#include <inlib/insh/insh>
+#include <inlib/sg/ui>
+#include <inlib/sys/console>
+
+#include <Getline/ourex_Getline.h> //enforce ourex.
+
+namespace exlib {
+
+class insh_term_timer : public inlib::base_timer {
+  typedef inlib::base_timer parent;
+public:
+  virtual void action() {
+    int is_stdin;
+    if(!::ourex_Gl_is_there_stdin_input(&is_stdin)) {
+      m_insh.out() << "exlib::insh_term_timer::action : ourex_Gl_is_there_stdin_input() failed." << std::endl;
+      return;
+    }
+    if(!is_stdin) return;
+    char* p = ourex_Getlinem(1,0);
+    if(!p) return;
+    m_insh.m_complete_state = false;
+    if(!(*p)) {  // ^D
+      m_ui.set_to_exit();
+      _update_prompt();
+      return;
+    }
+    std::string cmd(p);
+    inlib::strip(cmd,inlib::trailing,'\n');
+
+    if((cmd=="quit")||(cmd=="exit")) {
+      ::ourex_Gl_histadd((char*)cmd.c_str()); //we have to use that so that keys up/down work.
+      m_ui.set_to_exit();
+    } else if(cmd.size() && (cmd[0]=='!')) {
+      std::string line;
+      std::string rest = cmd.substr(1,cmd.size()-1);
+      if(rest=="!") {
+        if(!m_insh.get_history_line(0,true,line)) {} //true = last.
+      } else {
+        size_t index;
+        if(inlib::to_size_t(rest,index)) {
+          if(!m_insh.get_history_line(index,false,line)) {}
+        } else {
+          if(!m_insh.get_history_line_beg(rest,line)) {}
+	}
+      }
+      if(line.size()) {
+        m_insh.out() << line << std::endl;
+        ::ourex_Gl_histadd((char*)line.c_str()); //we have to use that so that keys up/down work.
+       {unsigned int cols,rows;
+        if(inlib::console_size(cols,rows)) m_insh.set_unix_cols(cols);}
+        m_insh.exec_line_reset_to_stop(line);
+        m_ui.win_render();
+      }
+    } else {
+      ::ourex_Gl_histadd((char*)cmd.c_str()); //we have to use that so that keys up/down work.
+     {unsigned int cols,rows;
+      if(inlib::console_size(cols,rows)) m_insh.set_unix_cols(cols);}
+      m_insh.exec_line_reset_to_stop(cmd);
+      m_ui.win_render();
+    }
+
+    _update_prompt();
+  }
+public:
+  INLIB_SCLASS(exlib::insh_term_timer)
+  virtual void* cast(const std::string& a_class) const {
+    if(void* p = inlib::cmp_cast<insh_term_timer>(this,a_class)) return p;
+    return 0;
+  }
+  virtual const std::string& s_cls() const {return s_class();}
+public:
+  insh_term_timer(unsigned int a_interval,
+                  inlib::sg::ui& a_ui,inlib::insh& a_insh,
+                  const std::string& a_prompt,const std::string& a_history)
+  :parent(a_interval)
+  ,m_ui(a_ui)
+  ,m_insh(a_insh)
+  ,m_prompt(a_prompt)
+  ,m_history_file(a_history)
+  {
+    m_insh.set_history_file(m_history_file);
+    Gl_tab_hook = inlib::insh::tab_hook;
+    Gl_tab_tag = &m_insh;
+    ::ourex_Gl_histinit((char*)m_history_file.c_str()); //have to use Gl_histadd so that keys up/down work.
+    if(!m_insh.is_variable("PS1")) m_insh.add_variable("PS1",m_prompt);
+    _update_prompt();
+  }
+  virtual ~insh_term_timer(){
+    ::ourex_Gl_erase_line();
+    ::ourex_Getlinem(2,0);
+  }
+private:
+  insh_term_timer(const insh_term_timer& a_from)
+  :parent(a_from)
+  ,m_ui(a_from.m_ui)
+  ,m_insh(a_from.m_insh)
+  ,m_prompt(a_from.m_prompt)
+  ,m_history_file(a_from.m_history_file)
+  {}
+  insh_term_timer& operator=(const insh_term_timer&){return *this;}
+protected:
+  void _update_prompt() {
+    unsigned int _cols,_rows;
+    if(inlib::console_size(_cols,_rows)) {::Gl_setwidth(_cols);}
+    m_insh.find_variable("PS1",m_prompt);
+    ::ourex_Getlinem(-1,m_prompt.c_str());
+  }
+protected:
+  inlib::insh& m_insh;
+  inlib::sg::ui& m_ui;
+  std::string m_prompt;
+  std::string m_history_file;
+};
+
+}
+
+//exlib_build_use inlib Getline
+
+#endif

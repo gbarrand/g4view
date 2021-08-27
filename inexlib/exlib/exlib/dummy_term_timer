@@ -1,0 +1,93 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_dummy_term_timer
+#define exlib_dummy_term_timer
+
+#include <inlib/sys/base_timer>
+
+#include <inlib/sg/ui>
+#include <inlib/S_STRING>
+#include <inlib/strip>
+
+#include <Getline/ourex_Getline.h> //enforce ourex.
+
+#include <cstdio>
+
+namespace exlib {
+
+class dummy_term_timer : public inlib::base_timer {
+  typedef inlib::base_timer parent;
+public:
+  virtual void action() {
+    int is_stdin;
+    if(!::ourex_Gl_is_there_stdin_input(&is_stdin)) {
+      m_out << "exlib::dummy_term_timer::action : ourex_Gl_is_there_stdin_input() failed." << std::endl;
+      return;
+    }
+    if(!is_stdin) return;
+    char* p = ourex_Getlinem(1,0);
+    if(!p) return;
+    if(!(*p)) {  // ^D
+      m_ui.set_to_exit();
+      ::ourex_Getlinem(-1,m_prompt.c_str());
+      return;
+    }
+    std::string cmd(p);
+    inlib::strip(cmd,inlib::trailing,'\n');
+
+    if((cmd=="quit")||(cmd=="exit")) {
+      ::ourex_Gl_histadd((char*)cmd.c_str()); //we have to use that so that keys up/down work.
+      m_ui.set_to_exit();
+    } else {
+      ::ourex_Gl_histadd((char*)cmd.c_str()); //we have to use that so that keys up/down work.
+      ::printf("dummy : \"%s\"\n",cmd.c_str());
+    }
+
+    ::ourex_Getlinem(-1,m_prompt.c_str());
+  }
+public:
+  INLIB_SCLASS(exlib::dummy_term_timer)
+  virtual void* cast(const std::string& a_class) const {
+    if(void* p = inlib::cmp_cast<dummy_term_timer>(this,a_class)) return p;
+    return 0;
+  }
+  virtual const std::string& s_cls() const {return s_class();}
+public:
+  dummy_term_timer(unsigned int a_interval,
+                   std::ostream& a_out,inlib::sg::ui& a_ui,
+                   const std::string& a_prompt,const std::string& a_history)
+  :parent(a_interval)
+  ,m_out(a_out)
+  ,m_ui(a_ui)
+  ,m_prompt(a_prompt)
+  ,m_history_file(a_history)
+  {
+    ::ourex_Gl_histinit((char*)m_history_file.c_str()); //have to use Gl_histadd so that keys up/down work.
+    ::ourex_Getlinem(-1,m_prompt.c_str());
+  }
+  virtual ~dummy_term_timer(){
+    ::ourex_Gl_erase_line();
+    ::ourex_Getlinem(2,0);
+  }
+private:
+  dummy_term_timer(const dummy_term_timer& a_from)
+  :parent(a_from)
+  ,m_out(a_from.m_out)
+  ,m_ui(a_from.m_ui)
+  ,m_prompt(a_from.m_prompt)
+  ,m_history_file(a_from.m_history_file)
+  {}
+  dummy_term_timer& operator=(const dummy_term_timer&){return *this;}
+private:
+  std::ostream& m_out;
+  inlib::sg::ui& m_ui;
+  std::string m_prompt;
+  std::string m_history_file;
+};
+
+}
+
+//exlib_build_use inlib Getline
+
+#endif

@@ -1,0 +1,71 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_wasm_term_streambuf
+#define exlib_wasm_term_streambuf
+
+#include <emscripten.h>
+
+EM_JS(void, js_term_write, (const char* a_s), {
+  term_write_c_string(a_s);
+});
+
+#include <string>
+#include <sstream>
+
+namespace exlib {
+namespace wasm {
+
+class term_streambuf : public std::streambuf {
+public:
+  term_streambuf()
+  :m_buffer(0)
+  ,m_size(4095)
+  ,m_count(0)
+  {
+    m_buffer = new char[m_size+1];
+  }
+
+  virtual ~term_streambuf(){delete [] m_buffer;}
+private:
+  term_streambuf(const term_streambuf&){}
+  term_streambuf& operator=(const term_streambuf&){return *this;}
+public:
+  int overflow(int a_char) {
+    int result = 0;
+    if(m_count>=m_size) {
+      m_buffer[m_count] = '\0';
+      m_count = 0;
+      result = receive_string();
+    }
+    m_buffer[m_count] = a_char;
+    m_count++;
+    if(a_char=='\n') {
+      m_buffer[m_count] = '\0';
+      m_count = 0;
+      result = receive_string();
+    }
+    return result;
+  }
+
+  int sync() {
+    m_buffer[m_count] = '\0';
+    m_count = 0;
+    return receive_string ();
+  }
+
+private:
+  int receive_string() {
+    js_term_write(m_buffer);
+    return 0;
+  }
+
+private:
+  char* m_buffer;
+  unsigned int m_size;
+  unsigned int m_count;
+};
+
+}}
+
+#endif

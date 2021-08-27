@@ -1,0 +1,103 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file exlib.license for terms.
+
+#ifndef exlib_app_Cocoa_main
+#define exlib_app_Cocoa_main
+
+#import "GLView.hm"
+
+#include "../../sg/pv_holder"
+#include "../../sg/GL_VIEWER_COMMON"
+
+#include "../../png"
+#include "../../jpeg"
+
+namespace app_Cocoa {
+
+//IMPORTANT : pv_holder must come first.
+
+template <class APP_MAIN>
+class main : protected exlib::sg::pv_holder, public APP_MAIN {
+  typedef exlib::sg::pv_holder parent_pv_holder;
+  typedef APP_MAIN parent;
+public:
+  EXLIB_GL_VIEWER_METHODS
+  virtual bool windowing(std::string& a_value) const {a_value = "Cocoa";return true;}
+public:
+  virtual bool set_cursor_shape(inlib::sg::cursor_shape a_shape) {
+    if(!parent::set_cursor_shape(a_shape)) return false;
+    if(a_shape==inlib::sg::cursor_default) {
+      if(!m_GLView) return false;
+      [m_GLView set_cursor:inlib::sg::cursor_default];
+      return true;
+    } else if(a_shape==inlib::sg::cursor_target) {
+      if(!m_GLView) return false;
+      [m_GLView set_cursor:inlib::sg::cursor_target];
+      return true;
+    } else {
+      return false;
+    }
+  }
+public:
+  virtual void win_render() {
+    //NSLog(@"debug : win_render");
+    [[m_GLView openGLContext] makeCurrentContext];
+    render();
+    [[m_GLView openGLContext] flushBuffer];
+  }
+  virtual bool has_open_panel() {return true;}
+  virtual bool open_panel(std::string& a_path) {
+    NSOpenPanel *panel = [NSOpenPanel openPanel]; //We are not owner.
+    [panel retain];
+
+    [panel setCanChooseFiles:YES];
+    [panel setCanChooseDirectories:NO];
+    [panel setAllowsMultipleSelection:NO];
+    //[panel setAllowedFileTypes:[NSArray arrayWithObject:@"txt"]];
+
+    bool get_path = false;
+#if MAC_OS_X_VERSION_MAX_ALLOWED <= 101000 //OSX 10.10
+    if([panel runModal] == NSOKButton) {
+#else
+    if([panel runModal] == NSModalResponseOK) {
+#endif
+      NSURL* ns_url = [[panel URLs]objectAtIndex:0];
+      if([ns_url isFileURL]) {
+        a_path = [[ns_url path] UTF8String];
+        get_path = true;
+      }
+    }
+    if(!get_path) a_path.clear();
+    [panel release];
+    [[NSApp mainWindow] makeKeyWindow];
+    return get_path;
+  }
+public:
+  main(std::ostream& a_out,
+       const std::string& a_doc_dir,
+       const std::string& a_res_dir,
+       const std::string& a_out_dir,
+       const std::string& a_tmp_dir,
+       GLView* a_GLView,
+       bool a_verbose)
+  :parent_pv_holder(a_out)
+  ,APP_MAIN(a_out,
+            parent_pv_holder::m_mgr_gra,
+            parent_pv_holder::m_ttf,
+            parent_pv_holder::m_selection,
+            a_doc_dir,a_res_dir,a_out_dir,a_tmp_dir,a_verbose,0)
+  ,m_GLView(a_GLView)
+  {
+    parent::push_home();
+  }
+  virtual ~main(){}
+private:
+  GLView* m_GLView;
+};
+
+}
+
+// skip because of app_main_t.
+//exlib_build_use skip
+
+#endif
