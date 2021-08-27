@@ -78,6 +78,45 @@
   <!-- //////////////////////////////////////////////// -->
   <!-- /// plotter : ////////////////////////////////// -->
   <!-- //////////////////////////////////////////////// -->
+  <style name="default_axis_style">
+    <modeling>hippo</modeling>
+    <divisions>510</divisions>
+    <title_hjust>right</title_hjust>
+    <tick_up>true</tick_up>
+    <is_log>false</is_log>
+    <label_to_axis>0.025</label_to_axis>
+    <label_height>0.0175</label_height>      
+    <tick_length>0.01875</tick_length>
+    <title_to_axis>0.05</title_to_axis>
+    <title_height>0.0175</title_height>
+  </style>
+  <style name="default_line_style">
+    <visible>true</visible>
+    <color>black</color>
+    <line_width>1</line_width>
+    <pattern>solid</pattern>
+  </style>
+  <style name="default_text_style">
+    <visible>true</visible>
+    <color>black</color>
+    <back_color>white</back_color>
+    <back_shadow>0</back_shadow>
+<!-- <modeling/> -->
+    <font>hershey</font>
+    <font_size>10</font_size>
+    <font_modeling>font_filled</font_modeling>
+    <encoding>none</encoding>
+    <smoothing>false</smoothing>
+    <hinting>false</hinting>
+    <scale>1</scale>
+    <line_width>1</line_width>
+    <line_pattern>solid</line_pattern>
+    <enforced>false</enforced>
+    <translation>0 0 0</translation>
+    <front_face>ccw</front_face>
+<!-- <options/> -->
+  </style>
+    
   <plotter_style name="default">
     <!-- It is applied on all plotters.
          It is a placeholder for default customization. -->
@@ -88,32 +127,36 @@
     <style name="inner_frame_style"/>
     <style name="grid_style"/>
   
-    <style name="x_axis.line_style"/>
-    <style name="x_axis.ticks_style"/>
-    <style name="x_axis.labels_style"/>
-    <style name="x_axis.mag_style"/>
-    <style name="x_axis.title_style"/>
+    <style name="x_axis"><copy from="default_axis_style"/></style>
+    <style name="x_axis.line_style"><copy from="default_line_style"/></style>
+    <style name="x_axis.ticks_style"><copy from="default_line_style"/></style>
+    <style name="x_axis.labels_style"><copy from="default_text_style"/></style>
+    <style name="x_axis.mag_style"><copy from="default_text_style"/></style>
+    <style name="x_axis.title_style"><copy from="default_text_style"/></style>
   
-    <style name="y_axis.line_style"/>
-    <style name="y_axis.ticks_style"/>
-    <style name="y_axis.labels_style"/>
-    <style name="y_axis.mag_style"/>
-    <style name="y_axis.title_style"/>
+    <style name="y_axis"><copy from="default_axis_style"/></style>
+    <style name="y_axis.line_style"><copy from="default_line_style"/></style>
+    <style name="y_axis.ticks_style"><copy from="default_line_style"/></style>
+    <style name="y_axis.labels_style"><copy from="default_text_style"/></style>
+    <style name="y_axis.mag_style"><copy from="default_text_style"/></style>
+    <style name="y_axis.title_style"><copy from="default_text_style"/></style>
   
-    <style name="z_axis.line_style"/>
-    <style name="z_axis.ticks_style"/>
-    <style name="z_axis.labels_style"/>
-    <style name="z_axis.mag_style"/>
-    <style name="z_axis.title_style"/>
+    <style name="z_axis"><copy from="default_axis_style"/></style>
+    <style name="z_axis.line_style"><copy from="default_line_style"/></style>
+    <style name="z_axis.ticks_style"><copy from="default_line_style"/></style>
+    <style name="z_axis.labels_style"><copy from="default_text_style"/></style>
+    <style name="z_axis.mag_style"><copy from="default_text_style"/></style>
+    <style name="z_axis.title_style"><copy from="default_text_style"/></style>
 
     <style name="colormap_axis">
+      <copy from="default_axis_style"/>
       <label_to_axis>0.01</label_to_axis>
     </style>
-    <style name="colormap_axis.line_style"/>
-    <style name="colormap_axis.ticks_style"/>
-    <style name="colormap_axis.labels_style"/>
-    <style name="colormap_axis.mag_style"/>
-    <style name="colormap_axis.title_style"/>
+    <style name="colormap_axis.line_style"><copy from="default_line_style"/></style>
+    <style name="colormap_axis.ticks_style"><copy from="default_line_style"/></style>
+    <style name="colormap_axis.labels_style"><copy from="default_text_style"/></style>
+    <style name="colormap_axis.mag_style"><copy from="default_text_style"/></style>
+    <style name="colormap_axis.title_style"><copy from="default_text_style"/></style>
 
     <style name="bins_style.0"/>
     <style name="errors_style.0"/>
@@ -130,7 +173,8 @@
 
     <style name="background_style">
       <visible>true</visible>
-      <back_color>ROOT/grey19</back_color>
+ <!-- <back_color>ROOT/grey19</back_color> -->
+      <back_color>white</back_color>
       <!-- border : -->
       <color>black</color>
       <line_width>0.003</line_width> <!-- 0 = no border. In % of width -->
@@ -338,8 +382,17 @@
       <front_face>cw</front_face>
       <smoothing>true</smoothing>
     </style>
-
-
+    <!--
+    <style name="legends_style.0">
+      <back_color>ROOT/grey19</back_color>
+      <back_shadow>0.015</back_shadow>
+      <color>black</color>
+      <font>arialbd.ttf</font>
+      <font_modeling>font_pixmap</font_modeling>
+      <front_face>cw</front_face>
+      <smoothing>true</smoothing>
+    </style>
+    -->
     <style name="bins_style.0">
       <modeling>top_lines</modeling>
       <color>black</color>
@@ -384,20 +437,6 @@
       <label_to_axis>0.015</label_to_axis>
       <label_height>0.02625</label_height> <!-- 0.0175F * 1.5F -->
     </style>
-    <style name="y_axis">
-      <title_hjust>center</title_hjust>
-      <title_to_axis>0.2</title_to_axis>
-      <title_height>0.035</title_height>
-      <label_height>0.02625</label_height> <!-- 0.0175F * 1.5F -->
-    </style>
-
-    <style name="title_style">
-      <visible>true</visible>
-      <font>helvetica.ttf</font>
-      <front_face>cw</front_face>
-      <smoothing>true</smoothing>
-    </style>
-
     <style name="x_axis.title_style">
       <visible>true</visible>
       <font>helvetica.ttf</font>
@@ -411,6 +450,12 @@
       <smoothing>true</smoothing>
     </style>
 
+    <style name="y_axis">
+      <title_hjust>center</title_hjust>
+      <title_to_axis>0.2</title_to_axis>
+      <title_height>0.035</title_height>
+      <label_height>0.02625</label_height> <!-- 0.0175F * 1.5F -->
+    </style>
     <style name="y_axis.title_style">
       <visible>true</visible>
       <font>helvetica.ttf</font>
@@ -424,6 +469,12 @@
       <smoothing>true</smoothing>
     </style>
 
+    <style name="z_axis">
+      <title_hjust>center</title_hjust>
+      <title_to_axis>0.2</title_to_axis>
+      <title_height>0.035</title_height>
+      <label_height>0.02625</label_height> <!-- 0.0175F * 1.5F -->
+    </style>
     <style name="z_axis.title_style">
       <visible>true</visible>
       <font>helvetica.ttf</font>
@@ -432,6 +483,13 @@
     </style>
     <style name="z_axis.labels_style"> 
       <color>black</color>
+      <font>helvetica.ttf</font>
+      <front_face>cw</front_face>
+      <smoothing>true</smoothing>
+    </style>
+
+    <style name="title_style">
+      <visible>true</visible>
       <font>helvetica.ttf</font>
       <front_face>cw</front_face>
       <smoothing>true</smoothing>
@@ -454,6 +512,15 @@
       <line_width>1</line_width>
  <!-- <line_pattern>solid</line_pattern> -->
     </style>
+
+    <style name="colormap_axis">
+      <label_to_axis>0.01</label_to_axis>
+    </style>
+    <style name="colormap_axis.line_style"/>
+    <style name="colormap_axis.ticks_style"/>
+    <style name="colormap_axis.labels_style"/>
+    <style name="colormap_axis.mag_style"/>
+    <style name="colormap_axis.title_style"/>
   </plotter_style>
 
   <plotter_style name="exa_hrand">
@@ -468,6 +535,12 @@
     </style>
   </plotter_style>
 
+  <style name="no_axis_style">
+    <label_to_axis>1000</label_to_axis>
+    <tick_length>0.0</tick_length>
+    <title_to_axis>10000</title_to_axis>
+  </style>
+  
   <plotter_style name="exa_icon">
     <style name="bins_style.0">
       <modeling>boxes</modeling>
@@ -484,6 +557,9 @@
       <font_modeling>font_pixmap</font_modeling>
       <front_face>cw</front_face>
     </style>
+    <title_height>0.0</title_height>
+    <style name="x_axis"><copy from="no_axis_style"/></style>
+    <style name="y_axis"><copy from="no_axis_style"/></style>
   </plotter_style>
 
   <plotter_style name="exa_fit">
@@ -558,7 +634,8 @@
 
     <style name="points_style.0">
       <color>black</color>	
-      <marker_size>3</marker_size>
+      <marker_size>20</marker_size>
+      <marker_style>cross</marker_style>
     </style>
   </plotter_style>
 

@@ -5,7 +5,8 @@
 
 #include <exlib/app/offscreen/main_cpp>
 
-int main(int argc,char** argv) {return exlib_main<g4view::context,g4view::main>("g4view",argc,argv);}
+int main(int argc,char** argv) {return exlib_main<g4view::main>("g4view",argc,argv);}
 
 //exlib_build_use inlib expat
 //exlib_build_use exlib png jpeg zlib inlib_glutess freetype kernel
+//exlib_build_bigobj
