@@ -1,28 +1,44 @@
 
-var g_to_open = false;
 var g_curr_line = '';
 var g_anim_timer_id = null;
 var g_event_anim_timer_id = null;
 var g_mouse_down = 0;
 
+var g_gui_show_terminal = false;
 
-function canvas_resize() {
-  // Arrange so that the GL canvas be visible in the window by
-  // mapping the whole window area. This has the same behaviour as native apps.
-  var h = window.innerHeight;
-  var w = window.innerWidth;
-  const canvas = document.getElementById('gl_canvas');
-  canvas.width = w;
-  canvas.height = h;
+function gl_canvas_resize() {
+  const gl_canvas = document.getElementById('gl_canvas');
+  gl_canvas.width = window.innerWidth;
+  if(g_gui_show_terminal==true) {    
+    const gui_terminal = document.getElementById('gui_terminal');
+    if(gui_terminal!=null) {
+      gl_canvas.height = window.innerHeight-gui_terminal.offsetHeight-2; //2 because of border in <style>
+    } else {
+      gl_canvas.height = window.innerHeight;
+    }
+  } else {
+    gl_canvas.height = window.innerHeight;
+  }
 }
 
 function window_resize() {
-  canvas_resize();
-  const canvas = document.getElementById('gl_canvas');
-  Module.app_set_size(canvas.width, canvas.height);
+  gl_canvas_resize();
+  const gl_canvas = document.getElementById('gl_canvas');
+  Module.app_set_size(gl_canvas.width, gl_canvas.height);
   Module.app_win_render();
 }
 
+function gui_show_terminal() {
+  g_gui_show_terminal = true;
+  window_resize();
+}
+
+function gui_hide_terminal() {
+  g_gui_show_terminal = false;
+  window_resize();
+}
+
+/*
 function window_keydown(a_event) {
 //  console.log(a_event);
   if(a_event.code=='Enter') {
@@ -42,6 +58,7 @@ function window_keydown(a_event) {
     console.log(g_curr_line);
   }
 }
+*/
 
 function anim_proc() {
   if(Module.app_do_works()) Module.app_win_render();
@@ -77,33 +94,33 @@ function handle_button_move(a_event) {
 function handle_touch_start(a_event) {
   a_event.stopPropagation();
   a_event.preventDefault();
-  var touches = a_event.changedTouches;
+  let touches = a_event.changedTouches;
   if(!touches.length) return;
   g_mouse_down = 1;
-  var x = touches[0].pageX;
-  var y = touches[0].pageY;
+  let x = touches[0].pageX;
+  let y = touches[0].pageY;
   Module.app_button_down(0,x,y);
 }
 
 function handle_touch_end(a_event) {
   a_event.stopPropagation();
   a_event.preventDefault();
-  var touches = a_event.changedTouches;
+  let touches = a_event.changedTouches;
   if(!touches.length) return;
   g_mouse_down = 0;
-  var x = touches[0].pageX;
-  var y = touches[0].pageY;
+  let x = touches[0].pageX;
+  let y = touches[0].pageY;
   Module.app_button_up(0,x,y);
 }
 
 function handle_touch_move(a_event) {
   a_event.stopPropagation();
   a_event.preventDefault();
-  var touches = a_event.changedTouches;
+  let touches = a_event.changedTouches;
   if(!touches.length) return;
   if(g_mouse_down==1) {
-    var x = touches[0].pageX;
-    var y = touches[0].pageY;
+    let x = touches[0].pageX;
+    let y = touches[0].pageY;
     Module.app_button_move(0,x,y);
   }
 }
@@ -115,8 +132,8 @@ function handle_drag_over(a_event) {
 }
 
 function upload_first_file(a_files,a_open,a_warn) {
-  if(a_files && (a_files.length === 1)) {
-    var file = a_files[0];
+  if(a_files && (a_files.length == 1)) {
+    let file = a_files[0];
     if(file.name) {
       const file_name = file.name;
       const file_reader = new FileReader();
@@ -160,33 +177,39 @@ function handle_drop(a_event) {
   upload_first_file(a_event.dataTransfer.files,true);
 }
 
-function download_app_doc_file(a_file_name) {
+function basename(a_path) {
+  return a_path.substr(a_path.lastIndexOf('/') + 1);
+}
+
+function download_app_file(a_file_name) {
   if(a_file_name.length==0) return;
-  var length = Module.app_get_doc_file_size(a_file_name);
+  let length = Module.app_get_file_size(a_file_name);
   if(length==(-1)) {alert('File not found.');return;}
-  var buffer = Module.app_get_doc_file(a_file_name);
+  let buffer = Module.app_get_file(a_file_name);
   const array = new Int8Array(Module.HEAP8.buffer,buffer,length);
-  download(array,a_file_name,'example/binary');
+  let file_name = basename(a_file_name);
+  download(array,file_name,'example/binary');
   Module.app_delete_buffer(buffer);
 }
 
+var g_to_open = false;
 function open_file_chooser() {g_to_open=false;document.getElementById('app_input_file').click();}
 function open_file_chooser_open() {g_to_open=true;document.getElementById('app_input_file').click();}
 
-function run_time_init(a_canvas) {
-  if(Module.app_initialize(g_app_name,a_canvas.width,a_canvas.height)==0) {
+function run_time_init(a_gl_canvas) {
+  if(Module.app_initialize(g_app_name,a_gl_canvas.width,a_gl_canvas.height)==0) {
     console.log('main.js/run_time_init : Module.app_initialize() failed.');
     return;
   }
-  a_canvas.addEventListener('mousedown' ,handle_button_down);
-  a_canvas.addEventListener('mouseup'   ,handle_button_up);
-  a_canvas.addEventListener('mousemove' ,handle_button_move);
+  a_gl_canvas.addEventListener('mousedown' ,handle_button_down);
+  a_gl_canvas.addEventListener('mouseup'   ,handle_button_up);
+  a_gl_canvas.addEventListener('mousemove' ,handle_button_move);
   document.addEventListener('dragover'  ,handle_drag_over);
   document.addEventListener('drop'      ,handle_drop);
 
-  a_canvas.addEventListener('touchstart',handle_touch_start);
-  a_canvas.addEventListener('touchend'  ,handle_touch_end);
-  a_canvas.addEventListener('touchmove' ,handle_touch_move);
+  a_gl_canvas.addEventListener('touchstart',handle_touch_start);
+  a_gl_canvas.addEventListener('touchend'  ,handle_touch_end);
+  a_gl_canvas.addEventListener('touchmove' ,handle_touch_move);
 
   const gui_area = document.getElementById('gui_area');
 
@@ -206,6 +229,16 @@ function run_time_init(a_canvas) {
   elem.style.display = 'none';
   elem.onchange = (a_event) => {
     upload_first_file(a_event.target.files,g_to_open,true);
+    a_event.target.value = '';
   }}
+
+/*
+ {var elem = document.createElement('a');
+  gui_area.appendChild(elem);
+  elem.href = 'mailto:';
+  elem.id = 'app_mailto';
+  //insh> ems "document.getElementById('app_mailto').click();"
+ }
+*/
     
 }

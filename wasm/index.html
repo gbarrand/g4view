@@ -11,13 +11,14 @@
   <link rel="apple-touch-icon" href="icon_114.png">
   <link rel="apple-touch-icon-precomposed" href="icon_114.png">
 
-<!--
-  <link rel="stylesheet" href="xterm.css" />
-  <script src="xterm.js"></script>
--->
+  <link rel="stylesheet" href="xterm/css/xterm.css" />
+  <script src="xterm/lib/xterm.js"></script>
 
   <title>g4view</title>
   <style>
+/*
+    * { margin: 0; padding: 0; border: none; }
+*/
     html, body {
       padding: 0;
       margin: 0;
@@ -36,16 +37,24 @@
       font-size: 1rem;
     }
 
-    .canvas {
-      margin: 0 auto 0 auto;
+    #gl_canvas {
+      margin: 0;
+      padding: 0;
       border: 1px solid black;
+      display:block; /*to avoid a gap between the canvas and the below div (if any).*/
+    }
+    #gui_terminal {
+      margin: 0;
+      padding: 0;
+      border: 1px solid red;
     }
   </style>
 </head>
 
 <body>
-  <canvas id="gl_canvas" class="canvas"></canvas>
-  <div id="gui_area" class="container"></div>
+  <canvas id="gl_canvas"></canvas>
+  <div id="gui_area"></div>
+  <div id="gui_terminal"></div>
   
   <script type="text/javascript" src="download.js"></script>
   <script type="text/javascript" src="main.js"></script>
@@ -54,7 +63,9 @@
   <!-- //// WebGL : /////////////////////////////////////////////////////////////////// -->
   <!-- //////////////////////////////////////////////////////////////////////////////// -->
   <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
-  <script type="text/javascript" src="webgl.js"></script>  <!-- because it defines g_gl, it must come before the below "main" javascript code. -->
+  
+  <!-- because it defines g_gl, the below must come before the below "main" javascript code: -->
+  <script type="text/javascript" src="webgl.js"></script>
 
   <!-- //////////////////////////////////////////////////////////////////////////////// -->
   <!-- //// main : //////////////////////////////////////////////////////////////////// -->
@@ -62,12 +73,12 @@
   <script type="text/javascript">
     g_app_name = 'g4view';
 
-    const canvas = document.getElementById('gl_canvas');
+    const gl_canvas = document.getElementById('gl_canvas');
 
     // initialize WebGL :
     try {
-    //g_gl = canvas.getContext('webgl');
-      g_gl = canvas.getContext('webgl', { premultipliedAlpha: false});  //does not work with Safari.
+    //g_gl = gl_canvas.getContext('webgl');
+      g_gl = gl_canvas.getContext('webgl', { premultipliedAlpha: false});  //does not work with Safari.
     } catch (e) {
     }
     if (!g_gl) {
@@ -78,21 +89,23 @@
       //chrome wants the below begdraw, else we have a too large viewport after that.
 
       var Module = {};
-      Module.canvas = canvas;
-      Module.onRuntimeInitialized = () => run_time_init(canvas);
+      Module.canvas = gl_canvas;
+      Module.onRuntimeInitialized = () => run_time_init(gl_canvas);
 
-      canvas_resize();
+      gl_canvas_resize();
 
       window.addEventListener('resize',window_resize);
       window.addEventListener('orientationchange',window_resize);
     //window.addEventListener('keydown',window_keydown);
 
-      begdraw(0,0,canvas.width,canvas.height,0.8,0.8,0.8,1);
+      begdraw(0,0,gl_canvas.width,gl_canvas.height,0.8,0.8,0.8,1);
     }
 
   </script>
 
   <script type="text/javascript" src="renderer.js"></script> <!-- should come after the upper that creates the variable Module. -->
+
+  <script type="text/javascript" src="terminal.js"></script>
 
   <!-- //////////////////////////////////////////////////////////////////////////////// -->
   <!-- //////////////////////////////////////////////////////////////////////////////// -->
