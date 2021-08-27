@@ -1,0 +1,17 @@
+g4_exa_calorimeter.insh
+g4_beam_on -number=100
+scene_write_to_paper -format=inzb_ps out.ps
+scene_write_to_paper -format=inzb_png out.png
+
+g4_exa_a01.insh
+g4_beam_on -number=100
+scene_write_to_paper -format=inzb_ps out_a01.ps
+scene_write_to_paper -format=inzb_png out_a01.png
+
+g4_exa_h_gamma_gamma.insh
+g4_beam_on -number=100
+scene_write_to_paper -format=inzb_ps out_h_gamma_gamma.ps
+scene_write_to_paper -format=inzb_png out_h_gamma_gamma.png
+
+
+
