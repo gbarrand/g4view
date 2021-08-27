@@ -1,0 +1,101 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_hep_evaluators
+#define inlib_hep_evaluators
+
+#include "../yacc/base_evaluator"
+
+#include "particle"
+
+namespace inlib {
+namespace hep {
+
+class pdg_evaluator : public base_evaluator<particle> {
+  typedef base_evaluator<particle> parent;
+protected:
+  virtual void get_variables(const particle& a_data) {
+    m_value_name.set(a_data.name());
+    m_value_code.set(a_data.pdg_code());
+    m_value_mass.set(a_data.mass());
+    m_value_charge.set(a_data.charge());
+    m_value_life_time.set(a_data.life_time());
+    m_value_width.set(a_data.width());
+    m_value_parity.set(a_data.parity());
+    m_value_spin.set(a_data.spin());
+    m_value_isospin.set(a_data.iso_spin());
+    m_value_I3.set(a_data.I3());
+    m_value_strangeness.set(a_data.strangeness());
+    m_value_charm.set(a_data.charm());
+    m_value_beauty.set(a_data.beauty());
+    m_value_top.set(a_data.top());
+    m_value_Y.set(a_data.Y());
+    m_value_X.set(a_data.X());
+    m_value_stable.set(a_data.stable());
+    m_value_particle_class.set(a_data.particle_class());
+    m_value_tracking_code.set(a_data.tracking_code());
+    m_value_anti_particle.set(a_data.anti_particle());
+
+    parent::get_variables();
+  }
+public:
+  pdg_evaluator(std::ostream& a_out,const std::string& a_script)
+  :parent(a_out,a_script)
+  {
+    add_named_value_ref("name",m_value_name);
+    add_named_value_ref("code",m_value_code);
+    add_named_value_ref("mass",m_value_mass);
+    add_named_value_ref("charge",m_value_charge);
+    add_named_value_ref("life_time",m_value_life_time);
+    add_named_value_ref("width",m_value_width);
+    add_named_value_ref("parity",m_value_parity);
+    add_named_value_ref("spin",m_value_spin);
+    add_named_value_ref("I3",m_value_I3);
+    add_named_value_ref("strangeness",m_value_strangeness);
+    add_named_value_ref("charm",m_value_charm);
+    add_named_value_ref("beauty",m_value_beauty);
+    add_named_value_ref("top",m_value_top);
+    add_named_value_ref("Y",m_value_Y);
+    add_named_value_ref("X",m_value_X);
+    add_named_value_ref("stable",m_value_stable);
+    add_named_value_ref("particle_class",m_value_particle_class);
+    add_named_value_ref("isospin",m_value_isospin);
+    add_named_value_ref("tracking_code",m_value_tracking_code);
+    add_named_value_ref("anti_particle",m_value_anti_particle);
+    m_is_valid = initialize();
+  }
+  virtual ~pdg_evaluator() {}
+protected:
+  pdg_evaluator(const pdg_evaluator& a_from)
+  :parent(a_from)
+  {}
+  pdg_evaluator& operator=(const pdg_evaluator& a_from) {
+    parent::operator=(a_from);
+    return *this;
+  }
+protected:
+  value m_value_name;
+  value m_value_code;
+  value m_value_mass;
+  value m_value_charge;
+  value m_value_life_time;
+  value m_value_width;
+  value m_value_parity;
+  value m_value_spin;
+  value m_value_isospin;
+  value m_value_I3;
+  value m_value_strangeness;
+  value m_value_charm;
+  value m_value_beauty;
+  value m_value_top;
+  value m_value_Y;
+  value m_value_X;
+  value m_value_stable;
+  value m_value_particle_class;
+  value m_value_tracking_code;
+  value m_value_anti_particle;
+};
+
+}}
+
+#endif

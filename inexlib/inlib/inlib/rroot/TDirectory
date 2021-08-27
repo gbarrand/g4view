@@ -1,0 +1,82 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_rroot_TDirectory
+#define inlib_rroot_TDirectory
+
+#include "directory"
+#include "buffer"
+
+namespace inlib {
+namespace rroot {
+
+class TDirectory : public directory {
+//public:
+//  static const std::string& store_class() {return TDirectory_cls();}
+public:
+  TDirectory(ifile& a_file):directory(a_file){}
+  virtual ~TDirectory(){}
+protected:
+  TDirectory(const TDirectory& a_from):directory(a_from){}
+  TDirectory& operator=(const TDirectory&){return *this;}
+public:
+  bool stream(buffer& a_buffer){
+    initialize();
+    short version;
+    if(!a_buffer.read_version(version)) return false;
+    unsigned int _date;
+    if(!a_buffer.read(_date)) return false;
+    //m_date_C.setDate(_date);
+    if(!a_buffer.read(_date)) return false;
+    //m_date_M.setDate(_date);
+    if(!a_buffer.read(m_nbytes_keys)) return false;
+    if(!a_buffer.read(m_nbytes_name)) return false;
+    if((uint32)version>big_file_version_tag()) {
+      if(!a_buffer.read(m_seek_directory)) return false;
+      if(!a_buffer.read(m_seek_parent)) return false;
+      if(!a_buffer.read(m_seek_keys)) return false;
+    } else {
+     {seek32 i;
+      if(!a_buffer.read(i)) return false;
+      m_seek_directory = i;}
+
+     {seek32 i;
+      if(!a_buffer.read(i)) return false;
+      m_seek_parent = i;}
+
+     {seek32 i;
+      if(!a_buffer.read(i)) return false;
+      m_seek_keys = i;}
+    }
+    //short v = version%big_file_version_tag();
+
+    if (m_seek_keys) {
+      uint32 n;
+      if(!read_keys(n)) {
+        a_buffer.out() << "inlib::rroot::TDirectory::stream :"
+                       << " cannot read keys."
+                       << std::endl;
+        return false;
+      }
+    }
+
+    return true;
+  }
+protected:
+  void initialize(){
+    // Initialise directory to defaults :
+    // If directory is created via default ctor (when dir is read from file)
+    // don't add it here to the directory since its name is not yet known.
+    // It will be added to the directory in TKey::ReadObj().
+    m_date_C = 0;//m_date_C.set();
+    m_date_M = 0;//m_date_M.set();
+    m_nbytes_keys = 0;
+    m_seek_directory = 0;
+    m_seek_parent = 0;
+    m_seek_keys = 0;
+  }
+};
+
+}}
+
+#endif

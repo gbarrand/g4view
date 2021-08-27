@@ -1,0 +1,124 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_slice_anim
+#define inlib_sg_slice_anim
+
+#include "base_anim"
+#include "nodekit"
+
+namespace inlib {
+namespace sg {
+
+class slice_anim : public base_anim, public nodekit {
+  typedef nodekit parent;
+  typedef base_anim parent_anim;
+public:
+  INLIB_SCLASS(inlib::sg::slice_anim)
+public:
+  virtual const std::string& s_cls() const {return s_class();}
+public:
+  virtual void* cast(const std::string& a_class) const {
+   {if(void* p = cmp_cast<slice_anim>(this,a_class)) return p;}
+   {if(void* p = parent_anim::cast(a_class)) return p;}
+    return parent::cast(a_class);
+  }
+public:
+  virtual bool slice_action(std::ostream&,double /*a_slice_time_begin*/,double /*a_slice_time_end*/) = 0;
+public:
+  virtual void update_sg(std::ostream&) {}
+  virtual void pick(pick_action& a_action) {
+    update_if_touched(a_action.out());
+    nodekit_pick(a_action,m_group,this);
+  }
+//virtual void begin_anim() {clear();}
+  virtual bool end_anim() {
+    if(end_begin.value()) {
+      set_start(atime::now());
+      return false;
+    }
+    return true;
+  }
+  virtual bool action(std::ostream& a_out,const atime& a_now) {
+    if(!is_valid()) {stop();return true;}
+
+    double tp = atime::diff(m_prev,m_start).value();
+    double t = atime::diff(a_now,m_start).value();
+
+    double time_delta = time_max.value()-time_min.value();
+
+    double time_beg = (tp/delay.value())*time_delta+time_min.value();
+    double time_end = (t/delay.value())*time_delta+time_min.value();
+    if(time_end<=time_beg) return true;
+
+    return slice_action(a_out,time_beg,time_end);
+  }
+public:
+  virtual void event(event_action& a_action) {
+    parent::event(a_action);
+    do_event(a_action);
+  }
+public:
+  sf<double> time_min;
+  sf<double> time_max;
+  sf<bool> end_begin;
+public:
+  virtual const desc_fields& node_desc_fields() const {
+    INLIB_FIELD_DESC_NODE_CLASS(slice_anim)
+    static const desc_fields s_v(parent::node_desc_fields(),4, //WARNING : take care of count.
+      INLIB_ARG_FIELD_DESC(delay),
+      INLIB_ARG_FIELD_DESC(time_min),
+      INLIB_ARG_FIELD_DESC(time_max),
+      INLIB_ARG_FIELD_DESC(end_begin)
+    );
+    return s_v;
+  }
+protected:
+  void add_fields(){
+    add_field(&delay);
+    add_field(&time_min);
+    add_field(&time_max);
+    add_field(&end_begin);
+  }
+public:
+  slice_anim()
+  :parent_anim(atime::now())
+  ,parent()
+
+  ,time_min(0)
+  ,time_max(1)
+  ,end_begin(false)
+  {
+    add_fields();
+  }
+  virtual ~slice_anim() {}
+protected:
+  slice_anim(const slice_anim& a_from)
+  :parent_anim(a_from)
+  ,parent(a_from)
+
+  ,time_min(a_from.time_min)
+  ,time_max(a_from.time_max)
+  ,end_begin(a_from.end_begin)
+  {
+    add_fields();
+  }
+  slice_anim& operator=(const slice_anim& a_from){
+    parent_anim::operator=(a_from);
+    parent::operator=(a_from);
+    time_min = a_from.time_min;
+    time_max = a_from.time_max;
+    end_begin = a_from.end_begin;
+    return *this;
+  }
+protected:
+  bool is_valid() const {
+    if(delay.value()<=0) return false;
+    if(time_max.value()<=time_min.value()) return false;
+    return true;
+  }
+};
+
+}}
+
+#endif

@@ -1,0 +1,77 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_hep_spdg
+#define inlib_hep_spdg
+
+#include "../S_STRING"
+
+namespace inlib {
+namespace hep {
+
+INLIB_GLOBAL_STRING_VALUE(e_plus,e+)
+INLIB_GLOBAL_STRING_VALUE(e_minus,e-)
+
+INLIB_GLOBAL_STRING_VALUE(mu_plus,mu+)
+INLIB_GLOBAL_STRING_VALUE(mu_minus,mu-)
+
+INLIB_GLOBAL_STRING(nu_e)
+INLIB_GLOBAL_STRING(nu_e_bar)
+
+INLIB_GLOBAL_STRING(nu_mu)
+INLIB_GLOBAL_STRING(nu_mu_bar)
+
+INLIB_GLOBAL_STRING(nu_tau)
+
+INLIB_GLOBAL_STRING(gamma)
+
+INLIB_GLOBAL_STRING(proton)
+INLIB_GLOBAL_STRING(neutron)
+
+INLIB_GLOBAL_STRING_VALUE(pi_plus,pi+)
+INLIB_GLOBAL_STRING_VALUE(pi_minus,pi-)
+INLIB_GLOBAL_STRING(pi0)
+
+INLIB_GLOBAL_STRING_VALUE(K_plus,K+)
+INLIB_GLOBAL_STRING_VALUE(K_minus,K-)
+INLIB_GLOBAL_STRING(K0)
+
+INLIB_GLOBAL_STRING(opticalphoton)  //name not in pdg_table.txt
+
+}}
+
+/*
+#include "pdg"
+
+namespace inlib {
+namespace hep {
+inline bool pdg2string(int a_pdg,std::string& a_s) {
+  if(a_pdg==pdg::e_minus())  {a_s = s_e_minus();return true;}
+  if(a_pdg==pdg::e_plus())   {a_s = s_e_plus();return true;}
+  if(a_pdg==pdg::mu_minus()) {a_s = s_mu_minus();return true;}
+  if(a_pdg==pdg::mu_plus())  {a_s = s_mu_plus();return true;}
+
+  if(a_pdg==pdg::nu_e())   {a_s = s_nu_e();return true;}
+  if(a_pdg==pdg::nu_mu())  {a_s = s_nu_mu();return true;}
+  if(a_pdg==pdg::gamma())  {a_s = s_gamma();return true;}
+  if(a_pdg==pdg::proton()) {a_s = s_proton();return true;}
+  if(a_pdg==pdg::neutron()) {a_s = s_neutron();return true;}
+
+  if(a_pdg==pdg::pi_plus())  {a_s = s_pi_plus();return true;}
+  if(a_pdg==pdg::pi_minus()) {a_s = s_pi_minus();return true;}
+  if(a_pdg==pdg::pi0())      {a_s = s_pi0();return true;}
+
+  if(a_pdg==pdg::kaon_plus())  {a_s = s_kaon_plus();return true;}
+  if(a_pdg==pdg::kaon_minus()) {a_s = s_kaon_minus();return true;}
+  if(a_pdg==pdg::kaon0())      {a_s = s_kaon0();return true;}
+
+  if(a_pdg==pdg::anti_nu_e())  {a_s = s_anti_nu_e();return true;}
+  if(a_pdg==pdg::anti_nu_mu()) {a_s = s_anti_nu_mu();return true;}
+
+  a_s.clear();
+  return false;
+}
+}}
+*/
+
+#endif

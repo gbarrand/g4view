@@ -1,0 +1,256 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sinsh
+#define inlib_sinsh
+
+// used in insh.
+
+#include <string>
+
+namespace inlib {
+
+inline bool find_first_sharp(std::string& a_string,std::string::size_type& a_pos,std::string& a_error) {
+  std::string::size_type _size = a_string.size();
+  char* p = (char*)a_string.c_str();
+  bool in_sq_string = false;
+  bool in_dq_string = false;
+  bool in_bq_string = false;
+  for(std::string::size_type pos=0;pos<_size;pos++,p++) {
+    if((*p)=='"') {
+      if(in_sq_string || in_bq_string) {
+      } else {
+        if(!in_dq_string) {
+          in_dq_string = true;
+        } else {
+          in_dq_string = false;
+        }
+      }
+    } else if((*p)=='\'') {
+      if(in_dq_string || in_bq_string) {
+      } else {
+        if(!in_sq_string) {
+          in_sq_string = true;
+        } else {
+          in_sq_string = false;
+        }
+      }
+    } else if((*p)=='`') {
+      if(in_sq_string || in_dq_string) {
+      } else {
+        if(!in_bq_string) {
+          in_bq_string = true;
+        } else {
+          in_bq_string = false;
+        }
+      }
+    } else if(!in_sq_string && !in_dq_string && !in_bq_string && ((*p)==' ') && ((pos+1)<_size) && ((*(p+1))=='#') ) {
+      a_pos = pos+1;
+      a_error.clear();
+      return true;
+    }
+  }
+  if(in_sq_string) {
+    a_pos = std::string::npos;
+    a_error = "insh::find_first_sharp : even number of simple quotes expected.";
+    return false;
+  }
+  if(in_dq_string) {
+    a_pos = std::string::npos;
+    a_error = "insh::find_first_sharp : even number of double quotes expected.";
+    return false;
+  }
+  if(in_bq_string) {
+    a_pos = std::string::npos;
+    a_error = "insh::find_first_sharp : even number of back quotes expected.";
+    return false;
+  }
+  a_pos = std::string::npos;
+  a_error.clear();
+  return true;
+}
+
+}
+
+#include <vector>
+
+#ifdef INLIB_MEM
+#include "../mem"
+#include "../S_STRING"
+#endif
+
+namespace inlib {
+
+class sh_string : public std::string {
+  typedef std::string parent;
+#ifdef INLIB_MEM
+  INLIB_SCLASS(inlib::sh_string)
+#endif
+public:
+  enum string_type {
+    string_none,    //none is for none of simple,double,back,space cases.
+    string_simple,
+    string_double,
+    string_back,
+    string_space
+  };
+public:
+  sh_string()
+  :parent()
+  ,m_type(string_none)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  sh_string(const std::string& a_value,string_type a_type)
+  :parent()
+  ,m_type(a_type)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+    parent::operator=(a_value);
+  }
+  virtual ~sh_string(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  sh_string(const sh_string& a_from)
+  :parent(a_from)
+  ,m_type(a_from.m_type)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  sh_string& operator=(const sh_string& a_from){
+    parent::operator=(a_from);
+    m_type = a_from.m_type;
+    return *this;
+  }
+  sh_string& operator=(const std::string& a_from){
+    parent::operator=(a_from);
+    return *this;
+  }
+public:
+  std::string stype() const {
+    switch(m_type) {
+    case string_none:return "string_none";
+    case string_simple:return "string_simple";
+    case string_double:return "string_double";
+    case string_back:return "string_back";
+    case string_space:return "string_space";
+    }
+    return "string_none"; //to quiet g++-9
+  }
+public:
+  string_type m_type;
+};
+
+inline bool get_strings(const std::string& a_string,std::vector<sh_string>& a_args,std::string& a_error) {
+  a_args.clear();
+  std::string::size_type _size = a_string.size();
+  char* p = (char*)a_string.c_str();
+  bool in_sq_string = false;
+  bool in_dq_string = false;
+  bool in_bq_string = false;
+  bool in_space = false;
+  sh_string token;
+  for(std::string::size_type pos=0;pos<=_size;pos++,p++) {
+    if(pos==_size) {
+      if(token.size()) a_args.push_back(token);
+      break;
+    }
+    if((*p)==' ') {
+      if(in_dq_string || in_sq_string || in_bq_string ) {
+        token += *p;
+      } else {
+        if(!in_space) {
+          in_space = true;
+          if(token.size()) {a_args.push_back(token);token.clear();}
+          token.m_type = sh_string::string_space;
+        }
+        token += *p;
+      }
+    } else {
+      if(in_space) {
+        in_space = false;
+        if(token.size()) {a_args.push_back(token);token.clear();}
+        token.m_type = sh_string::string_none;
+      }
+      //token += *p;
+
+      if((*p)=='\'') {
+        if(in_dq_string || in_bq_string) {
+          token += *p;
+        } else {
+          if(!in_sq_string) {
+            in_sq_string = true;
+            if(token.size()) {a_args.push_back(token);token.clear();}
+            token.m_type = sh_string::string_simple;
+          } else {
+            in_sq_string = false;
+            if(token.size()) {a_args.push_back(token);token.clear();}
+            token.m_type = sh_string::string_none;
+          }
+        }
+      } else if((*p)=='"') {
+        if(in_sq_string || in_bq_string) {
+          token += *p;
+        } else {
+          if(!in_dq_string) {
+            in_dq_string = true;
+            if(token.size()) {a_args.push_back(token);token.clear();}
+            token.m_type = sh_string::string_double;
+          } else {
+            in_dq_string = false;
+            if(token.size()) {a_args.push_back(token);token.clear();}
+            token.m_type = sh_string::string_none;
+          }
+        }
+      } else if((*p)=='`') {
+        if(in_sq_string || in_dq_string) {
+          token += *p;
+        } else {
+          if(!in_bq_string) {
+            in_bq_string = true;
+            if(token.size()) {a_args.push_back(token);token.clear();}
+            token.m_type = sh_string::string_back;
+          } else {
+            in_bq_string = false;
+            if(token.size()) {a_args.push_back(token);token.clear();}
+            token.m_type = sh_string::string_none;
+          }
+        }
+
+      } else {
+        token += *p;
+      }
+
+    }
+  }
+  if(in_sq_string) {
+    a_args.clear();
+    a_error = "inlib::get_strings : even number of simple quotes expected.";
+    return false;
+  }
+  if(in_dq_string) {
+    a_args.clear();
+    a_error = "inlib::get_string : even number of double quotes expected.";
+    return false;
+  }
+  if(in_bq_string) {
+    a_args.clear();
+    a_error = "inlib::get_string : even number of back quotes expected.";
+    return false;
+  }
+  a_error.clear();
+  return true;
+}
+
+}
+
+#endif

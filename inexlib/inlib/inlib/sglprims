@@ -1,0 +1,38 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sglprims
+#define inlib_sglprims
+
+#include "glprims"
+
+#include <string>
+
+namespace inlib {
+namespace gl {
+
+inline bool glprim2s(mode_t a_mode,std::string& a_s) {
+  if(a_mode==points())         {a_s = "points";return true;}
+  if(a_mode==lines())          {a_s = "lines";return true;}
+  if(a_mode==line_loop())      {a_s = "line_loop";return true;}
+  if(a_mode==line_strip())     {a_s = "line_strip";return true;}
+  if(a_mode==triangles())      {a_s = "triangles";return true;}
+  if(a_mode==triangle_strip()) {a_s = "triangle_strip";return true;}
+  if(a_mode==triangle_fan())   {a_s = "triangle_fan";return true;}
+  return false;
+}
+
+inline bool s2glprim(const std::string& a_s,mode_t& a_mode) {
+  if(a_s=="points")         {a_mode = points();return true;}
+  if(a_s=="lines")          {a_mode = lines();return true;}
+  if(a_s=="line_loop")      {a_mode = line_loop();return true;}
+  if(a_s=="line_strip")     {a_mode = line_strip();return true;}
+  if(a_s=="triangles")      {a_mode = triangles();return true;}
+  if(a_s=="triangle_strip") {a_mode = triangle_strip();return true;}
+  if(a_s=="triangle_fan")   {a_mode = triangle_fan();return true;}
+  return false;
+}
+
+}}
+
+#endif

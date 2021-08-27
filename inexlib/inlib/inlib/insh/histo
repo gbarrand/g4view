@@ -1,0 +1,1111 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_histo
+#define inlib_insh_histo
+
+#include "ishell"
+#include "../args"
+#include "../omanager"
+
+#include "is_histo"
+
+#include "../file_format"
+
+namespace inlib {
+
+inline void insh_histo_create(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("histo_create");
+  
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  if(_args.is_arg("-classes")) {
+    a_insh.out_begin();
+    a_insh.out("h1d",true);
+    a_insh.out("h2d",true);
+    a_insh.out("h3d",true);
+    a_insh.out("p1d",true);
+    a_insh.out("p2d",true);
+    return;
+  }
+
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  _args.remove(fnh);
+
+  std::string sclass = histo::h1d::s_class();
+  INLIB_ISHELL_GET_ARG_STRING(class)
+
+  bool no_warn;
+  INLIB_ISHELL_IS_ARG(no_warn)
+  bool warn = no_warn?false:true;
+
+  if((sclass==histo::h1d::s_class())||(sclass=="h1d")) {
+    std::string stitle;
+    INLIB_ISHELL_GET_ARG_STRING(title)
+
+    unsigned int xbins = 100;
+    INLIB_ISHELL_GET_ARG_UINT(xbins)
+    double xmin = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(xmin)
+    double xmax = 1;
+    INLIB_ISHELL_GET_ARG_DOUBLE(xmax)
+
+    INLIB_ISHELL_ARGS_UNEXPECTED
+
+    histo::h1d* h = new histo::h1d(stitle,xbins,xmin,xmax);
+    a_mgr.manage_object<histo::h1d>(h,fnh,true,true,warn);
+
+  } else if(sclass==histo::h2d::s_class()||(sclass=="h2d")) {
+    std::string stitle;
+    INLIB_ISHELL_GET_ARG_STRING(title)
+
+    unsigned int xbins = 100;
+    INLIB_ISHELL_GET_ARG_UINT(xbins)
+    double xmin = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(xmin)
+    double xmax = 1;
+    INLIB_ISHELL_GET_ARG_DOUBLE(xmax)
+
+    unsigned int ybins = 100;
+    INLIB_ISHELL_GET_ARG_UINT(ybins)
+    double ymin = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(ymin)
+    double ymax = 1;
+    INLIB_ISHELL_GET_ARG_DOUBLE(ymax)
+
+    INLIB_ISHELL_ARGS_UNEXPECTED
+    
+    histo::h2d* h = new histo::h2d(stitle,xbins,xmin,xmax,ybins,ymin,ymax);
+    a_mgr.manage_object<histo::h2d>(h,fnh,true,true,warn);
+
+  } else if(sclass==histo::h3d::s_class()||(sclass=="h3d")) {
+    std::string stitle;
+    INLIB_ISHELL_GET_ARG_STRING(title)
+
+    unsigned int xbins = 100;
+    INLIB_ISHELL_GET_ARG_UINT(xbins)
+    double xmin = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(xmin)
+    double xmax = 1;
+    INLIB_ISHELL_GET_ARG_DOUBLE(xmax)
+
+    unsigned int ybins = 100;
+    INLIB_ISHELL_GET_ARG_UINT(ybins)
+    double ymin = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(ymin)
+    double ymax = 1;
+    INLIB_ISHELL_GET_ARG_DOUBLE(ymax)
+
+    unsigned int zbins = 100;
+    INLIB_ISHELL_GET_ARG_UINT(zbins)
+    double zmin = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(zmin)
+    double zmax = 1;
+    INLIB_ISHELL_GET_ARG_DOUBLE(zmax)
+
+    INLIB_ISHELL_ARGS_UNEXPECTED
+
+    histo::h3d* h = new histo::h3d(stitle,xbins,xmin,xmax,ybins,ymin,ymax,zbins,zmin,zmax);
+    a_mgr.manage_object<histo::h3d>(h,fnh,true,true,warn);
+
+  } else if((sclass==histo::p1d::s_class())||(sclass=="p1d")) {
+    std::string stitle;
+    INLIB_ISHELL_GET_ARG_STRING(title)
+
+    unsigned int xbins = 100;
+    INLIB_ISHELL_GET_ARG_UINT(xbins)
+    double xmin = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(xmin)
+    double xmax = 1;
+    INLIB_ISHELL_GET_ARG_DOUBLE(xmax)
+
+    double vmin,vmax;
+    histo::p1d* h = 0;
+    if(_args.find<double>("-vmin",vmin,0) &&
+       _args.find<double>("-vmax",vmax,0) ){
+      _args.remove("-vmin");
+      _args.remove("-vmax");
+      h = new histo::p1d(stitle,xbins,xmin,xmax,vmin,vmax);
+    } else {
+      h = new histo::p1d(stitle,xbins,xmin,xmax);
+    }
+    INLIB_ISHELL_ARGS_UNEXPECTED_DELETE(h)
+    
+    a_mgr.manage_object<histo::p1d>(h,fnh,true,true,warn);
+
+  } else if(sclass==histo::p2d::s_class()||(sclass=="p2d")) {
+    std::string stitle;
+    INLIB_ISHELL_GET_ARG_STRING(title)
+
+    unsigned int xbins = 100;
+    INLIB_ISHELL_GET_ARG_UINT(xbins)
+    double xmin = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(xmin)
+    double xmax = 1;
+    INLIB_ISHELL_GET_ARG_DOUBLE(xmax)
+
+    unsigned int ybins = 100;
+    INLIB_ISHELL_GET_ARG_UINT(ybins)
+    double ymin = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(ymin)
+    double ymax = 1;
+    INLIB_ISHELL_GET_ARG_DOUBLE(ymax)
+
+    double vmin,vmax;
+    histo::p2d* h = 0;
+    if(_args.find<double>("-vmin",vmin,0) &&
+       _args.find<double>("-vmax",vmax,0) ){
+      _args.remove("-vmin");
+      _args.remove("-vmax");
+      h = new histo::p2d(stitle,xbins,xmin,xmax,ybins,ymin,ymax,vmin,vmax);
+    } else {
+      h = new histo::p2d(stitle,xbins,xmin,xmax,ybins,ymin,ymax);
+    }
+    INLIB_ISHELL_ARGS_UNEXPECTED_DELETE(h)
+    
+    a_mgr.manage_object<histo::p2d>(h,fnh,true,true,warn);
+
+  } else {
+    a_insh.warn(s_cmd+": unknown class "+sout(sclass)+".");
+  }
+}
+
+inline const std::string& insh_histo_create_help() {
+  static const std::string s_help("\
+histo_create: histo_create [-classes,-class,-no_warn,-title,-[x,y,z]bins,-[x,y,z]min,-[x,y,z]max] managed_name\n\
+  Create a named and managed histogram.\n\
+  If an object with same managed name already exist it is deleted.\n\
+  According to the wanted class, various booking arguments can be passed.\n\
+  -classes print the available classes.\n\
+  -no_warn to not warn in case of overwriting an existing object.\n\
+  -title=string title of the histogram (default is '').\n\
+  -class=string class of the object to create (default is h1d).\n\
+  -[x,y,z]bins=uint number of [x,y,z] bins (default is 100).\n\
+  -[x,y,z]min=real [x,y,z] min (default is 0).\n\
+  -[x,y,z]max=real [x,y,z] max (default is 1).\n\
+  Example:\n\
+    histo_create -classes\n\
+    histo_create my_histo\n\
+    histo_create -class=h1d -title='my histo' -xbins=10 -xmin=-5 -xmax=5 h_1\n\
+");
+  return s_help;
+}
+
+inline void insh_histo_remove(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("histo_remove");
+  args _args(a_args);
+  if(_args.is_arg("-all")) {
+    a_mgr.remove_by_class<histo::h1d>();
+    a_mgr.remove_by_class<histo::h2d>();
+    a_mgr.remove_by_class<histo::h3d>();
+    a_mgr.remove_by_class<histo::p1d>();
+    a_mgr.remove_by_class<histo::p2d>();
+    return;
+  }
+ {std::string sclass;
+  if(_args.find("-class",sclass)&&(sclass.size())) {
+       if((sclass==histo::h1d::s_class())||(sclass=="h1d")) {a_mgr.remove_by_class<histo::h1d>();return;}
+  else if((sclass==histo::h2d::s_class())||(sclass=="h2d")) {a_mgr.remove_by_class<histo::h2d>();return;}
+  else if((sclass==histo::h3d::s_class())||(sclass=="h3d")) {a_mgr.remove_by_class<histo::h3d>();return;}
+  else if((sclass==histo::p1d::s_class())||(sclass=="p1d")) {a_mgr.remove_by_class<histo::p1d>();return;}
+  else if((sclass==histo::p2d::s_class())||(sclass=="p2d")) {a_mgr.remove_by_class<histo::p2d>();return;}
+  else {
+    a_insh.warn(s_cmd+": unknown class "+sout(sclass)+".");
+    return;
+  }}}
+
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  base_oholder* _boh = a_mgr.find_base_oholder(fnh);
+  if(!_boh) {
+    a_insh.warn(s_cmd+": object "+sout(fnh)+" not found.");
+    return;
+  }
+ {std::string hname;
+  if(!insh_is_histo(*_boh,hname)) {
+    a_insh.warn(s_cmd+": object "+sout(fnh)+" not an histo.");
+    return;
+  }}
+  a_mgr.remove_base_oholder(_boh,true);
+}
+
+inline const std::string& insh_histo_remove_help() {
+  static const std::string s_help("\
+histo_remove: histo_remove managed_name\n\
+  Remove managed histogram.\n\
+  -all remove all objects.\n\
+  Example:\n\
+    histo_ls\n\
+    histo_create h_1\n\
+    histo_ls\n\
+    histo_remove h_1\n\
+    histo_ls\n\
+    histo_remove -all\n\
+");
+  return s_help;
+}
+
+}
+
+#include "../sort"
+
+namespace inlib {
+
+inline void insh_histo_ls(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  std::vector<std::string> vs;
+  std::string name;
+  inlib_vforcit(base_oholder*,a_mgr.bohs(),it) {
+    if(insh_is_histo(*(*it),name)) vs.push_back(name);
+  }
+  sort::sort(vs);
+  if(a_insh.in_backquote()) {
+    a_insh.out_begin();
+    inlib_vforcit(std::string,vs,it) a_insh.out(*it,true);
+  } else {
+    a_insh.unix_print(vs);
+  }
+}
+
+inline const std::string& insh_histo_ls_help() {
+  static const std::string s_help("\
+histo_ls: histo_ls\n\
+  List managed histograms.\n\
+  Example:\n\
+    histo_ls\n\
+");
+  return s_help;
+}
+
+}
+
+#include "../wcsv_histo"
+
+namespace inlib {
+
+inline void insh_histo_print(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("histo_print");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  base_oholder* _boh = a_mgr.find_base_oholder(fnh);
+  if(!_boh) {
+    a_insh.warn(s_cmd+": "+sout(fnh)+" not found.");
+    return;
+  }
+
+  if(_args.is_arg("-mean")) {
+    if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+      a_insh.out_num(_h1d->mean());
+      return;
+    } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+    } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+    } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+      a_insh.out_num(_p1d->mean());
+      return;
+    } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+    }  
+    a_insh.warn(s_cmd+": not applicable on "+sout(fnh)+".");
+    return;
+  }
+  if(_args.is_arg("-mean_x")) {
+           if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+    } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+      a_insh.out_num(_h2d->mean_x());
+      return;
+    } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+      a_insh.out_num(_h3d->mean_x());
+      return;
+    } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+    } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+      a_insh.out_num(_p2d->mean_x());
+      return;
+    }  
+    a_insh.warn(s_cmd+": not applicable on "+sout(fnh)+".");
+    return;
+  }
+  if(_args.is_arg("-mean_y")) {
+           if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+    } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+      a_insh.out_num(_h2d->mean_y());
+      return;
+    } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+      a_insh.out_num(_h3d->mean_y());
+      return;
+    } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+    } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+      a_insh.out_num(_p2d->mean_y());
+      return;
+    }  
+    a_insh.warn(s_cmd+": not applicable on "+sout(fnh)+".");
+    return;
+  }
+  if(_args.is_arg("-mean_z")) {
+           if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+    } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+    } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+      a_insh.out_num(_h3d->mean_z());
+      return;
+    } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+    } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+    }  
+    a_insh.warn(s_cmd+": not applicable on "+sout(fnh)+".");
+    return;
+  }
+
+  if(_args.is_arg("-rms")) {
+    if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+      a_insh.out_num(_h1d->rms());
+      return;
+    } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+    } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+    } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+      a_insh.out_num(_p1d->rms());
+      return;
+    } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+    }  
+    a_insh.warn(s_cmd+": not applicable on "+sout(fnh)+".");
+    return;
+  }
+  if(_args.is_arg("-rms_x")) {
+    if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+    } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+      a_insh.out_num(_h2d->rms_x());
+      return;
+    } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+      a_insh.out_num(_h3d->rms_x());
+      return;
+    } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+    } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+      a_insh.out_num(_p2d->rms_x());
+      return;
+    }  
+    a_insh.warn(s_cmd+": not applicable on "+sout(fnh)+".");
+    return;
+  }
+  if(_args.is_arg("-rms_y")) {
+           if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+    } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+      a_insh.out_num(_h2d->rms_y());
+      return;
+    } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+      a_insh.out_num(_h3d->rms_y());
+      return;
+    } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+    } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+      a_insh.out_num(_p2d->rms_y());
+      return;
+    }  
+    a_insh.warn(s_cmd+": not applicable on "+sout(fnh)+".");
+    return;
+  }
+  if(_args.is_arg("-rms_z")) {
+           if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+    } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+    } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+      a_insh.out_num(_h3d->rms_z());
+      return;
+    } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+    } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+    }  
+    a_insh.warn(s_cmd+": not applicable on "+sout(fnh)+".");
+    return;
+  }
+
+#define INLIB_INSH_HISTO_PRINT(a__variable,a__xto)\
+  if(_args.is_arg("-header")) {\
+    wcsv::h_header(a_insh.out(),a__variable->s_cls(),*a__variable);\
+  } else if(_args.is_arg("-hprint")) {\
+    a__variable->hprint(a_insh.out());\
+  } else {\
+    wcsv::a__xto(a_insh.out(),a__variable->s_cls(),*a__variable);\
+  }
+
+
+  if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+    INLIB_INSH_HISTO_PRINT(_h1d,hto)
+  } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+    INLIB_INSH_HISTO_PRINT(_h2d,hto)
+  } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+    INLIB_INSH_HISTO_PRINT(_h3d,hto)
+  } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+    INLIB_INSH_HISTO_PRINT(_p1d,pto)
+  } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+    INLIB_INSH_HISTO_PRINT(_p2d,pto)
+  } else {
+    a_insh.warn(s_cmd+": "+sout(fnh)+" has an unknown histo class.");
+  }
+
+#undef INLIB_INSH_HISTO_PRINT
+
+}
+
+inline const std::string& insh_histo_print_help() {
+  static const std::string s_help("\
+histo_print: histo_print [-header,-hprint,-[rms,mean][_x,_y_z]] managed_name\n\
+  Print histogram at the csv format given its name.\n\
+  -header to print the csv header only.\n\
+  -hprint print summary as hbook hprint did.\n\
+  -mean/-rms for 1D histo, print axis mean/rms value.\n\
+  -mean_x,-rms_x for 2,3D histo, print x axis mean/rms value.\n\
+  -mean_y,-rms_y for 2,3D histo, print y axis mean/rms value.\n\
+  -mean_z,-rms_z for 3D histo, print z axis mean/rms value.\n\
+  Example:\n\
+    histo_create my_histo\n\
+    histo_ls\n\
+    histo_fill -x=0.5 my_histo\n\
+    histo_print my_histo\n\
+    histo_print -header my_histo\n\
+    histo_print -hprint my_histo\n\
+    histo_print -mean my_histo\n\
+");
+  return s_help;
+}
+
+inline void insh_histo_reset(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("histo_reset");
+  args _args(a_args);
+  INLIB_ISHELL_GET_ARG_FNH
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  base_oholder* _boh = a_mgr.find_base_oholder(fnh);
+  if(!_boh) {
+    a_insh.warn(s_cmd+": "+sout(fnh)+" not found.");
+    return;
+  }
+  if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+    _h1d->reset();
+  } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+    _h2d->reset();
+  } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+    _h3d->reset();
+  } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+    _p1d->reset();
+  } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+    _p2d->reset();
+  } else {
+    a_insh.warn(s_cmd+": not applicable on "+sout(fnh)+".");
+  }
+}
+
+inline const std::string& insh_histo_reset_help() {
+  static const std::string s_help("\
+histo_reset: histo_reset [managed_name]\n\
+  Reset content of a managed histogram.\n\
+  Example:\n\
+    histo_create h\n\
+    histo_fill -x=0.5 h\n\
+    histo_print h\n\
+    histo_reset h\n\
+    histo_print h\n\
+");
+  return s_help;
+}
+
+}
+
+#include "../find_rand"
+
+namespace inlib {
+
+inline void insh_histo_fill(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("histo_fill");
+  
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  _args.remove(fnh);
+  
+  base_oholder* _boh = a_mgr.find_base_oholder(fnh);
+  if(!_boh) {
+    a_insh.warn(s_cmd+": histo object "+sout(fnh)+" not found.");
+    return;
+  }
+  double w = 1;
+  INLIB_ISHELL_GET_ARG_DOUBLE(w)
+  
+  double x = 0;
+//INLIB_ISHELL_GET_ARG_DOUBLE(x)
+  const irandd* rx = 0;
+  INLIB_ISHELL_GET_ARG_RAND(x,rx)
+  
+  if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+    if(rx) {
+      uint64 entries = 0;
+      INLIB_ISHELL_GET_ARG_UINT64(entries)
+      for(uint64 index=0;index<entries;index++) _h1d->fill(rx->shootd(),w);
+    } else {
+      _h1d->fill(x,w);
+    }
+    INLIB_ISHELL_ARGS_UNEXPECTED
+    
+  } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+    double y = 0;
+    const irandd* ry = 0;
+    INLIB_ISHELL_GET_ARG_RAND(y,ry)
+    
+    if(rx && ry) {
+      uint64 entries = 0;
+      INLIB_ISHELL_GET_ARG_UINT64(entries)
+      for(uint64 index=0;index<entries;index++) _h2d->fill(rx->shootd(),ry->shootd(),w);
+    } else {
+      _h2d->fill(x,y,w);  
+    }
+    INLIB_ISHELL_ARGS_UNEXPECTED
+
+  } else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+    double y = 0;
+    const irandd* ry = 0;
+    INLIB_ISHELL_GET_ARG_RAND(y,ry)
+    
+    double z = 0;
+    const irandd* rz = 0;
+    INLIB_ISHELL_GET_ARG_RAND(z,rz)
+    
+    if(rx && ry && rz) {
+      uint64 entries = 0;
+      INLIB_ISHELL_GET_ARG_UINT64(entries)
+      for(uint64 index=0;index<entries;index++) _h3d->fill(rx->shootd(),ry->shootd(),rz->shootd(),w);
+    } else {
+      _h3d->fill(x,y,z,w);  
+    }
+    INLIB_ISHELL_ARGS_UNEXPECTED
+
+  } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+    double y = 0;
+    const irandd* ry = 0;
+    INLIB_ISHELL_GET_ARG_RAND(y,ry)
+    
+    if(rx && ry) {
+      uint64 entries = 0;
+      INLIB_ISHELL_GET_ARG_UINT64(entries)
+      for(uint64 index=0;index<entries;index++) _p1d->fill(rx->shootd(),ry->shootd(),w);
+    } else {
+      _p1d->fill(x,y,w);  
+    }
+    INLIB_ISHELL_ARGS_UNEXPECTED
+
+  } else if(histo::p2d* _p2d = cast_oholder_object<histo::p2d>(*_boh)) {
+    double y = 0;
+    const irandd* ry = 0;
+    INLIB_ISHELL_GET_ARG_RAND(y,ry)
+    
+    double z = 0;
+    const irandd* rz = 0;
+    INLIB_ISHELL_GET_ARG_RAND(z,rz)
+    
+    if(rx && ry && rz) {
+      uint64 entries = 0;
+      INLIB_ISHELL_GET_ARG_UINT64(entries)
+      for(uint64 index=0;index<entries;index++) _p2d->fill(rx->shootd(),ry->shootd(),rz->shootd(),w);
+    } else {
+      _p2d->fill(x,y,z,w);  
+    }
+    INLIB_ISHELL_ARGS_UNEXPECTED
+
+  } else {
+    a_insh.warn(s_cmd+": "+sout(fnh)+" has an unknown histo class.");
+  }
+}
+
+inline const std::string& insh_histo_fill_help() {
+  static const std::string s_help("\
+histo_fill: histo_fill [-x,-y,-z,-w] managed_name\n\
+  Fill histogram.\n\
+  -w=real weight of the fill (default is 1).\n\
+  -x=real x coordinate (default is 0).\n\
+  -x=random name of a managed random generator object.\n\
+  -y=real y coordinate (default is 0).\n\
+  -y=random name of a managed random generator object.\n\
+  -z=real z coordinate (default is 0).\n\
+  -z=random name of a managed random generator object.\n\
+  -entriesx=uint number of fill to do if using random managed objects.\n\
+  For a h1d -x is needed.\n\
+  For a h2d -x,-y are needed.\n\
+  For a h3d -x,-y,-z are needed.\n\
+  For a p1d -x,-y are needed.\n\
+  For a p2d -x,-y,-z are needed.\n\
+  Example:\n\
+    histo_create -xbins=20 -xmin=-5 -xmax=5 h_1\n\
+    histo_ls\n\
+    random_create -class=rgaussd -mean=0 -std_dev=1 r_1\n\
+    histo_fill -x=`random_shoot r_1` h_1\n\
+    histo_print h_1\n\
+");
+  return s_help;
+}
+
+}
+
+#include <fstream>
+
+#include "../wroot/file"
+#include "../wroot/to"
+
+namespace inlib {
+
+inline bool insh_write_csv(std::ostream& a_writer,const base_oholder& a_boh) {
+  char hc = '#';
+  char sep = ',';
+  bool have_header = true;
+  if(const histo::h1d* _h1d = cast_oholder_object<histo::h1d>(a_boh)) {
+    if(!wcsv::hto(a_writer,_h1d->s_cls(),*_h1d,sep,hc,have_header)) return false;
+  } else if(const histo::h2d* _h2d = cast_oholder_object<histo::h2d>(a_boh)) {
+    if(!wcsv::hto(a_writer,_h2d->s_cls(),*_h2d,sep,hc,have_header)) return false;
+  } else if(const histo::h3d* _h3d = cast_oholder_object<histo::h3d>(a_boh)) {
+    if(!wcsv::hto(a_writer,_h3d->s_cls(),*_h3d,sep,hc,have_header)) return false;
+  } else if(const histo::p1d* _p1d = cast_oholder_object<histo::p1d>(a_boh)) {
+    if(!wcsv::pto(a_writer,_p1d->s_cls(),*_p1d,sep,hc,have_header)) return false;
+  } else if(const histo::p2d* _p2d = cast_oholder_object<histo::p2d>(a_boh)) {
+    if(!wcsv::pto(a_writer,_p2d->s_cls(),*_p2d,sep,hc,have_header)) return false;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+inline bool insh_write_root(wroot::directory& a_dir,const base_oholder& a_boh,const std::string& a_name) {
+  if(const histo::h1d* _h1d = cast_oholder_object<histo::h1d>(a_boh)) {
+    if(!wroot::to(a_dir,*_h1d,a_name)) return false;
+  } else if(const histo::h2d* _h2d = cast_oholder_object<histo::h2d>(a_boh)) {
+    if(!wroot::to(a_dir,*_h2d,a_name)) return false;
+  } else if(const histo::h3d* _h3d = cast_oholder_object<histo::h3d>(a_boh)) {
+    if(!wroot::to(a_dir,*_h3d,a_name)) return false;
+  } else if(const histo::p1d* _p1d = cast_oholder_object<histo::p1d>(a_boh)) {
+    if(!wroot::to(a_dir,*_p1d,a_name)) return false;
+  } else if(const histo::p2d* _p2d = cast_oholder_object<histo::p2d>(a_boh)) {
+    if(!wroot::to(a_dir,*_p2d,a_name)) return false;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+inline void insh_histo_write(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("histo_write");
+  args _args(a_args);
+  if(_args.is_arg("-formats")) {
+    a_insh.out_begin();
+    a_insh.out("csv",true);
+    a_insh.out("root",true);
+    return;
+  }
+
+  std::string fnh;
+  _args.first_not_hyphen(fnh);
+
+  std::string format;
+  _args.find("-format",format,"csv");
+
+  std::string file_name;
+  _args.find("-file",file_name,"out."+format);
+
+  if(format=="csv") {
+    std::ofstream writer(file_name.c_str(),std::ios::binary); //binary for Windows to not have \r \l at each end of line.
+    if(writer.fail()) {
+      a_insh.warn(s_cmd+": can't open "+sout(file_name)+".");
+      return;
+    }
+    if(fnh.empty()) {
+      inlib_vforcit(base_oholder*,a_mgr.bohs(),it) {
+        if(insh_is_histo(*(*it),fnh)) {
+          if(!insh_write_csv(writer,*(*it))) {
+            a_insh.warn(s_cmd+": can't write "+sout(fnh)+" in csv file.");
+          }
+        }
+      }
+    } else {
+      base_oholder* _boh = a_mgr.find_base_oholder(fnh);
+      if(!_boh) {
+        a_insh.warn(s_cmd+": "+sout(fnh)+" not found.");
+      } else {
+        if(!insh_write_csv(writer,*_boh)) {
+          a_insh.warn(s_cmd+": can't write "+sout(_boh->name())+" in csv file.");
+        }
+      }
+    }
+    writer.close();
+
+  } else if(format=="root") {
+    wroot::file file(a_insh.out(),file_name);
+    //if(args.is_arg("-noz")){
+    //} else {
+    //rfile.add_ziper('Z',exlib::compress_buffer);
+    //rfile.set_compression(9);
+    //}
+    wroot::directory& dir = file.dir();
+    if(fnh.empty()) {
+      inlib_vforcit(base_oholder*,a_mgr.bohs(),it) {
+        if(insh_is_histo(*(*it),fnh)) {
+          if(!insh_write_root(dir,*(*it),fnh)) {
+            a_insh.warn(s_cmd+": can't write "+sout(fnh)+" in root file.");
+          }
+        }
+      }
+    } else {
+      base_oholder* _boh = a_mgr.find_base_oholder(fnh);
+      if(!_boh) {
+        a_insh.warn(s_cmd+": "+sout(fnh)+" not found.");
+      } else {
+        if(!insh_write_root(dir,*_boh,_boh->name())) {
+          a_insh.warn(s_cmd+": can't write "+sout(_boh->name())+" in root file.");
+        }
+      }
+    }
+
+   {unsigned int n;
+    if(!file.write(n)) {
+      a_insh.warn(s_cmd+": root file write failed.");
+    }}
+
+    file.close();
+
+  } else {
+    a_insh.warn(s_cmd+": unknown file format "+sout(format)+".");
+  }
+}
+
+inline const std::string& insh_histo_write_help() {
+  static const std::string s_help("\
+histo_write: histo_write [-file,-format] [managed_name]\n\
+  Write histogram in a file.\n\
+  If no name is given, then all histograms are written.\n\
+  -file=string output file (default is out.csv).\n\
+  -format=string file format (default is csv).\n\
+  If -format is given but -file is not given, output file is out.(format extension).\n\
+  -formats print the available formats.\n\
+  Example:\n\
+    histo_write -formats\n\
+    histo_create -xbins=20 -xmin=-5 -xmax=5 h_1\n\
+    histo_ls\n\
+    random_create -class=rgaussd -mean=0 -std_dev=1 r_1\n\
+    numbers=`seq 1 10000`\n\
+    for i in ${numbers} ; do\n\
+      x=`random_shoot r_1`\n\
+      histo_fill -x=${x} h_1\n\
+    done\n\
+    histo_print h_1\n\
+    histo_write      # write in out.csv.\n\
+    histo_write h_1  # write in out.csv.\n\
+    histo_write -file=my.csv h_1\n\
+    histo_write -format=root # write in out.root\n\
+    histo_write -format=root -file=my.root h_1\n\
+    ls\n\
+");
+  return s_help;
+}
+
+}
+
+#include "../sg/separator"
+#include "../sg/ortho"
+#include "../sg/plots"
+#include "../sg/write_paper"
+#include "../sg/dummy_freetype"
+#include "../sg/h2plot"
+#include "../sep"
+
+#ifdef INLIB_HISTO_PLOT_OFFSCREEN_HAVE_PNG
+#include <exlib/png>
+#endif
+#ifdef INLIB_HISTO_PLOT_OFFSCREEN_HAVE_JPEG
+#include <exlib/jpeg>
+#endif
+
+namespace inlib {
+
+inline bool insh_plot(sg::plotter& a_plotter,const base_oholder& a_boh) {
+  if(const histo::h1d* _h1d = cast_oholder_object<histo::h1d>(a_boh)) {
+    a_plotter.add_plottable(new sg::h1d2plot(*_h1d));
+  } else if(const histo::h2d* _h2d = cast_oholder_object<histo::h2d>(a_boh)) {
+    a_plotter.add_plottable(new sg::h2d2plot(*_h2d));
+//} else if(const histo::h3d* _h3d = cast_oholder_object<histo::h3d>(a_boh)) {
+//  a_plotter.add_plottable(new sg::h3d2plot(*_h3d));
+  } else if(const histo::p1d* _p1d = cast_oholder_object<histo::p1d>(a_boh)) {
+    a_plotter.add_plottable(new sg::p1d2plot(*_p1d));
+//} else if(const histo::p2d* _p2d = cast_oholder_object<histo::p2d>(a_boh)) {
+//  a_plotter.add_plottable(new sg::p2d2plot(*_p2d));
+  } else {
+    return false;
+  }
+  return true;
+}
+
+inline void insh_plots_in_file(ishell& a_insh,
+                               sg::gl2ps_manager& a_gl2ps_mgr,sg::zb_manager& a_zb_mgr,
+                               const std::string& a_file,const std::string& a_format,
+                               unsigned int a_w,unsigned int a_h,
+			       sg::plots& a_plots,sg::separator& a_sep) {
+//unsigned int factor = 2; //have greater size to have good freetype rendering.
+  unsigned int factor = 1;
+  unsigned int _width = factor*a_w;
+  unsigned int _height = factor*a_h;
+
+  a_plots.adjust_size(_width,_height);
+
+  colorf clear_color = colorf_white();
+
+#ifdef INLIB_HISTO_PLOT_OFFSCREEN_HAVE_PNG
+  sg::png_writer _png_writer = exlib::png::write;
+#else
+  sg::png_writer _png_writer = 0;
+#endif
+
+#ifdef INLIB_HISTO_PLOT_OFFSCREEN_HAVE_JPEG
+  sg::jpeg_writer _jpeg_writer = exlib::jpeg::write;
+#else
+  sg::jpeg_writer _jpeg_writer = 0;
+#endif
+
+  if(!sg::write_paper(a_insh.out(),a_gl2ps_mgr,a_zb_mgr,_png_writer,_jpeg_writer,
+                      clear_color.r(),clear_color.g(),clear_color.b(),clear_color.a(),
+                      a_sep,_width,_height,a_file,a_format)) {
+    a_insh.warn("histo_plot_offscreen : write_paper() failed.");
+    return;
+  }
+}
+
+inline void insh_histo_plot_offscreen(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("histo_plot_offscreen");
+  args _args(a_args);
+  if(_args.is_arg("-formats")) {
+    a_insh.out_begin();
+    a_insh.out("inzb_ps",true);
+#ifdef INLIB_HISTO_PLOT_OFFSCREEN_HAVE_PNG
+    a_insh.out("inzb_png",true);
+#endif
+#ifdef INLIB_HISTO_PLOT_OFFSCREEN_HAVE_JPEG
+    a_insh.out("inzb_jpeg",true);
+#endif
+    a_insh.out("gl2ps_eps",true);
+    a_insh.out("gl2ps_ps",true);
+    a_insh.out("gl2ps_pdf",true);
+    a_insh.out("gl2ps_svg",true);
+    a_insh.out("gl2ps_tex",true);
+    a_insh.out("gl2ps_pgf",true);
+    return;
+  }
+
+  std::string fnh;
+  _args.first_not_hyphen(fnh);
+
+  std::string format;
+  _args.find("-format",format,"inzb_ps");
+
+  std::string sext;
+  if(!file::paper_format_extension(format,sext)) {
+    a_insh.warn(s_cmd+": unknown format "+sout(format)+".");
+    return;
+  }
+
+  std::string file_name;
+  _args.find("-file",file_name,"out."+sext);
+
+  bool no_warn = _args.is_arg("-no_warn");
+
+  //////////////////////////////////////////////////////////
+  /// graphics managers : //////////////////////////////////
+  //////////////////////////////////////////////////////////
+  sg::zb_manager zb_mgr;
+  sg::gl2ps_manager gl2ps_mgr;
+
+  //////////////////////////////////////////////////////////
+  /// scene graph //////////////////////////////////////////
+  //////////////////////////////////////////////////////////
+  //sg::text_freetype m_ttf;
+  sg::dummy_freetype ttf;
+
+  sg::separator* _sep = new sg::separator;
+
+  sg::ortho* camera = new sg::ortho;
+  camera->height = 1;
+  float z = 10*1;
+  camera->znear = 0.1f*z;
+  camera->zfar = 10*z; //100*z induces problems with lego rendering.
+  camera->position = vec3f(0,0,z);
+  camera->orientation = rotf(vec3f(0,0,1),0);
+  camera->focal = z;
+  _sep->add(camera);
+
+  sg::plots* plots = new sg::plots(ttf);
+  plots->view_border = false;
+  _sep->add(plots);
+
+  unsigned int w = 400;
+  unsigned int h = 400;
+
+  if(fnh.empty()) {
+    unsigned int cols = 1;
+    INLIB_ISHELL_GET_ARG_UINT(cols)
+    unsigned int rows = 1;
+    INLIB_ISHELL_GET_ARG_UINT(rows)
+
+    if(!cols) cols = 1;
+    if(!rows) rows = 1;
+
+    plots->cols = cols;
+    plots->rows = rows;
+    plots->clear();
+
+    std::string fp,fn,fs;
+    path_name_suffix(file_name,fp,fn,fs);
+    nosuffix(fn,fn);
+
+   {unsigned int iplotter = 0;
+    unsigned int ifile = 0;
+    bool some_plotter_filled = false;
+    inlib_vforcit(base_oholder*,a_mgr.bohs(),it) {
+      if(insh_is_histo(*(*it),fnh)) {
+        base_oholder* _boh = *it;
+        plots->set_current_plotter(iplotter);
+        sg::plotter& _plotter = plots->current_plotter();
+        if(!insh_plot(_plotter,*(*it))) {
+	  if(!no_warn) {
+           //a_insh.warn(s_cmd+": can't plot "+sout(_boh->std_name())+". (h3d, p2d not yet supported).");
+           a_insh.out() << "histo_plot_offscreen :"
+                        << " can't plot " << fnh << ". (h3d, p2d not yet supported)."
+                        << std::endl;
+          }
+        } else {
+          some_plotter_filled = true;
+          iplotter++;
+          if(iplotter>=plots->number()) {
+            iplotter = 0;
+
+            std::string file;
+            if(fp.size()) file += fp+sep();
+            file += fn;
+            file += "_";
+            numas(ifile,file);
+            if(fs.size()) file += "."+fs;
+            insh_plots_in_file(a_insh,gl2ps_mgr,zb_mgr,file,format,w,h,*plots,*_sep);
+
+            plots->clear();
+            some_plotter_filled = false;
+            ifile++;
+          }
+        }
+      }
+    }
+    if(some_plotter_filled) {
+      std::string file;
+      if(fp.size()) file += fp+sep();
+      file += fn;
+      file += "_";
+      numas(ifile,file);
+      if(fs.size()) file += "."+fs;
+      insh_plots_in_file(a_insh,gl2ps_mgr,zb_mgr,file,format,w,h,*plots,*_sep);
+    }}
+
+  } else {
+
+    plots->cols = 1;
+    plots->rows = 1;
+    plots->clear();
+
+    base_oholder* _boh = a_mgr.find_base_oholder(fnh);
+    if(!_boh) {
+      a_insh.warn(s_cmd+": "+sout(fnh)+" not found.");
+    } else {
+      sg::plotter& _plotter = plots->current_plotter();
+      if(!insh_plot(_plotter,*_boh)) {
+         a_insh.warn(s_cmd+": can't plot "+sout(_boh->name())+". (h3d, p2d not yet supported).");
+      } else {
+        insh_plots_in_file(a_insh,gl2ps_mgr,zb_mgr,file_name,format,w,h,*plots,*_sep);
+      }
+    }
+  }
+
+  //////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////
+  delete _sep;  //must be before deleting the graphics managers.
+
+}
+
+inline const std::string& insh_histo_plot_offscreen_help() {
+  static const std::string s_help("\
+histo_plot_offscreen: histo_plot_offscreen [-file,-format] [managed_name]\n\
+  Plot offscreen histograms in one or more files.\n\
+  If no name is given, plot all of them (if they are plottable).\n\
+  -file=string output file (default is out.ps).\n\
+  -format=string file format (default is ps).\n\
+  If -format is given but -file is not given, output file is out.(format extension).\n\
+  In case of 'no name', a file is created per grid of 'cols*rows' plots; in such\n\
+  a case file names are of the form 'file'_(index).(format extension).\n\
+  -cols=uint number of grid columns in case of 'no name' (default is 1).\n\
+  -rows=uint number of grid rows in case of 'no name' (default is 1).\n\
+  If available when building the app, -format could be inzb_png or inzb_jpeg.\n\
+  -formats print the available formats.\n\
+  -no_warn to not warn in case of a not plottable object.\n\
+  Example:\n\
+    histo_plot_offscreen -formats\n\
+    \n\
+    histo_create -xbins=20 -xmin=-5 -xmax=5 h_1\n\
+    random_create -class=rgaussd -mean=0 -std_dev=1 r_1\n\
+    numbers=`seq 1 10000`\n\
+    for i in ${numbers} ; do\n\
+      x=`random_shoot r_1`\n\
+      histo_fill -x=${x} h_1\n\
+    done\n\
+    \n\
+    histo_create -xbins=20 -xmin=-5 -xmax=5 h_2\n\
+    random_create -class=rbwd -gamma=1 -std_dev=1 r_2\n\
+    for i in ${numbers} ; do\n\
+      x=`random_shoot r_2`\n\
+      histo_fill -x=${x} h_2\n\
+    done\n\
+    histo_ls\n\
+    \n\
+    histo_plot_offscreen h_1  # write in out.ps.\n\
+    histo_plot_offscreen -file=my.ps h_1\n\
+    histo_plot_offscreen -format=inzb_png h_1  #write out.png\n\
+    histo_plot_offscreen -format=inzb_jpeg -file=my.jpeg h_1\n\
+    \n\
+    histo_plot_offscreen -cols=2 -rows=2\n\
+    ls\n\
+");
+  return s_help;
+}
+
+}
+
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+
+#define INLIB_INSH_HISTO_ADDS(a__insh,a__omanager)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,histo_create,\
+    inlib::insh_histo_create,inlib::insh_histo_create_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,histo_remove,\
+    inlib::insh_histo_remove,inlib::insh_histo_remove_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,histo_ls,\
+    inlib::insh_histo_ls,inlib::insh_histo_ls_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,histo_print,\
+    inlib::insh_histo_print,inlib::insh_histo_print_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,histo_fill,\
+    inlib::insh_histo_fill,inlib::insh_histo_fill_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,histo_write,\
+    inlib::insh_histo_write,inlib::insh_histo_write_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,histo_plot_offscreen,\
+    inlib::insh_histo_plot_offscreen,inlib::insh_histo_plot_offscreen_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,histo_reset,\
+    inlib::insh_histo_reset,inlib::insh_histo_reset_help())
+
+#endif

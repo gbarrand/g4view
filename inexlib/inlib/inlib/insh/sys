@@ -1,0 +1,29 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_sys
+#define inlib_insh_sys
+
+#include "ishell"
+
+#include "../sys/dir"
+#include "../sep"
+
+namespace inlib {
+
+inline void insh_sys_home_dir(ishell& a_insh,const std::vector<std::string>&) {
+  std::string shome;
+  dir::home(shome);
+  a_insh.out(shome);
+}
+
+inline void insh_sys_file_sep(ishell& a_insh,const std::vector<std::string>&) {
+  a_insh.out(sep());
+}
+inline void insh_sys_path_sep(ishell& a_insh,const std::vector<std::string>&) {
+  a_insh.out(psep());
+}
+
+}
+
+#endif

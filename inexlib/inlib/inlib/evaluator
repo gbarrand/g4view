@@ -1,0 +1,241 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_evaluator
+#define inlib_evaluator
+
+#ifdef INLIB_MEM
+#include "mem"
+#endif
+
+#include "rntuple"
+#include "yacc/cexpr_eval.h"
+#include "sout"
+
+namespace inlib {
+namespace read {
+
+class evaluator {
+  static const std::string& s_class() {
+    static const std::string s_v("inlib::read::evaluator");
+    return s_v;
+  }
+public:
+  //virtual const std::string& label() const;
+  evaluator(std::ostream& a_out,intuple& a_tuple,const std::string& a_script)
+  :m_out(a_out)
+  ,m_tuple(a_tuple)
+  ,m_processor(a_out,"")
+  ,m_script(a_script)
+  ,m_is_valid(false)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+    m_is_valid = initialize();
+  }
+  virtual ~evaluator(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+protected:
+  evaluator(const evaluator& a_from)
+  :m_out(a_from.m_out)
+  ,m_tuple(a_from.m_tuple)
+  ,m_processor(a_from.m_out,"")
+  ,m_script(a_from.m_script)
+  ,m_is_valid(false)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+    m_is_valid = initialize();
+  }
+  evaluator& operator=(const evaluator&) {return *this;}
+public:
+  bool evaluate_double(double& a_value) {
+    if(!get_variables()) {a_value = 0;return false;}
+    std::string serror;
+    if(!m_processor.execute(m_vals,m_result,serror)) {
+      m_out << "inlib::rroot::evaluator::evaluate_double :"
+            << " processor execution failed for " << sout(m_script) << "."
+            << std::endl;
+      m_out << serror << std::endl;
+      a_value = 0;
+      return false;
+    }
+    if(!m_result.to_double(a_value)) {
+      m_out << "inlib::rroot::evaluator::evaluate_double :"
+            << " can't convert the result inlib::value to a double"
+            << " (" << m_result.stype() << ")"
+            << " for script " << sout(m_script)
+            << std::endl;
+      a_value = 0;
+      return false;
+    }
+    return true;
+  }
+
+  bool accept(bool& a_ok) {
+    if(m_script.empty()) {a_ok = true;return true;}
+    if(!get_variables()) {a_ok = true;return false;}
+    std::string serror;
+    if(!m_processor.execute(m_vals,m_result,serror)) {
+      m_out << "inlib::rroot::evaluator::accept : processor execution failed for script " << sout(m_script) << "." << std::endl;
+      m_out << serror << std::endl;
+      a_ok = true;
+      return false;
+    }
+    if(m_result.type()!=value::BOOL) {
+      m_out << "inlib::rroot::evaluator::accept : result inlib::value not a BOOLEAN"
+            << " (" << m_result.stype() << ")"
+            << " for script " << sout(m_script)
+            << std::endl;
+      a_ok = true;
+      return false;
+    }
+    a_ok = m_result.get_bool();
+    return true;
+  }
+
+  bool is_valid() const {return m_is_valid;}
+protected:
+  bool initialize() {
+    m_names.clear();
+    m_cols.clear();
+    m_vals.clear();
+
+    m_processor.set_script(m_script);
+
+    // Get cut variables :
+    if(!m_processor.find_variables(m_names)) {
+      m_out << "inlib::rroot::evaluator::initialize : find_variables() failed for script " << sout(m_script) << "." << std::endl;
+      m_names.clear();
+      return false;
+    }
+
+    // Get functions names :
+   {std::vector<std::string> funcs;
+    if(!m_processor.find_functions(funcs)) {
+      m_out << "inlib::rroot::evaluator::initialize : find_function() failed for script " << sout(m_script) << "." << std::endl;
+      m_names.clear();
+      return false;
+    }
+    std::vector<std::string>::const_iterator it;
+    for(it=funcs.begin();it!=funcs.end();++it) {
+      if(m_processor.find_function(*it,false)) continue;
+      m_out << "inlib::rroot::evaluator::initialize : function " << sout(*it) << " not found"
+            << " in script " << sout(m_script) << "." << std::endl;
+      m_names.clear();
+      return false;
+      //m_processor.add_function(new ExpFunc_AIDA_FUNC(*it,*func));
+    }}
+
+    if(!m_processor.compile(m_names)) {
+      m_out << "inlib::rroot::evaluator::initialize : compilation failed for script " << sout(m_script) << "." << std::endl;
+      m_names.clear();
+      return false;
+    }
+
+  //const int NotFound = -1;
+
+    unsigned int number = m_names.size(); //Could be zero.
+    m_cols.resize(number);
+    for(unsigned int count=0;count<number;count++) {
+      //printf("debug : variable \"%s\" %lu\n",m_names[count].c_str(),&a_tuple);
+
+      const std::string& _name = m_names[count];
+      icol* _icol = m_tuple.find_icol(_name);
+      if(!_icol) {
+        m_out << "inlib::rroot::evaluator::initialize : "
+              << sout(m_names[count])
+              << " not a column of tuple with title "
+              << sout(m_tuple.title())
+              << ". Script is " << sout(m_script) << "." << std::endl;
+        // dump column names :
+     //{m_out << "inlib::evaluator::initialize : columns are :" << std::endl;
+      //for(unsigned int count=0;count<number;count++) {
+      //  m_out << sout(m_tuple.columnName(count)) << std::endl;
+      //}}
+        m_names.clear();
+        m_cols.clear();
+        return false;
+      }
+      if(icolumn<char>* _col_char = id_cast<icol, icolumn<char> >(*_icol)) {
+        m_cols[count] = _col_char;
+      } else if(icolumn<short>* _col_short = id_cast<icol, icolumn<short> >(*_icol)) {
+        m_cols[count] = _col_short;
+      } else if(icolumn<int>* _col_int = id_cast<icol, icolumn<int> >(*_icol)) {
+        m_cols[count] = _col_int;
+      } else if(icolumn<float>* _col_float = id_cast<icol, icolumn<float> >(*_icol)) {
+        m_cols[count] = _col_float;
+      } else if(icolumn<double>* _col_double = id_cast<icol, icolumn<double> >(*_icol)) {
+        m_cols[count] = _col_double;
+      } else {
+        m_out << "inlib::rroot::evaluator::initialize : "
+              << "type " << _icol->id_cls() << " not handled for column " << sout(m_names[count])
+              << " of tuple with title "
+              << sout(m_tuple.title())
+              << ". Script is " << sout(m_script) << "." << std::endl;
+        m_names.clear();
+        m_cols.clear();
+        return false;
+      }
+    }
+
+    m_vals.resize(number);
+    return true;
+  }
+
+protected:
+  bool get_variables(){
+    unsigned int number = m_names.size(); //Could be zero.
+    for(uint64 count=0;count<number;count++) {
+      icol* _icol = m_cols[count];
+      if(icolumn<char>* _col_char = id_cast<icol, icolumn<char> >(*_icol)) {
+        if(!get_value<char>(*_col_char,m_vals[count])) return false;
+      } else if(icolumn<short>* _col_short = id_cast<icol, icolumn<short> >(*_icol)) {
+        if(!get_value<short>(*_col_short,m_vals[count])) return false;
+      } else if(icolumn<int>* _col_int = id_cast<icol, icolumn<int> >(*_icol)) {
+        if(!get_value<int>(*_col_int,m_vals[count])) return false;
+      } else if(icolumn<float>* _col_float = id_cast<icol, icolumn<float> >(*_icol)) {
+        if(!get_value<float>(*_col_float,m_vals[count])) return false;
+      } else if(icolumn<double>* _col_double = id_cast<icol, icolumn<double> >(*_icol)) {
+        if(!get_value<double>(*_col_double,m_vals[count])) return false;
+      } else {
+        return false;
+      }
+    }
+    return true;
+  }
+protected:
+  template <class T>
+  bool get_value(icolumn<T>& a_col,value& a_v) {
+    T v;
+    if(!a_col.get_entry(v)) {
+      m_out << "inlib::rroot::evaluator::get_value : can't get value for column "
+            << sout(a_col.name())
+            << ". Script is " << sout(m_script) << "." << std::endl;
+      a_v.set_none();
+      return false;
+    }
+    a_v.set(v);
+    return true;
+  }
+protected:
+  std::ostream& m_out;
+  intuple& m_tuple;
+  yacc::cexpr_eval m_processor;
+  std::string m_script;
+  bool m_is_valid;
+  //
+  std::vector<std::string> m_names;
+  std::vector<icol*> m_cols;
+  std::vector<value> m_vals;
+  value m_result;
+};
+
+}}
+
+#endif

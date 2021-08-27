@@ -1,0 +1,167 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_omanager
+#define inlib_omanager
+
+// for example, to handle histos created with insh commands.
+
+#include "oholder"
+#include "sout"
+#include "forit"
+#include "vmanip"
+
+namespace inlib {
+
+class omanager {
+public:
+  INLIB_SCLASS(inlib::omanager)
+public:
+  omanager(std::ostream& a_out):m_out(a_out) {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~omanager(){
+    safe_clear(m_bohs);
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+protected:
+  omanager(const omanager& a_from):m_out(a_from.m_out) {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+    //WARNING : m_bohs is not copied.
+  }
+  omanager& operator=(const omanager&){
+    //WARNING : m_bohs is not copied.
+    return *this;
+  }
+public:
+  std::ostream& out() const {return m_out;}
+
+  const std::vector<base_oholder*>& bohs() const {return m_bohs;}
+  std::vector<base_oholder*>& bohs() {return m_bohs;}
+
+  base_oholder* find_base_oholder(const std::string& a_name) const {
+    inlib_vforcit(base_oholder*,m_bohs,it) {
+      if((*it)->name()==a_name) return *it;
+    }
+    return 0;
+  }
+
+  template <class T>
+  T* find_object(const std::string& a_name) const {
+    inlib_vforcit(base_oholder*,m_bohs,it) {
+      oholder<T>* h = cast_oholder<T>(*(*it));
+      if(h && (h->name()==a_name)) return h->object();
+    }
+    return 0;
+  }
+
+  template <class T>
+  bool manage_object(T*& a_object,const std::string& a_class,const std::string& a_name,
+                     bool a_check_existing,bool a_overwrite,bool a_warn,bool a_own=true) {
+    if(a_name.empty()) {
+      m_out << "inlib::omanager::manage_object : no name given." << std::endl;
+      return false;
+    }
+    if(a_check_existing) {
+      if(base_oholder* bh = find_base_oholder(a_name)) {
+        if(a_overwrite) {
+	  if(a_warn) {
+            m_out << "inlib::omanager::manage_object :"
+                  << " warning : an object with name " << sout(a_name) << " alredy exist. Replace it."
+                  << std::endl;
+	  }
+          removep(m_bohs,bh);
+          delete bh;
+	} else {
+          m_out << "inlib::omanager::manage_object :"
+                << " an object with name " << sout(a_name) << " alredy exist."
+                << std::endl;
+	  if(a_own) {
+            delete a_object;
+            a_object = 0;
+          }
+	  return false;
+	}
+      }
+    }
+    m_bohs.push_back(new oholder<T>(a_object,a_class,a_name,a_own));
+    return true;
+  }
+
+  template <class T>
+  bool manage_object(T*& a_object,const std::string& a_name,
+                     bool a_check_existing,bool a_overwrite,bool a_warn,bool a_own=true) {
+    return manage_object(a_object,T::s_class(),a_name,a_check_existing,a_overwrite,a_warn,a_own);		  }
+
+  bool remove_object(const std::string& a_name,bool a_delete,bool a_warn) {
+    base_oholder* bh = find_base_oholder(a_name);
+    if(!bh) {
+      if(a_warn) m_out << "inlib::omanager : warning : object " << sout(a_name) << " not found." << std::endl;
+      return false;
+    }
+    removep(m_bohs,bh);
+    if(a_delete) delete bh;
+    return true;
+  }
+  void remove_base_oholder(base_oholder* a_boh,bool a_delete) {
+    removep(m_bohs,a_boh);
+    if(a_delete) delete a_boh;
+  }
+  void clear() {safe_clear(m_bohs);}
+
+  template <class T>
+  void remove_by_class() {
+    typedef std::vector<base_oholder*>::iterator it_t;
+    for(it_t it=m_bohs.begin();it!=m_bohs.end();) {
+      base_oholder* entry  = *it;
+      if(cast_oholder_object<T>(*entry)) {
+        it = m_bohs.erase(it);
+        delete entry;
+      } else {
+        it++;
+      }
+    }
+  }
+public:
+/*
+  void add_source(node* a_node,const std::string& a_name) {m_sources.push_back(named_node(a_name,a_node));}
+  node* find_source(const std::string& a_name) const {
+    inlib_vforcit(named_node,m_sources,it) {
+      if((*it).first==a_name) return (*it).second;
+    }
+    return 0;
+  }
+  */
+  /*
+  bool remove_source(const std::string& a_name,bool a_delete) const {
+    typedef std::vector<named_node>::iterator it_t;
+    for(it_t it=m_sources.begin();it!=m_sources.end();) {
+      if((*it).first==a_name) {
+        node* _node = (*it).second;
+        it = vec.erase(it);
+        if(a_delete) delete _node;
+        return true;
+      } else {
+        it++;
+      }
+    }
+    return false;
+  }
+  */
+protected:
+  std::ostream& m_out;
+  std::vector<base_oholder*> m_bohs;
+//  typedef std::pair<std::string,node*> named_node;
+//  std::vector<named_node> m_sources;
+};
+
+}
+
+#endif
+

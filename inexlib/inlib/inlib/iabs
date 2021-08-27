@@ -1,0 +1,15 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_iabs
+#define inlib_iabs
+
+namespace inlib {
+
+inline int iabs(int a) {
+  return a < 0 ? -a : a;
+}
+
+}
+
+#endif

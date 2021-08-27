@@ -1,0 +1,95 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_view_evd_plotarea
+#define inlib_insh_view_evd_plotarea
+
+#include "ishell"
+#include "view_evd"
+#include "plotarea"
+
+namespace inlib {
+
+inline void insh_scene_add_plots_clearer(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_plots_clearer");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad view_evd cast.");return;}
+  sg::plotarea* _plotarea = cast_plotarea(a_gv);  
+  if(!_plotarea) {a_insh.warn(s_cmd+": bad plotarea cast.");return;}
+  args _args(a_args);
+  if(_args.is_arg("-dynamic")) {
+    _evd->dynamic_sg().add(_plotarea->create_plots_clearer_holder());
+  } else {
+    _evd->static_sg().add(_plotarea->create_plots_clearer_holder());
+  }
+}
+
+inline void insh_scene_send_plots(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_send_plots");
+  sg::view_sg_client* _wc = sg::cast_view_sg_client(a_gv);
+  if(!_wc) {
+    a_insh.warn(s_cmd+": viewer is not a inlib::sg::view_sg_client.");
+    return;
+  }
+  if(!_wc->is_connected()) {
+    a_insh.warn(s_cmd+": application not connected.");
+    return;
+  }
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  
+  args opts;
+  opts.add(inlib::sg::s_send_placement(),inlib::sg::s_placement_screen());
+
+ {std::string scol;
+  if(!inlib::num2s(a_gv.m_params.m_plot_col,scol)){}
+  opts.add(inlib::sg::s_col(),scol);}
+
+ {std::string srow;
+  if(!inlib::num2s(a_gv.m_params.m_plot_row,srow)){}
+  opts.add(inlib::sg::s_row(),srow);}
+
+ {float scale = 1;
+  std::string stmp;
+  if(_wc->sg_client().get_sg_serv_params(stmp)) {
+    unsigned int ww,wh,bw,bh,cols,rows;
+    if(inlib::sg::s2params(stmp,ww,wh,bw,bh,cols,rows) && cols) {
+      scale = a_gv.gui_camera_height()/float(cols);
+    }
+  }
+  if(!inlib::num2s(scale,stmp)){}
+  opts.add(inlib::sg::s_send_scale(),stmp);}
+
+  opts.add(inlib::sg::s_send_clear(),inlib::sg::s_placement_screen()); //IMPORTANT
+
+  if(!_wc->send_sg(*_plots,opts)){
+    a_insh.warn(s_cmd+": send_sg() failed.");
+    return;
+  }
+}
+
+}
+
+#include "ishell_args_gui_viewer_cmd"
+
+#define INLIB_INSH_VIEW_EVD_PLOTAREA_ADDS(a__insh,a__gv)\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_plots_clearer,\
+    inlib::insh_scene_add_plots_clearer,\
+"scene_add_plots_clearer: scene_add_plots_clearer [-dynamic]\n\
+  Add a plots clearer in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  Example :\n\
+    scene_add_plots_clearer\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_send_plots,\
+    inlib::insh_scene_send_plots,\
+"scene_send_plots: scene_send_plots\n\
+  Send plots to a viewer.\n\
+  A connection must be first established between the app and a viewer.\n\
+")
+
+
+#endif

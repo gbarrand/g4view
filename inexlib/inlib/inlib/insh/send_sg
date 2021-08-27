@@ -1,0 +1,51 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_send_sg
+#define inlib_insh_send_sg
+
+#include "ishell"
+#include "../sg/gui_viewer"
+#include "../sg/view_sg_client"
+
+namespace inlib {
+
+inline void insh_scene_send_sg(const std::string& a_cmd,ishell& a_insh,const std::vector<std::string>&,sg::gui_viewer& a_gv,sg::node& a_sg) {
+  sg::view_sg_client* _wc = sg::cast_view_sg_client(a_gv);
+  if(!_wc) {
+    a_insh.warn(a_cmd+": viewer is not a inlib::sg::view_sg_client.");
+    return;
+  }
+  if(!_wc->is_connected()) {
+    a_insh.warn(a_cmd+": application not connected.");
+    return;
+  }
+  args opts;
+  if(!_wc->send_sg(a_sg,opts)) {
+    a_insh.warn(a_cmd+": send_sg() failed.");
+    return;
+  }
+}
+
+inline const std::string& insh_scene_send_static_help() {
+  static const std::string s_help("\
+scene_send_static: scene_send_static\n\
+  Send static scene graph to a viewer.\n\
+  A connection must be first established between the app and a viewer.\n\
+");
+  return s_help;
+}
+
+inline const std::string& insh_scene_send_dynamic_help() {
+  static const std::string s_help("\
+scene_send_dynamic: scene_send_dynamic\n\
+  Send dynamic scene graph to a viewer.\n\
+  A connection must be first established between the app and a viewer.\n\
+");
+  return s_help;
+}
+
+}
+
+
+#endif

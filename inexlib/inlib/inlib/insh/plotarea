@@ -1,0 +1,186 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_plotarea
+#define inlib_insh_plotarea
+
+#include "../sg/plotarea"
+#include "ishell"
+
+namespace inlib {
+
+inline void insh_plots_create(ishell&,const std::vector<std::string>&,sg::plotarea& a_plotarea) {
+  a_plotarea.create_sg();
+  a_plotarea.add_plots_to_scene();
+}
+
+inline const std::string& insh_plots_create_help() {
+  static const std::string s_help("\
+plots_create: plots_create\n\
+  Create/reset the plotarea.\n\
+  Example:\n\
+    plots_create\n\
+");
+  return s_help;
+}
+
+inline void insh_plots_set_layout(ishell& a_insh,const std::vector<std::string>& a_args,sg::plotarea& a_plotarea) {
+  static const std::string s_cmd("plots_set_layout");
+  float tx,ty,sx,sy;
+  a_plotarea.layout_factors(tx,ty,sx,sy);
+  if(a_args.empty()) {
+    std::string _s;
+    numas(tx,_s);
+    _s += " ";
+    numas(ty,_s);
+    _s += " ";
+    numas(sx,_s);
+    _s += " ";
+    numas(sy,_s);
+    _s += " ";
+    a_insh.out_begin();
+    a_insh.out(_s);
+    return;
+  } else if((a_args.size()==1)&&(a_args[0]=="-tx")) {
+    a_insh.out_begin();
+    a_insh.out_num(tx);
+    return;
+  } else if((a_args.size()==1)&&(a_args[0]=="-ty")) {
+    a_insh.out_begin();
+    a_insh.out_num(ty);
+    return;
+  } else if((a_args.size()==1)&&(a_args[0]=="-sx")) {
+    a_insh.out_begin();
+    a_insh.out_num(sx);
+    return;
+  } else if((a_args.size()==1)&&(a_args[0]=="-sy")) {
+    a_insh.out_begin();
+    a_insh.out_num(sy);
+    return;
+  } else if((a_args.size()==1)&&(a_args[0]=="-defaults")) {
+    a_plotarea.reset_factors();
+    a_plotarea.set_plots_layout_from_window(a_plotarea.gv().width(),a_plotarea.gv().height());
+    return;
+  } else if((a_args.size()==1)&&(a_args[0]=="-viewer")) {
+    a_plotarea.set_layout_factors(0,0,1,1);
+    a_plotarea.set_plots_layout_from_window(a_plotarea.gv().width(),a_plotarea.gv().height());
+    return;
+  }
+  if(a_args.size()!=4) {
+    a_insh.warn(s_cmd+": zero, one or four real argument expected.");
+    return;
+  }
+  INLIB_ISHELL_ARG_FLOAT(a_args[0],tx)
+  INLIB_ISHELL_ARG_FLOAT(a_args[1],ty)
+  INLIB_ISHELL_ARG_FLOAT(a_args[2],sx)
+  INLIB_ISHELL_ARG_FLOAT(a_args[3],sy)
+  a_plotarea.set_layout_factors(tx,ty,sx,sy);
+  a_plotarea.set_plots_layout_from_window(a_plotarea.gv().width(),a_plotarea.gv().height());
+}
+
+inline void insh_plots_map_viewer(ishell& a_insh,const std::vector<std::string>&,sg::plotarea& a_plotarea) {
+  a_plotarea.set_layout_factors(0,0,1,1);
+  a_plotarea.set_plots_layout_from_window(a_plotarea.gv().width(),a_plotarea.gv().height());
+}
+
+inline const std::string& insh_plots_map_viewer_help() {
+  static const std::string s_help("\
+plots_map_viewer: plots_map_viewer\n\
+  Set scene ready for full window plotting.\n\
+  Deprecated: plots_map_viewer replaces plots_full_window.\n\
+  Example:\n\
+    plots_map_viewer\n\
+    plots_set_layout -viewer  # same as the upper.\n\
+");
+  return s_help;
+}
+
+inline void insh_plots_set_adjust(ishell& a_insh,const std::vector<std::string>& a_args,sg::plotarea& a_plotarea) {
+  static const std::string s_header("plots_set_adjust :");
+  if(a_args.empty()) {
+    if(a_plotarea.adjust_type()==sg::adjust_viewer) {
+      a_insh.out_begin();
+      a_insh.out("viewer");
+    } else if(a_plotarea.adjust_type()==sg::adjust_PAW) {
+      a_insh.out_begin();
+      a_insh.out("PAW");
+    }
+    return;
+  }
+  if(a_args.size()!=1) {
+    a_insh.warn(s_header+" one argument expected.");
+    return;
+  }
+  const std::string& arg0 = a_args[0];
+  if(arg0=="viewer") {
+    a_plotarea.set_adjust_type(sg::adjust_viewer);
+  } else if((arg0=="PAW")||(arg0=="paw")) {
+    a_plotarea.set_adjust_type(sg::adjust_PAW);
+  }  
+}
+
+inline const std::string& insh_plots_set_adjust_help() {
+  static const std::string s_help("\
+plots_set_adjust: plots_set_adjust [viewer,PAW]\n\
+  Without arguments, it prints the current adjust type.\n\
+  If 'viewer' is given, the sg::plots area maps the viewer area aspect ratio.\n\
+  If 'PAW' is given, the sg::plots area keeps its aspect ratio when window/viewer is resized.\n\
+  Example:\n\
+    plots_set_adjust\n\
+    plots_set_adjust viewer\n\
+    plots_set_adjust PAW\n\
+");
+  return s_help;
+}
+
+inline void insh_paw_set_camera(ishell& a_insh,const std::vector<std::string>&,sg::plotarea& a_plotarea) {
+  sg::paw_set_camera(a_plotarea.gv());
+}
+
+}
+
+#include "ishell_args_plotarea_cmd"
+#include "plotarea_cmd"
+
+#define INLIB_INSH_PLOTAREA_ADDS(a__insh,a__plotarea)\
+  INLIB_INSH_ADD_PLOTAREA_CMD(a__insh,a__plotarea,plots_show,\
+    &inlib::sg::plotarea::show_plots,"plots_show: plots_show\n  Show the scene plotting area.\n")\
+  INLIB_INSH_ADD_PLOTAREA_CMD(a__insh,a__plotarea,plots_hide,\
+    &inlib::sg::plotarea::hide_plots,"plots_hide: plots_hide\n  Hide the scene plotting area.\n")\
+  INLIB_INSH_ADD_PLOTAREA_CMD(a__insh,a__plotarea,plots_show_hide,\
+    &inlib::sg::plotarea::show_hide,"plots_show_hide: plots_show_hide\n  Show/hide the scene plotting area.\n")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_PLOTAREA_CMD(a__insh,a__plotarea,plots_set_layout,\
+    inlib::insh_plots_set_layout,\
+"plots_set_layout: plots_set_layout [-tx,-ty,-sx,-sy,-defaults,-viewer] [tx,ty,sx,sy]\n\
+  If no arguments given, print the layout factors.\n\
+  If no options given, set the position and size of the first sg::plots node found in the scene.\n\
+  tx, ty, sx and sy are in normal window coordinates (in [0,1]).\n\
+  -tx only, print the x position.\n\
+  -ty only, print the y position.\n\
+  -sx only, print the x size.\n\
+  -sy only, print the y size.\n\
+  -defaults only, reset the layout factors to their defaults.\n\
+  -viewer, set factors to (0,0,1,1) so that the sg::plots maps the full viewer.\n\
+  Example:\n\
+    plots_set_layout 0.28 -0.28 0.4 0.4 # down right.\n\
+    plots_set_layout 0.3 0.35 0.3 0.2   # up right. defaults.\n\
+    plots_set_layout -defaults          # same as upper.\n\
+    plots_set_layout -viewer\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_PLOTAREA_CMD(a__insh,a__plotarea,plots_map_viewer,\
+    inlib::insh_plots_map_viewer,inlib::insh_plots_map_viewer_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_PLOTAREA_CMD(a__insh,a__plotarea,plots_full_window,\
+    inlib::insh_plots_map_viewer,inlib::insh_plots_map_viewer_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_PLOTAREA_CMD(a__insh,a__plotarea,plots_set_adjust,\
+    inlib::insh_plots_set_adjust,inlib::insh_plots_set_adjust_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_PLOTAREA_CMD(a__insh,a__plotarea,paw_set_camera,\
+    inlib::insh_paw_set_camera,\
+    "paw_set_camera: paw_set_camera\n  Set an ortho camera to have a similar plot viewing as PAW.\n  Example:\n    paw_set_camera\n")\
+  INLIB_INSH_ADD_ISHELL_ARGS_PLOTAREA_CMD(a__insh,a__plotarea,plots_create,\
+    inlib::insh_plots_create,inlib::insh_plots_create_help())
+
+
+#endif
+

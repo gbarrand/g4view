@@ -1,0 +1,124 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_histo_fill_random
+#define inlib_insh_histo_fill_random
+
+#include "../histo/h1d"
+
+#include <algorithm>
+
+namespace inlib {
+
+template <typename T>
+inline unsigned long binary_search(unsigned long n, const T* array,T value){
+  //same logic as CERN-ROOT/TMath.h/BinarySearch.
+  const T* pind = std::lower_bound(array, array + n, value);
+  if ( (pind != array + n) && (*pind == value) ) {
+    return (pind - array);
+  } else {
+    return (pind - array - 1);
+  }
+}
+
+}
+
+#include "find_val_funcs"
+#include "../rtausmed"
+#include "ishell"
+#include "../args"
+#include "../vdata"
+
+namespace inlib {
+
+inline bool get_random(rtausmed& a_rand,double a_xmin,double a_xmax,size_t a_steps,
+                       const std::vector<double>& a_integral,double& a_value) {
+  //same logic as CERN-ROOT/TH1.cxx/GetRandom().
+  double r = a_rand.shoot();
+  unsigned long ibin = binary_search(a_steps,vec_data<double>(a_integral),r);
+  if(ibin>=a_steps) return false;
+  double step = (a_xmax-a_xmin)/a_steps;
+  double x = a_xmin+ibin*step;
+  if(r>a_integral[ibin]) {
+    x += step*(r-a_integral[ibin])/(a_integral[ibin+1]-a_integral[ibin]);
+  }
+  a_value = x;
+  return true;
+}
+
+inline void insh_histo_fill_random(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("histo_fill_random");
+  args _args(a_args);
+
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  histo::h1d* _h1d = a_mgr.find_object<histo::h1d>(fnh);
+  if(!_h1d) {
+    a_insh.warn(s_cmd+": histo h1d object "+sout(fnh)+" not found.");
+    return;
+  }
+
+  std::string sfunc;
+  if(!_args.find("-function",sfunc)) {
+    a_insh.warn(s_cmd+": no -function given.");
+    return;
+  }
+  val_funcs* funcs = find_val_funcs(a_mgr);
+  if(!funcs) {
+    a_insh.warn(s_cmd+": can't find "+sout(s_functions())+" in object managers.");
+    return;
+  }
+  ival_func* func = funcs->find(sfunc);
+  if(!func) {
+    a_insh.warn(s_cmd+": function "+sout(sfunc)+" not found.");
+    return;
+  }
+
+  double xmin = _h1d->axis().lower_edge();
+  double xmax = _h1d->axis().upper_edge();
+  size_t steps = 100;
+  std::vector<double> integral;
+  if(!get_integral(*func,xmin,xmax,steps,integral)) {
+    a_insh.warn(s_cmd+": get_integral() failed for function "+sout(sfunc)+".");
+    return;
+  }
+
+  uint64 entries = 0;
+  INLIB_ISHELL_GET_ARG_UINT64(entries)
+  double weight = 1;
+  INLIB_ISHELL_GET_ARG_DOUBLE(weight)
+
+ {double value;
+  rtausmed r;
+  for(uint64 index=0;index<entries;index++) {
+    if(!get_random(r,xmin,xmax,steps,integral,value)) {
+      a_insh.warn(s_cmd+": get_random() failed for function "+sout(sfunc)+".");
+      return;
+    }
+    _h1d->fill(value,weight);
+  }}
+  
+}
+
+inline const std::string& insh_histo_fill_random_help() {
+  static const std::string s_help("\
+histo_fill_random: histo_fill_random [-function,-entries,-weight] [managed_name]\n\
+  Fill random an histogram from a function.\n\
+  -entries=uint number of entries (default is 0).\n\
+  -weight=real weight of the fill (default is 1).\n\
+  Example:\n\
+    function_create -script='exp(cos(10*x))' my_func\n\
+    histo_create -xbins=20 -xmin=-5 -xmax=5 h_1\n\
+    histo_ls\n\
+    histo_fill_random -function=my_func -entries=10000 h_1\n\
+    histo_print h_1\n\
+");
+  return s_help;
+}
+
+}
+
+#endif

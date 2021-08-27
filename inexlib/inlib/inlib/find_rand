@@ -1,0 +1,26 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_find_rand
+#define inlib_find_rand
+
+#include "omanager"
+
+#include "randd"
+
+namespace inlib {
+
+inline const irandd* find_rand(omanager& a_mgr,const std::string& a_name) {
+  base_oholder* _boh = a_mgr.find_base_oholder(a_name);
+  if(!_boh) return 0;
+  if(const rgaussd* r = cast_oholder_object<rgaussd>(*_boh)) return r;
+  if(const rbinomiald* r = cast_oholder_object<rbinomiald>(*_boh)) return r;
+  if(const rexpd* r = cast_oholder_object<rexpd>(*_boh)) return r;
+  if(const rbwd* r = cast_oholder_object<rbwd>(*_boh)) return r;
+  if(const rpoissd* r = cast_oholder_object<rpoissd>(*_boh)) return r;
+  return 0;
+}
+
+}
+
+#endif

@@ -1,0 +1,617 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_yacc_base_evaluator
+#define inlib_yacc_base_evaluator
+
+#include "cexpr_eval.h"
+
+#include "../vfind"
+#include "../forit"
+#include "../sout"
+
+#include "../sjust"
+#include "../mnmx"
+#include <cfloat>
+#include <sstream>
+
+namespace inlib {
+
+template <class DATA>
+class base_evaluator {
+#ifdef INLIB_MEM
+  static const std::string& s_class() {
+    static const std::string s_v("inlib::base_evaluator");
+    return s_v;
+  }
+#endif
+protected:
+  virtual void get_variables(const DATA& a_data) = 0;
+public:
+  base_evaluator(std::ostream& a_out,const std::string& a_script)
+  :m_out(a_out)
+  ,m_processor(a_out,"")
+  ,m_script(a_script)
+  ,m_is_valid(false)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~base_evaluator(){
+    safe_clear<named_value_ref>(m_data_cols);
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+protected:
+  base_evaluator(const base_evaluator& a_from)
+  :m_out(a_from.m_out)
+  ,m_processor(a_from.m_out,"")
+  ,m_script(a_from.m_script)
+  ,m_is_valid(false)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  base_evaluator& operator=(const base_evaluator&) {return *this;}
+public:
+  bool evaluate(const DATA& a_data,value& a_value) {
+    get_variables(a_data);
+    std::string serror;
+    if(!m_processor.execute(m_vals,a_value,serror)) {
+      m_out << "inlib::base_evaluator::evaluate_double :"
+            << " processor execution failed for " << sout(m_script) << "."
+            << std::endl;
+      m_out << serror << std::endl;
+      return false;
+    }
+    return true;
+  }
+
+  bool evaluate_double(const DATA& a_data,double& a_value) {
+    get_variables(a_data);
+    std::string serror;
+    if(!m_processor.execute(m_vals,m_result,serror)) {
+      m_out << "inlib::base_evaluator::evaluate_double :"
+            << " processor execution failed for " << sout(m_script) << "."
+            << std::endl;
+      m_out << serror << std::endl;
+      a_value = 0;
+      return false;
+    }
+    if(!m_result.to_double(a_value)) {
+      m_out << "inlib::base_evaluator::evaluate_double :"
+            << " can't convert the result inlib::value to a double"
+            << " (" << m_result.stype() << ")"
+            << " for script " << sout(m_script)
+            << std::endl;
+      a_value = 0;
+      return false;
+    }
+    return true;
+  }
+
+  bool accept(const DATA& a_data,bool& a_ok) {
+    if(m_script.empty()) {a_ok = true;return true;}
+    get_variables(a_data);
+    std::string serror;
+    if(!m_processor.execute(m_vals,m_result,serror)) {
+      m_out << "inlib::base_evaluator::accept :"
+            << " processor execution failed for script " << sout(m_script) << "." << std::endl;
+      m_out << serror << std::endl;
+      a_ok = true;
+      return false;
+    }
+    if(m_result.type()!=value::BOOL) {
+      m_out << "inlib::base_evaluator::accept :"
+            << " result inlib::value not a BOOLEAN"
+            << " (" << m_result.stype() << ")"
+            << " for script " << sout(m_script)
+            << std::endl;
+      a_ok = true;
+      return false;
+    }
+    a_ok = m_result.get_bool();
+    return true;
+  }
+
+  bool is_valid() const {return m_is_valid;}
+
+  void get_names(std::vector<std::string>& a_names,bool a_clear = true) {
+    if(a_clear) a_names.clear();
+    inlib_typename_vforcit(named_value_ref*,m_data_cols,it) a_names.push_back((*it)->name());
+  }
+
+  void get_infos(const DATA& a_data,std::vector<std::string>& a_infos,bool a_clear = true) {
+    if(a_clear) a_infos.clear();
+    get_variables(a_data);
+    value v;
+    std::string svalue;
+    inlib_typename_vforcit(named_value_ref*,m_data_cols,it) {
+      (*it)->get_value(v);
+      if(!value::tos(v,svalue)) {}
+      a_infos.push_back((*it)->name()+" "+svalue);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  /// DATA* //////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  void dump(std::ostream& a_out,const std::vector<DATA*>& a_vec,const std::vector<std::string>& a_names,
+            const std::string& a_header,bool a_to_vout,std::vector<std::string>& a_vout) {
+    a_vout.clear();
+    std::vector<named_value_ref*> to_dump;
+    if(a_names.empty()) {
+      to_dump = m_data_cols;
+    } else {
+      inlib_vforcit(std::string,a_names,it) {
+        named_value_ref* _nref = find_named(m_data_cols,*it);
+        if(_nref) to_dump.push_back(_nref);
+      }
+    }
+    if(to_dump.empty()) return;
+
+    size_t to_dump_size = to_dump.size();
+    value v;
+
+    if(a_to_vout) {
+      std::string sout;
+      inlib_typename_vforcit(DATA*,a_vec,it) {
+        get_variables(*(*it));
+        for(size_t icol=0;icol<to_dump_size;icol++) {
+          to_dump[icol]->get_value(v);
+          switch(v.type()) {
+          case value::FLOAT:
+            soutd(v.get_float(),sout);
+            a_vout.push_back(sout);
+            break;
+          case value::DOUBLE:
+            soutd(v.get_double(),sout);
+            a_vout.push_back(sout);
+            break;
+          default:
+            if(!v.tos(sout)) {}
+            a_vout.push_back(sout);
+            break;
+          }
+        }
+      }
+      return;
+    }
+
+    size_t loffset = 1;
+    std::string svalue;
+
+    std::vector<size_t> widths(to_dump_size,0);
+
+    // first pass to get col widths :
+   {for(size_t icol=0;icol<to_dump_size;icol++) {
+      widths[icol] = max_of(widths[icol],loffset+to_dump[icol]->name().size());
+    }}
+   {inlib_typename_vforcit(DATA*,a_vec,it) {
+      get_variables(*(*it));
+      for(size_t icol=0;icol<to_dump_size;icol++) {
+        to_dump[icol]->get_value(v);
+        if(v.is_array()) {
+          svalue = "array";
+        } else {
+          v.tos(svalue);
+        }
+        widths[icol] = max_of(widths[icol],loffset+svalue.size());
+      }
+    }}
+
+    // header :
+    if(a_header.size()) a_out << a_header << std::endl;
+
+   {for(size_t icol=0;icol<to_dump_size;icol++) {
+      svalue = to_dump[icol]->name();
+      justify(svalue,widths[icol],side_right);
+      a_out << svalue;
+    }}
+    a_out << std::endl;
+
+   {inlib_typename_vforcit(DATA*,a_vec,it) {
+      get_variables(*(*it));
+      for(size_t icol=0;icol<to_dump_size;icol++) {
+        to_dump[icol]->get_value(v);
+        if(v.is_array()) {
+          svalue = "array";
+        } else {
+          v.tos(svalue);
+        }
+        justify(svalue,widths[icol],side_right);
+        a_out << svalue;
+      }
+      a_out << std::endl;
+    }}
+  }
+
+  void stats(std::ostream& a_out,const std::vector<DATA*>& a_vec,const std::vector<std::string>& a_names,
+             const std::string& a_header,const std::string& a_arg,std::string& a_sout) {
+    a_sout.clear(); // a_sout is filled when only one number is printed. (It permits to do backquoting when used within insh).
+    std::vector<named_value_ref*> to_dump;
+   {std::vector<named_value_ref*> _tmp;
+    if(a_names.empty()) {
+      _tmp = m_data_cols;
+    } else {
+      inlib_vforcit(std::string,a_names,it) {
+        named_value_ref* _nref = find_named(m_data_cols,*it);
+        if(_nref) _tmp.push_back(_nref);
+      }
+    }
+    if(a_vec.size()) {
+      inlib_typename_vforcit(named_value_ref*,_tmp,it) {
+        get_variables(*(a_vec[0]));  //to enforce the type of the inlib::value references.
+        value v;
+        (*it)->get_value(v);
+        if(v.type()==value::DOUBLE) {
+          to_dump.push_back(*it);
+        }
+      }
+    }}
+    if(to_dump.empty()) return;
+
+    size_t to_dump_size = to_dump.size();
+    value v;
+
+    // mins, maxs :
+    std::vector<double> mins(to_dump_size,DBL_MAX);
+    std::vector<double> maxs(to_dump_size,-DBL_MAX);
+    std::vector<double> Ss(to_dump_size,0);
+    std::vector<double> S2s(to_dump_size,0);
+   {inlib_typename_vforcit(DATA*,a_vec,it) {
+      get_variables(*(*it));
+      for(size_t icol=0;icol<to_dump_size;icol++) {
+        to_dump[icol]->get_value(v);
+        double _value = v.get_double();
+	mins[icol] = min_of(mins[icol],_value);
+	maxs[icol] = max_of(maxs[icol],_value);
+	Ss[icol] += _value;
+	S2s[icol] += _value*_value;
+      }
+    }}
+    std::vector<double> means(to_dump_size,0);
+    std::vector<double> rmss(to_dump_size,0);
+   {for(size_t icol=0;icol<to_dump_size;icol++) {
+      means[icol] = Ss[icol]/double(a_vec.size());
+      rmss[icol] = ::sqrt(::fabs( S2s[icol]/double(a_vec.size()) - means[icol] * means[icol] ));
+    }}
+
+    size_t loffset = 1;
+    std::string svalue;
+
+    std::vector<size_t> widths(to_dump_size,0);
+
+    // first pass to get col widths :
+   {for(size_t icol=0;icol<to_dump_size;icol++) {
+      widths[icol] = max_of(widths[icol],loffset+to_dump[icol]->name().size());
+      num2s(Ss[icol],svalue);
+      widths[icol] = max_of(widths[icol],loffset+svalue.size());
+      num2s(mins[icol],svalue);
+      widths[icol] = max_of(widths[icol],loffset+svalue.size());
+      num2s(maxs[icol],svalue);
+      widths[icol] = max_of(widths[icol],loffset+svalue.size());
+      num2s(means[icol],svalue);
+      widths[icol] = max_of(widths[icol],loffset+svalue.size());
+      num2s(rmss[icol],svalue);
+      widths[icol] = max_of(widths[icol],loffset+svalue.size());
+    }}
+
+    if(a_arg.empty()||(to_dump_size!=1)) {
+
+      if(a_header.size()) a_out << a_header << std::endl;
+
+      // name :
+     {for(size_t icol=0;icol<to_dump_size;icol++) {
+        svalue = to_dump[icol]->name();
+        justify(svalue,widths[icol],side_right);
+        a_out << svalue;
+      }}
+      a_out << std::endl;
+
+      // Ss :
+     {for(size_t icol=0;icol<to_dump_size;icol++) {
+        num2s(Ss[icol],svalue);
+        justify(svalue,widths[icol],side_right);
+        a_out << svalue;
+      }}
+      a_out << std::endl;
+
+      // mins :
+     {for(size_t icol=0;icol<to_dump_size;icol++) {
+        num2s(mins[icol],svalue);
+        justify(svalue,widths[icol],side_right);
+        a_out << svalue;
+      }}
+      a_out << std::endl;
+
+      // maxs :
+     {for(size_t icol=0;icol<to_dump_size;icol++) {
+        num2s(maxs[icol],svalue);
+        justify(svalue,widths[icol],side_right);
+        a_out << svalue;
+      }}
+      a_out << std::endl;
+
+      // means :
+     {for(size_t icol=0;icol<to_dump_size;icol++) {
+        num2s(means[icol],svalue);
+        justify(svalue,widths[icol],side_right);
+        a_out << svalue;
+      }}
+      a_out << std::endl;
+
+      // rmss :
+     {for(size_t icol=0;icol<to_dump_size;icol++) {
+        num2s(rmss[icol],svalue);
+        justify(svalue,widths[icol],side_right);
+        a_out << svalue;
+      }}
+      a_out << std::endl;
+
+    } else if(a_arg=="sum") {
+      //num2s(Ss[0],a_sout);
+      soutd(Ss[0],a_sout);
+    } else if(a_arg=="min") {
+      //num2s(mins[0],a_sout);
+      soutd(mins[0],a_sout);
+    } else if(a_arg=="max") {
+      //num2s(maxs[0],a_sout);
+      soutd(maxs[0],a_sout);
+    } else if(a_arg=="mean") {
+      //num2s(means[0],a_sout);
+      soutd(means[0],a_sout);
+    } else if(a_arg=="rms") {
+      //num2s(rmss[0],a_sout);
+      soutd(rmss[0],a_sout);
+    }
+  }
+
+  bool evaluate_double_min_max(const std::vector<DATA*>& a_vec,double& a_min,double& a_max) {
+    a_min = DBL_MAX;
+    a_max = -DBL_MAX;
+    double value;
+    inlib_typename_vforcit(DATA*,a_vec,it) {
+      if(!evaluate_double(*(*it),value)) {
+        m_out << "inlib::base_evaluator::evaluate_double_min_max : evaluate_double() failed." << std::endl;
+        a_min = DBL_MAX;
+        a_max = -DBL_MAX;
+        return false;
+      }
+      a_min = min_of(a_min,value);
+      a_max = max_of(a_max,value);
+    }
+    if(a_max<a_min) {
+      //m_out << "inlib::min_max : bad range mx<=mn." << std::endl;
+      a_min = DBL_MAX;
+      a_max = -DBL_MAX;
+      return false;
+    }
+    return true;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  /// DATA ///////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  void dump(std::ostream& a_out,const std::vector<DATA>& a_vec,const std::vector<std::string>& a_names,
+            const std::string& a_header,bool a_to_vout,std::vector<std::string>& a_vout) {
+    a_vout.clear();
+    std::vector<named_value_ref*> to_dump;
+    if(a_names.empty()) {
+      to_dump = m_data_cols;
+    } else {
+      inlib_vforcit(std::string,a_names,it) {
+        named_value_ref* _nref = find_named(m_data_cols,*it);
+        if(_nref) to_dump.push_back(_nref);
+      }
+    }
+    if(to_dump.empty()) return;
+
+    value v;
+    size_t to_dump_size = to_dump.size();
+
+    if(a_to_vout) {
+      std::string sout;
+      inlib_typename_vforcit(DATA,a_vec,it) {
+        get_variables(*it);
+        for(size_t icol=0;icol<to_dump_size;icol++) {
+          to_dump[icol]->get_value(v);
+          switch(v.type()) {
+          case value::FLOAT:
+            soutd(v.get_float(),sout);
+            a_vout.push_back(sout);
+            break;
+          case value::DOUBLE:
+            soutd(v.get_double(),sout);
+            a_vout.push_back(sout);
+            break;
+          default:
+            if(!v.tos(sout)) {}
+            a_vout.push_back(sout);
+            break;
+          }
+        }
+      }
+      return;
+    }
+
+    size_t loffset = 1;
+    std::string svalue;
+
+    std::vector<size_t> widths(to_dump_size,0);
+
+    // first pass to get col widths :
+   {for(size_t icol=0;icol<to_dump_size;icol++) {
+      widths[icol] = max_of(widths[icol],loffset+to_dump[icol]->name().size());
+    }}
+   {inlib_typename_vforcit(DATA,a_vec,it) {
+      get_variables(*it);
+      for(size_t icol=0;icol<to_dump_size;icol++) {
+        to_dump[icol]->get_value(v);
+        if(v.is_array()) {
+          svalue = "array";
+        } else {
+          v.tos(svalue);
+        }
+        widths[icol] = max_of(widths[icol],loffset+svalue.size());
+      }
+    }}
+
+    // header :
+    if(a_header.size()) a_out << a_header << std::endl;
+
+   {for(size_t icol=0;icol<to_dump_size;icol++) {
+      svalue = to_dump[icol]->name();
+      justify(svalue,widths[icol],side_right);
+      a_out << svalue;
+    }}
+    a_out << std::endl;
+
+   {inlib_typename_vforcit(DATA,a_vec,it) {
+      get_variables(*it);
+      for(size_t icol=0;icol<to_dump_size;icol++) {
+        to_dump[icol]->get_value(v);
+        if(v.is_array()) {
+          svalue = "array";
+        } else {
+          v.tos(svalue);
+        }
+        justify(svalue,widths[icol],side_right);
+        a_out << svalue;
+      }
+      a_out << std::endl;
+    }}
+  }
+
+protected:
+  bool initialize() {
+    m_variables.clear();
+    m_named_values.clear();
+    m_vals.clear();
+
+    m_processor.set_script(m_script);
+
+    // Get cut variables :
+    if(!m_processor.find_variables(m_variables)) {
+      m_out << "inlib::base_evaluator::initialize :"
+            " find_variables() failed for script " << sout(m_script) << "." << std::endl;
+      m_variables.clear();
+      return false;
+    }
+
+    // Get functions names :
+   {std::vector<std::string> funcs;
+    if(!m_processor.find_functions(funcs)) {
+      m_out << "inlib::base_evaluator::initialize :"
+            << " find_function() failed for script " << sout(m_script) << "." << std::endl;
+      m_variables.clear();
+      return false;
+    }
+    inlib_vforcit(std::string,funcs,it) {
+      if(m_processor.find_function(*it,false)) continue;
+      m_out << "inlib::base_evaluator::initialize :"
+            << " function " << sout(*it) << " not found"
+            << " in script " << sout(m_script) << "." << std::endl;
+      m_variables.clear();
+      return false;
+      //m_processor.add_function(new ExpFunc_AIDA_FUNC(*it,*func));
+    }}
+
+    if(!m_processor.compile(m_variables)) {
+      m_out << "inlib::base_evaluator::initialize :"
+            << " compilation failed for script " << sout(m_script) << "." << std::endl;
+      m_variables.clear();
+      return false;
+    }
+
+   {size_t number = m_variables.size(); //Could be zero.
+    m_named_values.resize(number);
+    for(size_t index=0;index<number;index++) {
+      named_value_ref* _named_value_ref = find_named<named_value_ref>(m_data_cols,m_variables[index]);
+      if(!_named_value_ref) {
+        m_out << "inlib::base_evaluator::initialize :"
+              << " " << sout(m_variables[index]) << " not a data named_value_ref."
+              << ". Script is " << sout(m_script) << "." << std::endl;
+        m_variables.clear();
+        m_named_values.clear();
+        return false;
+      }
+      m_named_values[index] = _named_value_ref;
+    }}
+
+    m_vals.resize(m_variables.size());
+    return true;
+  }
+  void get_variables() {
+    size_t number = m_variables.size();
+    for(size_t index=0;index<number;index++) m_named_values[index]->get_value(m_vals[index]);
+  }
+protected:
+  class named_value_ref {
+#ifdef INLIB_MEM
+    static const std::string& s_class() {
+      static const std::string s_v("inlib::base_evaluator::named_value_ref");
+      return s_v;
+    }
+#endif
+  public:
+    named_value_ref(const std::string& a_name,value& a_ref):m_name(a_name),m_ref(a_ref) {
+#ifdef INLIB_MEM
+      mem::increment(s_class().c_str());
+#endif
+    }
+    virtual ~named_value_ref() {
+#ifdef INLIB_MEM
+      mem::decrement(s_class().c_str());
+#endif
+    }
+  protected:
+    named_value_ref(const named_value_ref& a_from):m_name(a_from.m_name),m_ref(a_from.m_ref) {
+#ifdef INLIB_MEM
+      mem::increment(s_class().c_str());
+#endif
+    }
+    named_value_ref& operator=(const named_value_ref& a_from){
+      if(&a_from==this) return *this;
+      m_name = a_from.m_name;
+      return *this;
+    }
+  public:
+    const std::string& name() const {return m_name;}
+    void get_value(value& a_value) {a_value = m_ref;}
+  protected:
+    std::string m_name;
+    value& m_ref;
+  };
+
+  void add_named_value_ref(const std::string& a_name,value& a_ref) {
+    m_data_cols.push_back(new named_value_ref(a_name,a_ref));
+  }
+
+  static void soutd(double a_d,std::string& a_s) {
+    std::ostringstream ossd;
+    ossd.precision(25);
+    ossd << a_d;
+    a_s = ossd.str();
+  }
+protected:
+  std::ostream& m_out;
+  yacc::cexpr_eval m_processor;
+  std::string m_script;
+  bool m_is_valid;
+  bool m_case_sensitive;
+  //
+  std::vector<named_value_ref*> m_data_cols;
+  //
+  std::vector<std::string> m_variables;
+  std::vector<named_value_ref*> m_named_values;
+  std::vector<value> m_vals;
+  value m_result;
+};
+
+}
+
+#endif

@@ -1,0 +1,201 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_colored_sized_points
+#define inlib_sg_colored_sized_points
+
+#include "vertices"
+
+namespace inlib {
+namespace sg {
+
+class colored_sized_points : public vertices {
+  INLIB_NODE(colored_sized_points,inlib::sg::colored_sized_points,vertices)
+public:
+  mf<float> rgbas;
+  mf<float> sizes;
+public:
+  virtual const desc_fields& node_desc_fields() const {
+    INLIB_FIELD_DESC_NODE_CLASS(inlib::sg::colored_sized_points)
+    static const desc_fields s_v(parent::node_desc_fields(),2, //WARNING : take care of count.
+      INLIB_ARG_FIELD_DESC(rgbas),
+      INLIB_ARG_FIELD_DESC(sizes)
+    );
+    return s_v;
+  }
+private:
+  void add_fields(){
+    add_field(&rgbas);
+    add_field(&sizes);
+  }
+protected: //gstos
+  virtual unsigned int create_gsto(std::ostream&,sg::render_manager& a_mgr) {
+    //unsigned int npt = xyzs.values().size()/3;
+    //::printf("debug : colored_sized_points : %lu : create_gsto : %u\n",this,npt);
+    std::vector<float> gsto_data;
+    append(gsto_data,xyzs.values());
+    append(gsto_data,rgbas.values());
+    return a_mgr.create_gsto_from_data(gsto_data);
+  }
+public:
+  virtual void render(render_action& a_action) {
+    if(touched()) {clean_gstos();reset_touched();}
+    if(xyzs.empty()) return;
+    size_t npt = xyzs.values().size()/3;
+    if(rgbas.size()!=(npt*4)) return;
+    if(sizes.size()!=npt) return;
+
+    //::printf("debug : colored_sized_points %lu %lu %lu\n",npt,rgbas.size(),sizes.size());
+
+    const state& state = a_action.state();
+
+    if(state.m_use_gsto) {
+      unsigned int _id = get_gsto_id(a_action.out(),a_action.render_manager());
+      if(_id) {
+        a_action.begin_gsto(_id);
+
+        a_action.set_point_smooth(true);
+
+        bufpos pos_xyzs = 0;
+        bufpos pos_rgbas = npt*3*sizeof(float);
+
+        bufpos _xyzs = pos_xyzs;
+        bufpos _rgbas = pos_rgbas;
+        float* _sizes = vec_data<float>(sizes.values());
+
+        bufpos start_xyzs = _xyzs;
+        bufpos start_rgbas = _rgbas;
+        float* start_sizes = _sizes;
+
+        size_t elems = 0;
+
+        for(size_t index=1;;index++) {
+          if( ((*_sizes)!=(*start_sizes)) || (index>npt) ) {
+            //::printf("debug : draw %lu : size %g\n",elems,*start_sizes);
+            a_action.point_size(*start_sizes);
+            a_action.draw_gsto_vc(gl::points(),elems,start_xyzs,start_rgbas);
+            elems = 0;
+            start_xyzs = _xyzs;
+            start_rgbas = _rgbas;
+            start_sizes = _sizes;
+            if(index>npt) break;
+          }
+          elems += 1;
+          _xyzs += 3*sizeof(float);
+          _rgbas += 4*sizeof(float);
+          _sizes += 1;
+        }
+
+        a_action.point_size(state.m_point_size);
+        a_action.set_point_smooth(state.m_GL_POINT_SMOOTH);
+
+        a_action.end_gsto();
+        return;
+
+      } else { //!_id
+        // use immediate rendering.
+      }
+
+    } else {
+      clean_gstos(&a_action.render_manager());
+    }
+
+    // immediate rendering :
+    a_action.set_point_smooth(true);
+
+    float* _xyzs = vec_data<float>(xyzs.values());
+    float* _rgbas = vec_data<float>(rgbas.values());
+    float* _sizes = vec_data<float>(sizes.values());
+
+    float* start_xyzs = _xyzs;
+    float* start_rgbas = _rgbas;
+    float* start_sizes = _sizes;
+
+    size_t number = 0;
+
+    for(size_t index=1;;index++) {
+      if( ((*_sizes)!=(*start_sizes)) || (index>npt) ) {
+        //::printf("debug : draw %lu : size %g\n",number/3,*start_sizes);
+        a_action.point_size(*start_sizes);
+        a_action.draw_vertex_color_array(gl::points(),number,start_xyzs,start_rgbas);
+        number = 0;
+        start_xyzs = _xyzs;
+        start_rgbas = _rgbas;
+        start_sizes = _sizes;
+        if(index>npt) break;
+      }
+      number += 3;
+      _xyzs  += 3;
+      _rgbas += 4;
+      _sizes += 1;
+    }
+
+    a_action.point_size(state.m_point_size);
+    a_action.set_point_smooth(state.m_GL_POINT_SMOOTH);
+
+  }
+public:
+  colored_sized_points()
+  :parent()
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+    add_fields();
+  }
+  virtual ~colored_sized_points(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  colored_sized_points(const colored_sized_points& a_from)
+  :parent(a_from)
+  ,rgbas(a_from.rgbas)
+  ,sizes(a_from.sizes)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+    add_fields();
+  }
+  colored_sized_points& operator=(const colored_sized_points& a_from){
+    parent::operator=(a_from);
+    rgbas = a_from.rgbas;
+    sizes = a_from.sizes;
+    return *this;
+  }
+public:
+  void add(float a_x,float a_y,float a_z,float a_r,float a_g,float a_b,float a_a,float a_size) {
+    xyzs.add(a_x);
+    xyzs.add(a_y);
+    xyzs.add(a_z);
+    rgbas.add(a_r);
+    rgbas.add(a_g);
+    rgbas.add(a_b);
+    rgbas.add(a_a);
+    sizes.add(a_size);
+  }
+
+  template <class VEC,class COLOR>
+  void add(const VEC& a_pos,const COLOR& a_col,float a_size) {
+    xyzs.add(a_pos.x());
+    xyzs.add(a_pos.y());
+    xyzs.add(a_pos.z());
+    rgbas.add(a_col.r());
+    rgbas.add(a_col.g());
+    rgbas.add(a_col.b());
+    rgbas.add(a_col.a());
+    sizes.add(a_size);
+  }
+
+  void clear() {
+    parent::clear();
+    rgbas.clear();
+    sizes.clear();
+  }
+};
+
+}}
+
+#endif

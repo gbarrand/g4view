@@ -1,0 +1,149 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_hep_strings
+#define inlib_sg_hep_strings
+
+#include "base_freetype"
+#include "strings"
+
+#include "../hep/spdg"
+
+namespace inlib {
+namespace sg {
+
+inline std::string cvt2paw(std::string& a_s){
+  if(a_s==hep::s_e_plus()) {
+    a_s = "e^+";
+    return encoding_PAW();
+  } else if(a_s==hep::s_e_minus()) {
+    a_s = "e^-";
+    return encoding_PAW();
+
+  } else if(a_s==hep::s_gamma()) {
+    a_s = "[g]";
+    return encoding_PAW();
+
+  } else if(a_s==hep::s_mu_plus()) {
+    a_s = "[m]^+";
+    return encoding_PAW();
+  } else if(a_s==hep::s_mu_minus()) {
+    a_s = "[m]^-";
+    return encoding_PAW();
+
+  } else if(a_s==hep::s_nu_e()) {
+    a_s = "[n]?e";
+    return encoding_PAW();
+  } else if(a_s==hep::s_nu_mu()) {
+    a_s = "[n]?[m]";
+    return encoding_PAW();
+
+  } else if(a_s==hep::s_proton()) {
+    a_s = "p";
+    return encoding_none();
+
+  } else if(a_s==hep::s_neutron()) {
+    a_s = "n";
+    return encoding_none();
+
+  } else if(a_s==hep::s_pi_plus()) {
+    a_s = "[p]^+";
+    return encoding_PAW();
+  } else if(a_s==hep::s_pi_minus()) {
+    a_s = "[p]^-";
+    return encoding_PAW();
+  } else if(a_s==hep::s_pi0()) {
+    a_s = "[p]^0";
+    return encoding_PAW();
+
+  } else if(a_s==hep::s_K_plus()) {
+    a_s = "K^+";
+    return encoding_PAW();
+  } else if(a_s==hep::s_K_minus()) {
+    a_s = "K^-";
+    return encoding_PAW();
+  } else if(a_s==hep::s_K0()) {
+    a_s = "K^0";
+    return encoding_PAW();
+
+  } else {
+    return encoding_none();
+  }
+}
+
+inline bool cvt2stix(const std::string& a_s,std::vector<sg::base_freetype::unichar>& a_line){
+
+  a_line.clear();
+  if(a_s==hep::s_e_plus()) {
+    a_line.push_back(0x00065); // e
+    a_line.push_back(0x0002B); // +
+
+  } else if(a_s==hep::s_e_minus()) {
+    a_line.push_back(0x00065); // e
+    a_line.push_back(0x0002D); // -
+
+  } else if(a_s==hep::s_gamma()) {
+    a_line.push_back(0x003B3); // gamma
+
+  } else if(a_s==hep::s_mu_plus()) {
+    a_line.push_back(0x003BC); // mu
+    a_line.push_back(0x0002B); // +
+
+  } else if(a_s==hep::s_mu_minus()) {
+    a_line.push_back(0x003BC); // mu
+    a_line.push_back(0x0002D); // -
+
+  } else if(a_s==hep::s_nu_e()) {
+    a_line.push_back(0x003BD); // nu
+  //a_line.push_back(0x0002F); // /
+    a_line.push_back(0x0002D); // -
+    a_line.push_back(0x00065); // e
+
+  } else if(a_s==hep::s_nu_mu()) {
+    a_line.push_back(0x003BD); // nu
+  //a_line.push_back(0x0002F); // /
+    a_line.push_back(0x0002D); // -
+    a_line.push_back(0x003BC); // mu
+
+  } else if(a_s==hep::s_proton()) {
+    a_line.push_back(0x00070); // p
+
+  } else if(a_s==hep::s_neutron()) {
+    a_line.push_back(0x0006E); // n
+
+  } else if(a_s==hep::s_pi_plus()) {
+    a_line.push_back(0x003C0); // pi
+    a_line.push_back(0x0002B); // +
+
+  } else if(a_s==hep::s_pi_minus()) {
+    a_line.push_back(0x003C0); // pi
+    a_line.push_back(0x0002D); // -
+
+  } else if(a_s==hep::s_pi0()) {
+    a_line.push_back(0x003C0); // pi
+    a_line.push_back(0x00030); // 0
+
+  } else if(a_s==hep::s_K_plus()) {
+    a_line.push_back(0x0004B); // K
+    a_line.push_back(0x0002B); // +
+
+  } else if(a_s==hep::s_K_minus()) {
+    a_line.push_back(0x0004B); // K
+    a_line.push_back(0x0002D); // -
+
+  } else if(a_s==hep::s_K0()) {
+    a_line.push_back(0x0004B); // K
+    a_line.push_back(0x00030); // 0
+
+  } else if(a_s=="nu") {
+    a_line.push_back(0x003BD); // nu
+
+  } else {
+    inlib_sforcit(a_s,it) a_line.push_back(*it);
+  }
+  return true;
+}
+
+}}
+
+#endif

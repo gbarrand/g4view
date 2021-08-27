@@ -1,0 +1,233 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_hep_particle
+#define inlib_hep_particle
+
+#include <vector>
+#include <string>
+
+#ifdef INLIB_MEM
+#include "../S_STRING"
+#include "../mem"
+#endif
+
+namespace inlib {
+namespace hep {
+
+class decay_channel {
+#ifdef INLIB_MEM
+  INLIB_SCLASS(inlib::hep::decay_channel)
+#endif
+public:
+  decay_channel(size_t a_number,
+                int    a_matrix_element_code,
+                double a_branching_ratio,
+                const std::vector<int>& a_daughters)
+  :m_number(a_number)
+  ,m_matrix_element_code(a_matrix_element_code)
+  ,m_branching_ratio(a_branching_ratio)
+  ,m_daughters(a_daughters)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~decay_channel() {
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  decay_channel(const decay_channel& a_from)
+  :m_number(a_from.m_number)
+  ,m_matrix_element_code(a_from.m_matrix_element_code)
+  ,m_branching_ratio(a_from.m_branching_ratio)
+  ,m_daughters(a_from.m_daughters)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  decay_channel& operator=(const decay_channel& a_from) {
+    m_number = a_from.m_number;
+    m_matrix_element_code = a_from.m_matrix_element_code;
+    m_branching_ratio = a_from.m_branching_ratio;
+    m_daughters = a_from.m_daughters;
+    return *this;
+  }
+public:
+  size_t channel_number() const {return m_number; }
+  int matrix_element_code() const {return m_matrix_element_code;  }
+  double  branching_ratio() const {return m_branching_ratio; }
+  const std::vector<int>& daughters() const {return m_daughters;}
+  std::vector<int>& daughters() {return m_daughters;}
+protected:
+  size_t  m_number;                        // channel number
+  int     m_matrix_element_code;           // matrix element for this decay mode
+  double  m_branching_ratio;               // branching ratio ( < 1)
+  std::vector<int> m_daughters;            // PDG codes of the daughters
+};
+
+class particle {
+#ifdef INLIB_MEM
+  INLIB_SCLASS(inlib::hep::particle)
+#endif
+public:
+  particle(const std::string& a_name,
+               double a_mass,
+               bool a_stable,double a_width,double a_charge,
+               const std::string& a_particle_class,int a_pdg_code,int a_anti,
+               int a_tracking_code)
+  :m_name(a_name)
+  ,m_pdg_code(a_pdg_code)
+  ,m_mass(a_mass)
+  ,m_charge(a_charge)
+  ,m_life_time(0)
+  ,m_width(a_width)
+  ,m_parity(0)
+  ,m_spin(0)
+  ,m_isospin(0)
+  ,m_I3(0)
+  ,m_strangeness(0)
+  ,m_charm(0)
+  ,m_beauty(0)
+  ,m_top(0)
+  ,m_Y(0)
+  ,m_X(0)
+  ,m_stable(a_stable)
+  ,m_decays()
+  ,m_particle_class(a_particle_class)
+  ,m_tracking_code(a_tracking_code)
+  ,m_anti_particle(a_anti?"tmp":"")
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+    const double kHbar = 6.58211889e-25; // GeV s
+    if(m_width) m_life_time = kHbar/m_width;
+  }
+  virtual ~particle() {
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  particle(const particle& a_from)
+  :m_name(a_from.m_name)
+  ,m_pdg_code(a_from.m_pdg_code)
+  ,m_mass(a_from.m_mass)
+  ,m_charge(a_from.m_charge)
+  ,m_life_time(a_from.m_life_time)
+  ,m_width(a_from.m_width)
+  ,m_parity(a_from.m_parity)
+  ,m_spin(a_from.m_spin)
+  ,m_isospin(a_from.m_isospin)
+  ,m_I3(a_from.m_I3)
+  ,m_strangeness(a_from.m_strangeness)
+  ,m_charm(a_from.m_charm)
+  ,m_beauty(a_from.m_beauty)
+  ,m_top(a_from.m_top)
+  ,m_Y(a_from.m_Y)
+  ,m_X(a_from.m_X)
+  ,m_stable(a_from.m_stable)
+  ,m_decays(a_from.m_decays)
+  ,m_particle_class(a_from.m_particle_class)
+  ,m_tracking_code(a_from.m_tracking_code)
+  ,m_anti_particle(a_from.m_anti_particle)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+public:
+  particle& operator=(const particle& a_from) {
+    m_name = a_from.m_name;
+    m_pdg_code = a_from.m_pdg_code;
+    m_mass = a_from.m_mass;
+    m_charge = a_from.m_charge;
+    m_life_time = a_from.m_life_time;
+    m_width = a_from.m_width;
+    m_parity = a_from.m_parity;
+    m_spin = a_from.m_spin;
+    m_isospin = a_from.m_isospin;
+    m_I3 = a_from.m_I3;
+    m_strangeness = a_from.m_strangeness;
+    m_charm = a_from.m_charm;
+    m_beauty = a_from.m_beauty;
+    m_top = a_from.m_top;
+    m_Y = a_from.m_Y;
+    m_X = a_from.m_X;
+    m_stable = a_from.m_stable;
+    m_decays = a_from.m_decays;
+    m_particle_class = a_from.m_particle_class;
+    m_tracking_code = a_from.m_tracking_code;
+    m_anti_particle = a_from.m_anti_particle;
+    return *this;
+  }
+public:
+  const std::string& name() const {return m_name;}
+  int    pdg_code  () const { return m_pdg_code;}
+  double mass      () const { return m_mass;}
+  double charge    () const { return m_charge;} //charge in units of |e|/3
+  double life_time () const { return m_life_time;}
+  double width     () const { return m_width;}
+  int    parity    () const { return m_parity;}
+  double spin      () const { return m_spin;}
+  double iso_spin  () const { return m_isospin;}
+  double I3        () const { return m_I3;}
+  int    strangeness  () const { return m_strangeness;}
+  int    charm        () const { return m_charm;}
+  int    beauty       () const { return m_beauty;}
+  int    top          () const { return m_top;}
+  int    X            () const { return m_X;}
+  int    Y            () const { return m_Y;}
+  bool   stable       () const {return m_stable;}
+  const std::string& particle_class() const {return m_particle_class;}
+  const std::vector<decay_channel>& decay_channels() const {return m_decays;}
+  std::vector<decay_channel>& decay_channels() {return m_decays;}
+  //size_t decay_channels () const {return m_decays.size();}
+  int tracking_code() const { return m_tracking_code; }
+  const std::string& anti_particle() const {return m_anti_particle;}
+public:
+  void set_anti_particle(const std::string& a_name) {m_anti_particle = a_name;}
+  decay_channel& add_decay_channel(int Type,double a_branching_ratio,const std::vector<int>& a_daughters) {
+     m_decays.push_back(decay_channel(m_decays.size(),Type,a_branching_ratio,a_daughters));
+     return m_decays.back();
+  }
+public: //Geant4 API (for inlib/g4dum) :
+  double GetPDGCharge() const { return m_charge;}
+  double GetPDGMass() const { return m_mass;}
+//  double GetPDGWidth() const { return m_width;}
+protected:
+  std::string    m_name;
+  int            m_pdg_code;                    // PDG code of the particle
+  double         m_mass;                       // particle mass in GeV
+  double         m_charge;                     // charge in units of |e|/3
+  double         m_life_time;                   // proper lifetime in seconds
+  double         m_width;                      // total width in GeV
+  int            m_parity;
+  double         m_spin;
+  double         m_isospin;                    // isospin
+  double         m_I3;                         // i3
+  int            m_strangeness;                // flavours are defined if i3 != -1
+  int            m_charm;                      // 1 or -1 for C-particles,
+                                                // 0 for others
+  int            m_beauty;                     //
+  int            m_top;                        //
+  int            m_Y;                          // X,Y: quantum numbers for the 4-th generation
+  int            m_X;                          //
+  bool           m_stable;                     // true if stable, false otherwise
+
+  std::vector<decay_channel> m_decays;     // array of decay channels
+
+  std::string    m_particle_class;              // lepton, meson etc
+
+  int            m_tracking_code;               // G3 tracking code of the particle
+  bool           m_has_anti;
+  std::string    m_anti_particle;
+};
+
+}}
+
+#endif

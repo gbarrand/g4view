@@ -1,0 +1,17 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_ishell_args_view_evd_cmd
+#define inlib_insh_ishell_args_view_evd_cmd
+
+#include "ishell_args_class_cmd"
+
+#include "../sg/view_evd"
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__view_evd,a__name,a__func,a__help)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_class_cmd<inlib::sg::view_evd>(a__insh,a__view_evd,a__func,a__help));
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD_COMPLETE(a__insh,a__view_evd,a__name,a__func,a__help,a__complete)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_class_cmd<inlib::sg::view_evd>(a__insh,a__view_evd,a__func,a__help,a__complete));
+
+#endif

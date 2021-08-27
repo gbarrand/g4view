@@ -1,0 +1,139 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_xy_grid
+#define inlib_sg_xy_grid
+
+#include "vertices"
+//#include "nodekit"
+
+namespace inlib {
+namespace sg {
+
+class xy_grid : public vertices {
+  INLIB_NODE(xy_grid,inlib::sg::xy_grid,vertices)
+public:
+  sf<float> sx;
+  sf<float> sy;
+  sf<unsigned int> nx;
+  sf<unsigned int> ny;
+public:
+  virtual const desc_fields& node_desc_fields() const {
+    INLIB_FIELD_DESC_NODE_CLASS(inlib::sg::xy_grid)
+    static const desc_fields s_v(parent::node_desc_fields(),4, //WARNING : take care of count.
+      INLIB_ARG_FIELD_DESC(sx),
+      INLIB_ARG_FIELD_DESC(sy),
+      INLIB_ARG_FIELD_DESC(nx),
+      INLIB_ARG_FIELD_DESC(ny)
+    );
+    return s_v;
+  }
+private:
+  void add_fields(){
+    add_field(&sx);
+    add_field(&sy);
+    add_field(&nx);
+    add_field(&ny);
+  }
+public: // actions in vertices :
+  virtual void render(render_action& a_action) {
+    update_if_touched(a_action.out());
+    parent::render(a_action);
+  }
+  virtual void pick(pick_action& a_action) {
+    update_if_touched(a_action.out());
+    parent::pick(a_action);
+  }
+  virtual void bbox(bbox_action& a_action) {
+    update_if_touched(a_action.out());
+    parent::bbox(a_action);
+  }
+  virtual void is_visible(visible_action& a_action) {
+    update_if_touched(a_action.out());
+    parent::is_visible(a_action);
+  }
+public:
+  xy_grid()
+  :parent()
+
+  ,sx(1)
+  ,sy(1)
+  ,nx(1)
+  ,ny(1)
+  {
+    add_fields();
+    mode = gl::lines(); //segments
+  }
+  virtual ~xy_grid(){}
+public:
+  xy_grid(const xy_grid& a_from)
+  :parent(a_from)
+
+  ,sx(a_from.sx)
+  ,sy(a_from.sy)
+  ,nx(a_from.nx)
+  ,ny(a_from.ny)
+  {
+    add_fields();
+    mode = gl::lines(); //segments
+  }
+  xy_grid& operator=(const xy_grid& a_from){
+    parent::operator=(a_from);
+
+    sx = a_from.sx;
+    sy = a_from.sy;
+    nx = a_from.nx;
+    ny = a_from.ny;
+
+    return *this;
+  }
+protected:
+  void update_if_touched(std::ostream& a_out) {
+    if(touched()) {
+      update_sg(a_out);
+      reset_touched();
+    }
+  }
+  void update_sg(std::ostream& a_out) {
+    parent::clear();
+   {size_t npt = 0;
+    if((sy.value()>0)&&(ny.value())) npt += 2*(ny.value()+1);
+    if((sx.value()>0)&&(nx.value())) npt += 2*(nx.value()+1);
+    xyzs.values().resize(npt*3);}
+
+    float w2 = nx*sx*0.5f;
+    float h2 = ny*sy*0.5f;
+    float bx,by,ex,ey;
+
+    size_t xyzs_pos = 0;
+
+    // horizontal lines :
+    if((sy.value()>0)&&(ny.value())) {
+      bx = -w2;
+      ex =  w2;
+      for(unsigned int iy=0;iy<=ny.value();iy++) {
+        by = -h2+iy*sy;
+        add_allocated(xyzs_pos,bx,by,0);
+        ey = by;
+        add_allocated(xyzs_pos,ex,ey,0);
+      }
+    }
+
+    // vertical lines :
+    if((sx.value()>0)&&(nx.value())) {
+      by = -h2;
+      ey =  h2;
+      for(unsigned int ix=0;ix<=nx.value();ix++) {
+        bx = -w2+ix*sx;
+        add_allocated(xyzs_pos,bx,by,0);
+        ex = bx;
+        add_allocated(xyzs_pos,ex,ey,0);
+      }
+    }
+
+  }
+};
+
+}}
+
+#endif

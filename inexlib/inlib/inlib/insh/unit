@@ -1,0 +1,324 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_unit
+#define inlib_insh_unit
+
+#include <vector>
+#include <string>
+
+namespace inlib {
+
+inline void unit_names(std::vector<std::string>& a_names) {
+  a_names.clear();
+  a_names.push_back("millimeter");
+  a_names.push_back("millimeter2");
+  a_names.push_back("millimeter3");
+  a_names.push_back("centimeter");
+  a_names.push_back("centimeter2");
+  a_names.push_back("centimeter3");
+  a_names.push_back("meter");
+  a_names.push_back("meter2");
+  a_names.push_back("meter3");
+  a_names.push_back("kilometer");
+  a_names.push_back("kilometer2");
+  a_names.push_back("kilometer3");
+  a_names.push_back("parsec");
+  a_names.push_back("micrometer");
+  a_names.push_back("nanometer");
+  a_names.push_back("angstrom");
+  a_names.push_back("fermi");
+  a_names.push_back("barn");
+  a_names.push_back("millibarn");
+  a_names.push_back("microbarn");
+  a_names.push_back("nanobarn");
+  a_names.push_back("picobarn");
+  a_names.push_back("nm");
+  a_names.push_back("um");
+  a_names.push_back("mm");
+  a_names.push_back("mm2");
+  a_names.push_back("mm3");
+  a_names.push_back("cm");
+  a_names.push_back("cm2");
+  a_names.push_back("cm3");
+  a_names.push_back("m");
+  a_names.push_back("m2");
+  a_names.push_back("m3");
+  a_names.push_back("km");
+  a_names.push_back("km2");
+  a_names.push_back("km3");
+  a_names.push_back("pc");
+  a_names.push_back("radian");
+  a_names.push_back("milliradian");
+  a_names.push_back("degree");
+  a_names.push_back("steradian");
+  a_names.push_back("rad");
+  a_names.push_back("mrad");
+  a_names.push_back("sr");
+  a_names.push_back("deg");
+  a_names.push_back("nanosecond");
+  a_names.push_back("second");
+  a_names.push_back("millisecond");
+  a_names.push_back("microsecond");
+  a_names.push_back("picosecond");
+  a_names.push_back("hertz");
+  a_names.push_back("kilohertz");
+  a_names.push_back("megahertz");
+  a_names.push_back("ns");
+  a_names.push_back("s");
+  a_names.push_back("ms");
+  a_names.push_back("eplus");
+  a_names.push_back("em_avogadro");
+  a_names.push_back("coulomb");
+  a_names.push_back("e_SI");
+  a_names.push_back("megaelectronvolt");
+  a_names.push_back("electronvolt");
+  a_names.push_back("kiloelectronvolt");
+  a_names.push_back("gigaelectronvolt");
+  a_names.push_back("teraelectronvolt");
+  a_names.push_back("petaelectronvolt");
+  a_names.push_back("joule");
+  a_names.push_back("MeV");
+  a_names.push_back("eV");
+  a_names.push_back("keV");
+  a_names.push_back("GeV");
+  a_names.push_back("TeV");
+  a_names.push_back("PeV");
+  a_names.push_back("kilogram");
+  a_names.push_back("gram");
+  a_names.push_back("milligram");
+  a_names.push_back("kg");
+  a_names.push_back("g");
+  a_names.push_back("mg");
+  a_names.push_back("watt");
+  a_names.push_back("newton");
+  a_names.push_back("Pa");
+  a_names.push_back("bar");
+  a_names.push_back("atmosphere");
+  a_names.push_back("ampere");
+  a_names.push_back("milliampere");
+  a_names.push_back("microampere");
+  a_names.push_back("nanoampere");
+  a_names.push_back("megavolt");
+  a_names.push_back("kilovolt");
+  a_names.push_back("volt");
+  a_names.push_back("ohm");
+  a_names.push_back("farad");
+  a_names.push_back("millifarad");
+  a_names.push_back("microfarad");
+  a_names.push_back("nanofarad");
+  a_names.push_back("picofarad");
+  a_names.push_back("weber");
+  a_names.push_back("tesla");
+  a_names.push_back("gauss");
+  a_names.push_back("kilogauss");
+  a_names.push_back("henry");
+  a_names.push_back("kelvin");
+  a_names.push_back("mole");
+  a_names.push_back("becquerel");
+  a_names.push_back("curie");
+  a_names.push_back("gray");
+  a_names.push_back("kilogray");
+  a_names.push_back("milligray");
+  a_names.push_back("microgray");
+  a_names.push_back("candela");
+  a_names.push_back("lumen");
+  a_names.push_back("lux");
+  a_names.push_back("per_cent");
+  a_names.push_back("per_thousand");
+  a_names.push_back("per_million");
+  a_names.push_back("statC_squared");
+}
+
+}
+
+#include "ishell"
+#include "../args"
+
+#include "../edep/units"
+
+namespace inlib {
+
+inline void insh_unit(ishell& a_insh,const std::vector<std::string>& a_args) {
+  static const std::string s_cmd("unit");
+  args _args(a_args);
+  std::string fnh;
+  _args.first_not_hyphen(fnh);
+  if(fnh.empty()) {
+    std::vector<std::string> names;
+    unit_names(names);
+    a_insh.out_begin();
+    a_insh.out(names,true);
+    return;
+  }
+
+  if(fnh=="millimeter")  {a_insh.out_num<double>(edep::millimeter);return;}
+  if(fnh=="millimeter2")  {a_insh.out_num<double>(edep::millimeter2);return;}
+  if(fnh=="millimeter3")  {a_insh.out_num<double>(edep::millimeter3);return;}
+  if(fnh=="centimeter")  {a_insh.out_num<double>(edep::centimeter);return;}
+  if(fnh=="centimeter2")  {a_insh.out_num<double>(edep::centimeter2);return;}
+  if(fnh=="centimeter3")  {a_insh.out_num<double>(edep::centimeter3);return;}
+  if(fnh=="meter")  {a_insh.out_num<double>(edep::meter);return;}
+  if(fnh=="meter2")  {a_insh.out_num<double>(edep::meter2);return;}
+  if(fnh=="meter3")  {a_insh.out_num<double>(edep::meter3);return;}
+  if(fnh=="kilometer")  {a_insh.out_num<double>(edep::kilometer);return;}
+  if(fnh=="kilometer2")  {a_insh.out_num<double>(edep::kilometer2);return;}
+  if(fnh=="kilometer3")  {a_insh.out_num<double>(edep::kilometer3);return;}
+  if(fnh=="parsec")  {a_insh.out_num<double>(edep::parsec);return;}
+  if(fnh=="micrometer")  {a_insh.out_num<double>(edep::micrometer);return;}
+  if(fnh=="nanometer")  {a_insh.out_num<double>(edep::nanometer);return;}
+  if(fnh=="angstrom")  {a_insh.out_num<double>(edep::angstrom);return;}
+  if(fnh=="fermi")  {a_insh.out_num<double>(edep::fermi);return;}
+  if(fnh=="barn")  {a_insh.out_num<double>(edep::barn);return;}
+  if(fnh=="millibarn")  {a_insh.out_num<double>(edep::millibarn);return;}
+  if(fnh=="microbarn")  {a_insh.out_num<double>(edep::microbarn);return;}
+  if(fnh=="nanobarn")  {a_insh.out_num<double>(edep::nanobarn);return;}
+  if(fnh=="picobarn")  {a_insh.out_num<double>(edep::picobarn);return;}
+  if(fnh=="nm")  {a_insh.out_num<double>(edep::nm);return;}
+  if(fnh=="um")  {a_insh.out_num<double>(edep::um);return;}
+  if(fnh=="mm")  {a_insh.out_num<double>(edep::mm);return;}
+  if(fnh=="mm2")  {a_insh.out_num<double>(edep::mm2);return;}
+  if(fnh=="mm3")  {a_insh.out_num<double>(edep::mm3);return;}
+  if(fnh=="cm")  {a_insh.out_num<double>(edep::cm);return;}
+  if(fnh=="cm2")  {a_insh.out_num<double>(edep::cm2);return;}
+  if(fnh=="cm3")  {a_insh.out_num<double>(edep::cm3);return;}
+  if(fnh=="m")  {a_insh.out_num<double>(edep::m);return;}
+  if(fnh=="m2")  {a_insh.out_num<double>(edep::m2);return;}
+  if(fnh=="m3")  {a_insh.out_num<double>(edep::m3);return;}
+  if(fnh=="km")  {a_insh.out_num<double>(edep::km);return;}
+  if(fnh=="km2")  {a_insh.out_num<double>(edep::km2);return;}
+  if(fnh=="km3")  {a_insh.out_num<double>(edep::km3);return;}
+  if(fnh=="pc")  {a_insh.out_num<double>(edep::pc);return;}
+  if(fnh=="radian")  {a_insh.out_num<double>(edep::radian);return;}
+  if(fnh=="milliradian")  {a_insh.out_num<double>(edep::milliradian);return;}
+  if(fnh=="degree")  {a_insh.out_num<double>(edep::degree);return;}
+  if(fnh=="steradian")  {a_insh.out_num<double>(edep::steradian);return;}
+  if(fnh=="rad")  {a_insh.out_num<double>(edep::rad);return;}
+  if(fnh=="mrad")  {a_insh.out_num<double>(edep::mrad);return;}
+  if(fnh=="sr")  {a_insh.out_num<double>(edep::sr);return;}
+  if(fnh=="deg")  {a_insh.out_num<double>(edep::deg);return;}
+  if(fnh=="nanosecond")  {a_insh.out_num<double>(edep::nanosecond);return;}
+  if(fnh=="second")  {a_insh.out_num<double>(edep::second);return;}
+  if(fnh=="millisecond")  {a_insh.out_num<double>(edep::millisecond);return;}
+  if(fnh=="microsecond")  {a_insh.out_num<double>(edep::microsecond);return;}
+  if(fnh=="picosecond")  {a_insh.out_num<double>(edep::picosecond);return;}
+  if(fnh=="hertz")  {a_insh.out_num<double>(edep::hertz);return;}
+  if(fnh=="kilohertz")  {a_insh.out_num<double>(edep::kilohertz);return;}
+  if(fnh=="megahertz")  {a_insh.out_num<double>(edep::megahertz);return;}
+  if(fnh=="ns")  {a_insh.out_num<double>(edep::ns);return;}
+  if(fnh=="s")  {a_insh.out_num<double>(edep::s);return;}
+  if(fnh=="ms")  {a_insh.out_num<double>(edep::ms);return;}
+  if(fnh=="eplus")  {a_insh.out_num<double>(edep::eplus);return;}
+  if(fnh=="em_avogadro")  {a_insh.out_num<double>(edep::em_avogadro);return;}
+  if(fnh=="coulomb")  {a_insh.out_num<double>(edep::coulomb);return;}
+  if(fnh=="e_SI")  {a_insh.out_num<double>(edep::e_SI);return;}
+  if(fnh=="megaelectronvolt")  {a_insh.out_num<double>(edep::megaelectronvolt);return;}
+  if(fnh=="electronvolt")  {a_insh.out_num<double>(edep::electronvolt);return;}
+  if(fnh=="kiloelectronvolt")  {a_insh.out_num<double>(edep::kiloelectronvolt);return;}
+  if(fnh=="gigaelectronvolt")  {a_insh.out_num<double>(edep::gigaelectronvolt);return;}
+  if(fnh=="teraelectronvolt")  {a_insh.out_num<double>(edep::teraelectronvolt);return;}
+  if(fnh=="petaelectronvolt")  {a_insh.out_num<double>(edep::petaelectronvolt);return;}
+  if(fnh=="joule")  {a_insh.out_num<double>(edep::joule);return;}
+  if(fnh=="MeV")  {a_insh.out_num<double>(edep::MeV);return;}
+  if(fnh=="eV")  {a_insh.out_num<double>(edep::eV);return;}
+  if(fnh=="keV")  {a_insh.out_num<double>(edep::keV);return;}
+  if(fnh=="GeV")  {a_insh.out_num<double>(edep::GeV);return;}
+  if(fnh=="TeV")  {a_insh.out_num<double>(edep::TeV);return;}
+  if(fnh=="PeV")  {a_insh.out_num<double>(edep::PeV);return;}
+  if(fnh=="kilogram")  {a_insh.out_num<double>(edep::kilogram);return;}
+  if(fnh=="gram")  {a_insh.out_num<double>(edep::gram);return;}
+  if(fnh=="milligram")  {a_insh.out_num<double>(edep::milligram);return;}
+  if(fnh=="kg")  {a_insh.out_num<double>(edep::kg);return;}
+  if(fnh=="g")  {a_insh.out_num<double>(edep::g);return;}
+  if(fnh=="mg")  {a_insh.out_num<double>(edep::mg);return;}
+  if(fnh=="watt")  {a_insh.out_num<double>(edep::watt);return;}
+  if(fnh=="newton")  {a_insh.out_num<double>(edep::newton);return;}
+  if(fnh=="Pa")  {a_insh.out_num<double>(edep::Pa);return;}
+  if(fnh=="bar")  {a_insh.out_num<double>(edep::bar);return;}
+  if(fnh=="atmosphere")  {a_insh.out_num<double>(edep::atmosphere);return;}
+  if(fnh=="ampere")  {a_insh.out_num<double>(edep::ampere);return;}
+  if(fnh=="milliampere")  {a_insh.out_num<double>(edep::milliampere);return;}
+  if(fnh=="microampere")  {a_insh.out_num<double>(edep::microampere);return;}
+  if(fnh=="nanoampere")  {a_insh.out_num<double>(edep::nanoampere);return;}
+  if(fnh=="megavolt")  {a_insh.out_num<double>(edep::megavolt);return;}
+  if(fnh=="kilovolt")  {a_insh.out_num<double>(edep::kilovolt);return;}
+  if(fnh=="volt")  {a_insh.out_num<double>(edep::volt);return;}
+  if(fnh=="ohm")  {a_insh.out_num<double>(edep::ohm);return;}
+  if(fnh=="farad")  {a_insh.out_num<double>(edep::farad);return;}
+  if(fnh=="millifarad")  {a_insh.out_num<double>(edep::millifarad);return;}
+  if(fnh=="microfarad")  {a_insh.out_num<double>(edep::microfarad);return;}
+  if(fnh=="nanofarad")  {a_insh.out_num<double>(edep::nanofarad);return;}
+  if(fnh=="picofarad")  {a_insh.out_num<double>(edep::picofarad);return;}
+  if(fnh=="weber")  {a_insh.out_num<double>(edep::weber);return;}
+  if(fnh=="tesla")  {a_insh.out_num<double>(edep::tesla);return;}
+  if(fnh=="gauss")  {a_insh.out_num<double>(edep::gauss);return;}
+  if(fnh=="kilogauss")  {a_insh.out_num<double>(edep::kilogauss);return;}
+  if(fnh=="henry")  {a_insh.out_num<double>(edep::henry);return;}
+  if(fnh=="kelvin")  {a_insh.out_num<double>(edep::kelvin);return;}
+  if(fnh=="mole")  {a_insh.out_num<double>(edep::mole);return;}
+  if(fnh=="becquerel")  {a_insh.out_num<double>(edep::becquerel);return;}
+  if(fnh=="curie")  {a_insh.out_num<double>(edep::curie);return;}
+  if(fnh=="gray")  {a_insh.out_num<double>(edep::gray);return;}
+  if(fnh=="kilogray")  {a_insh.out_num<double>(edep::kilogray);return;}
+  if(fnh=="milligray")  {a_insh.out_num<double>(edep::milligray);return;}
+  if(fnh=="microgray")  {a_insh.out_num<double>(edep::microgray);return;}
+  if(fnh=="candela")  {a_insh.out_num<double>(edep::candela);return;}
+  if(fnh=="lumen")  {a_insh.out_num<double>(edep::lumen);return;}
+  if(fnh=="lux")  {a_insh.out_num<double>(edep::lux);return;}
+  if(fnh=="per_cent")  {a_insh.out_num<double>(edep::per_cent);return;}
+  if(fnh=="per_thousand")  {a_insh.out_num<double>(edep::per_thousand);return;}
+  if(fnh=="per_million")  {a_insh.out_num<double>(edep::per_million);return;}
+  if(fnh=="statC_squared")  {a_insh.out_num<double>(edep::statC_squared);return;}
+  
+  a_insh.warn(s_cmd+": "+inlib::sout(fnh)+" unknow keyword.");
+}
+
+inline const std::string& insh_unit_help() {
+  static const std::string s_help(
+"unit: unit [what]\n\
+  Print value of 'what' as defined in inlib::edep::units.\n\
+  If no arguments given, print known units.\n\
+  HEP coherent system of Units; the basic units are:\n\
+    millimeter              (millimeter)\n\
+    nanosecond              (nanosecond)\n\
+    Mega electron Volt      (MeV)\n\
+    positron charge         (eplus)\n\
+    degree Kelvin           (kelvin)\n\
+    the amount of substance (mole)\n\
+    luminous intensity      (candela)\n\
+    radian                  (radian)\n\
+    steradian               (steradian)\n\
+  Example:\n\
+    unit\n\
+    unit mm    # it should print 1\n\
+    unit m     # it should print 1000\n\
+    unit eplus # it should print 1\n\
+");
+  return s_help;
+}
+
+}
+
+#include "../sbeg"
+#include "../sort"
+
+namespace inlib {
+
+inline void unit_complete(const std::string& a_begin,std::vector<std::string>& a_names) {
+  if(a_begin.empty()) {
+    unit_names(a_names);
+  } else {
+    a_names.clear();
+    std::vector<std::string> ls;
+    unit_names(ls);
+    inlib_vforcit(std::string,ls,it) {
+      if(is_beg(*it,a_begin)) a_names.push_back(*it);
+    }
+  }
+  sort::sort(a_names);
+}
+
+
+}
+
+#endif

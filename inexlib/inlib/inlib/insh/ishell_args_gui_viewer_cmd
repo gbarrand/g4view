@@ -1,0 +1,110 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_ishell_args_gui_viewer_cmd
+#define inlib_insh_ishell_args_gui_viewer_cmd
+
+#include "base_cmd"
+#include "ishell"
+
+#include "../sg/gui_viewer"
+
+namespace inlib {
+
+class ishell_args_gui_viewer_cmd : public base_cmd {
+  typedef base_cmd parent;
+protected:
+  typedef void(*exec_func)(ishell&,const std::vector<std::string>&,sg::gui_viewer&);
+  typedef void(*complete_func)(const std::string&,std::vector<std::string>&);
+  typedef void(*omanager_complete_func)(omanager&,const std::string&,std::vector<std::string>&);
+  typedef void(*gui_viewer_complete_func)(sg::gui_viewer&,const std::string&,std::vector<std::string>&);
+public:
+  virtual base_cmd* copy() const {return new ishell_args_gui_viewer_cmd(*this);}
+  virtual void execute(const std::vector<std::string>& a_args) {m_exec(m_insh,a_args,m_gv);}
+  virtual const std::string& help() {return m_help_text;}
+  virtual void complete_command(const std::string& a_begin,std::vector<std::string>& a_names) const {
+    if(m_complete) {m_complete(a_begin,a_names);return;}
+    if(m_omanager_complete) {m_omanager_complete(m_gv.get_omanager(),a_begin,a_names);return;}
+    if(m_gui_viewer_complete) {m_gui_viewer_complete(m_gv,a_begin,a_names);return;}
+    a_names.clear();
+  }
+public:
+  ishell_args_gui_viewer_cmd(ishell& a_insh,sg::gui_viewer& a_gv,exec_func a_exec,const std::string& a_help_text)
+  :m_insh(a_insh)
+  ,m_gv(a_gv)
+  ,m_exec(a_exec)
+  ,m_help_text(a_help_text)
+  ,m_complete(0)
+  ,m_omanager_complete(0)
+  ,m_gui_viewer_complete(0)
+  {}
+  ishell_args_gui_viewer_cmd(ishell& a_insh,sg::gui_viewer& a_gv,exec_func a_exec,const std::string& a_help_text,
+                             complete_func a_complete)
+  :m_insh(a_insh)
+  ,m_gv(a_gv)
+  ,m_exec(a_exec)
+  ,m_help_text(a_help_text)
+  ,m_complete(a_complete)
+  ,m_omanager_complete(0)
+  ,m_gui_viewer_complete(0)
+  {}
+  ishell_args_gui_viewer_cmd(ishell& a_insh,sg::gui_viewer& a_gv,exec_func a_exec,const std::string& a_help_text,
+                             omanager_complete_func a_omanager_complete)
+  :m_insh(a_insh)
+  ,m_gv(a_gv)
+  ,m_exec(a_exec)
+  ,m_help_text(a_help_text)
+  ,m_complete(0)
+  ,m_omanager_complete(a_omanager_complete)
+  ,m_gui_viewer_complete(0)
+  {}
+  ishell_args_gui_viewer_cmd(ishell& a_insh,sg::gui_viewer& a_gv,exec_func a_exec,const std::string& a_help_text,
+                             gui_viewer_complete_func a_gui_viewer_complete)
+  :m_insh(a_insh)
+  ,m_gv(a_gv)
+  ,m_exec(a_exec)
+  ,m_help_text(a_help_text)
+  ,m_complete(0)
+  ,m_omanager_complete(0)
+  ,m_gui_viewer_complete(a_gui_viewer_complete)
+  {}
+  virtual ~ishell_args_gui_viewer_cmd() {}
+public:
+  ishell_args_gui_viewer_cmd(const ishell_args_gui_viewer_cmd& a_from)
+  :parent(a_from)
+  ,m_insh(a_from.m_insh)
+  ,m_gv(a_from.m_gv)
+  ,m_exec(a_from.m_exec)
+  ,m_help_text(a_from.m_help_text)
+  ,m_complete(a_from.m_complete)
+  ,m_omanager_complete(a_from.m_omanager_complete)
+  ,m_gui_viewer_complete(a_from.m_gui_viewer_complete)
+  {}
+  ishell_args_gui_viewer_cmd& operator=(const ishell_args_gui_viewer_cmd& a_from) {
+    parent::operator=(a_from);
+    m_exec = a_from.m_exec;
+    m_help_text = a_from.m_help_text;
+    m_complete = a_from.m_complete;
+    m_omanager_complete = a_from.m_omanager_complete;
+    m_gui_viewer_complete = a_from.m_gui_viewer_complete;
+    return *this;
+  }
+protected:
+  ishell& m_insh;
+  sg::gui_viewer& m_gv;
+  exec_func m_exec;
+  std::string m_help_text;
+  complete_func m_complete;
+  omanager_complete_func m_omanager_complete;
+  gui_viewer_complete_func m_gui_viewer_complete;
+};
+
+}
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,a__name,a__func,a__help)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_gui_viewer_cmd(a__insh,a__gv,a__func,a__help));
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD_COMPLETE(a__insh,a__gv,a__name,a__func,a__help,a__complete)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_gui_viewer_cmd(a__insh,a__gv,a__func,a__help,a__complete));
+
+#endif

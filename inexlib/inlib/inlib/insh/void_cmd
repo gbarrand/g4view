@@ -1,0 +1,63 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_void_cmd
+#define inlib_insh_void_cmd
+
+#include "base_cmd"
+
+namespace inlib {
+
+class void_cmd : public base_cmd {
+  typedef base_cmd parent;
+protected:
+  typedef void(*exec_func)();
+  typedef void(*complete_func)(const std::string&,std::vector<std::string>&);
+public:
+  virtual base_cmd* copy() const {return new void_cmd(*this);}
+  virtual void execute(const std::vector<std::string>&) {m_exec();}
+  virtual const std::string& help() {return m_help_text;}
+  virtual void complete_command(const std::string& a_begin,std::vector<std::string>& a_names) const {
+    if(m_complete) {m_complete(a_begin,a_names);return;}
+    a_names.clear();
+  }
+public:
+  void_cmd(exec_func a_exec,const std::string& a_help_text)
+  :m_exec(a_exec)
+  ,m_help_text(a_help_text)
+  ,m_complete(0)
+  {}
+  void_cmd(exec_func a_exec,const std::string& a_help_text,complete_func a_complete)
+  :m_exec(a_exec)
+  ,m_help_text(a_help_text)
+  ,m_complete(a_complete)
+  {}
+  virtual ~void_cmd() {}
+public:
+  void_cmd(const void_cmd& a_from)
+  :parent(a_from)
+  ,m_exec(a_from.m_exec)
+  ,m_help_text(a_from.m_help_text)
+  ,m_complete(a_from.m_complete)
+  {}
+  void_cmd& operator=(const void_cmd& a_from) {
+    parent::operator=(a_from);
+    m_exec = a_from.m_exec;
+    m_help_text = a_from.m_help_text;
+    m_complete = a_from.m_complete;
+    return *this;
+  }
+protected:
+  exec_func m_exec;
+  std::string m_help_text;
+  complete_func m_complete;
+};
+
+}
+
+#include "ishell"
+
+#define INLIB_INSH_ADD_VOID_CMD(a__insh,a__name,a__func,a__help)\
+  a__insh.add_command(#a__name,new inlib::void_cmd(a__func,a__help));
+
+#endif

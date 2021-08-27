@@ -1,0 +1,51 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_is_cloud
+#define inlib_insh_is_cloud
+
+#include "../oholder"
+
+#include "../histo/c1d"
+#include "../histo/c2d"
+#include "../histo/c3d"
+
+namespace inlib {
+
+inline bool insh_is_cloud(const base_oholder& a_boh,std::string& a_name) {
+ {if(const oholder<histo::c1d>* h = cast_oholder<histo::c1d>(a_boh)) {a_name = h->name();return true;}}
+ {if(const oholder<histo::c2d>* h = cast_oholder<histo::c2d>(a_boh)) {a_name = h->name();return true;}}
+ {if(const oholder<histo::c3d>* h = cast_oholder<histo::c3d>(a_boh)) {a_name = h->name();return true;}}
+  a_name.clear();
+  return false;
+}
+
+}
+
+#include "../sort"
+#include "../sbeg"
+#include "../omanager"
+
+namespace inlib {
+
+inline void insh_cloud_complete(omanager& a_mgr,const std::string& a_begin,std::vector<std::string>& a_names) {
+  a_names.clear();
+  if(a_begin.empty()) {
+    std::string name;
+    inlib_vforcit(base_oholder*,a_mgr.bohs(),it) {
+      if(insh_is_cloud(*(*it),name)) a_names.push_back(name);
+    }
+  } else {
+    std::vector<std::string> names;
+   {std::string name;
+    inlib_vforcit(base_oholder*,a_mgr.bohs(),it) {
+      if(insh_is_cloud(*(*it),name)) names.push_back(name);
+    }}
+    inlib_vforcit(std::string,names,it) {if(is_beg(*it,a_begin)) a_names.push_back(*it);}
+  }
+  sort::sort(a_names);
+}
+
+}
+
+#endif

@@ -1,0 +1,30 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_rroot_ls
+#define inlib_rroot_ls
+
+#include "TDirectory"
+#include "clss"
+
+namespace inlib {
+namespace rroot {
+
+inline void ls(std::ostream& a_out,const std::vector<key*>& a_keys) {
+  inlib_vforcit(key*,a_keys,it) {
+    key& k = *(*it);
+    if(k.object_class()==TDirectory_cls()) {
+      a_out << "d " << k.object_name() << std::endl;
+    } else {
+      a_out << "- " << k.object_name()
+            << " " << k.object_class()
+            << " " << k.object_title()
+            << " " << k.object_size()
+            << std::endl;
+    }
+  }
+}
+
+}}
+
+#endif

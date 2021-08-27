@@ -1,0 +1,129 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_args_to_style
+#define inlib_sg_args_to_style
+
+#include "ishell"
+
+#include "../sg/style"
+#include "../args"
+
+namespace inlib {
+
+inline bool args_to_style(const std::string& a_cmd,ishell& a_insh,args& a_args,const sg::cmaps_t& a_cmaps,
+                          sg::style& a_style) {
+
+ {std::string svalue;
+  if(a_args.find("-color",svalue)) {
+    a_args.remove("-color");
+    colorf _value;
+    if(!sg::find_color(a_cmaps,svalue,_value)) {
+      a_insh.warn(a_cmd+": "+svalue+" is not a color.");
+      return false;
+    }
+    a_style.color = _value;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-point_size",svalue)) {
+    a_args.remove("-point_size");
+    float _value;
+    if(!to<float>(svalue,_value)) {
+      a_insh.warn(a_cmd+": "+svalue+" is not a float.");
+      return false;
+    }
+    a_style.point_size = _value;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-line_width",svalue)) {
+    a_args.remove("-line_width");
+    float _value;
+    if(!to<float>(svalue,_value)) {
+      a_insh.warn(a_cmd+": "+svalue+" is not a float.");
+      return false;
+    }
+    a_style.line_width = _value;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-marker_size",svalue)) {
+    a_args.remove("-marker_size");
+    float _value;
+    if(!to<float>(svalue,_value)) {
+      a_insh.warn(a_cmd+": "+svalue+" is not a float.");
+      return false;
+    }
+    a_style.marker_size  = _value;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-marker_style",svalue)) {
+    a_args.remove("-marker_style");
+    sg::marker_style _value;
+    if(!smarker_style(svalue,_value)) {
+      a_insh.warn(a_cmd+": "+svalue+" is not a marker_style.");
+      return false;
+    }
+    a_style.marker_style = _value;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-painting",svalue)) {
+    a_args.remove("-painting");
+    sg::painting_policy _value;
+    if(!spainting_policy(svalue,_value)) {
+      a_insh.warn(a_cmd+": "+svalue+" is not a painting_policy.");
+      return false;
+    }
+    a_style.painting = _value;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-pickable",svalue)) {
+    a_args.remove("-pickable");
+    bool _value;
+    if(!to(svalue,_value)) {
+      a_insh.warn(a_cmd+": "+svalue+" is not a bool.");
+      return false;
+    }
+    a_style.pickable = _value;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-cut",svalue)) {
+    a_args.remove("-cut");
+    a_style.cut = svalue;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-color_mapping",svalue)) {  //cowork with -painting=by_value.
+    a_args.remove("-color_mapping");
+    a_style.color_mapping = svalue;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-coloring",svalue)) {
+    a_args.remove("-coloring");
+    a_style.coloring = svalue;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-modeling",svalue)) {
+    a_args.remove("-modeling");
+    a_style.modeling = svalue;
+  }}
+
+ {std::string svalue;
+  if(a_args.find("-title",svalue)) {
+    a_args.remove("-title");
+    a_style.title = svalue;
+  }}
+  
+  return true;
+}
+
+}
+
+#endif

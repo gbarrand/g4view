@@ -1,0 +1,247 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_net_sg_client
+#define inlib_net_sg_client
+
+#include "inet_socket"
+
+#include "../sg/strings"
+#include "../args"
+#include "../num2s"
+
+namespace inlib {
+namespace net {
+
+class sg_client {
+public:
+  typedef void(*start_func)(void*,void*);
+  typedef void(*stop_func)(void*,void*);
+public:
+  sg_client(std::ostream& a_out,bool a_verbose,bool a_warn) //warn if received an unknown prot.
+  :m_out(a_out)
+  ,m_socket(a_out,a_verbose)
+  ,m_warn(a_warn)
+  ,m_start_func(0)
+  ,m_stop_func(0)
+  ,m_data_1(0)
+  ,m_data_2(0)
+  {}
+  virtual ~sg_client(){}
+protected:
+  sg_client(const sg_client& a_from)
+  :m_out(a_from.m_out)
+  ,m_socket(a_from.m_out,false)
+  ,m_warn(a_from.m_warn)
+  ,m_start_func(a_from.m_start_func)
+  ,m_stop_func(a_from.m_stop_func)
+  ,m_data_1(a_from.m_data_1)
+  ,m_data_2(a_from.m_data_2)
+  {}
+  sg_client& operator=(const sg_client& a_from){
+    m_start_func = a_from.m_start_func;
+    m_stop_func = a_from.m_stop_func;
+    m_data_1 = a_from.m_data_1;
+    m_data_2 = a_from.m_data_2;   
+    return *this;
+  }
+public:
+  bool is_connected() const {return m_socket.is_connected();}
+  net::inet_socket& socket() {return m_socket;}
+  std::ostream& out() const {return m_out;}
+
+  void set_params(start_func a_start_func,stop_func a_stop_func,void* a_data_1,void* a_data_2) {
+    m_start_func = a_start_func;
+    m_stop_func = a_stop_func;
+    m_data_1 = a_data_1;
+    m_data_2 = a_data_2;   
+  }
+
+  bool initialize(const std::string& a_host,unsigned int a_port) {
+    if(!m_socket.connect(a_host,a_port,3,3,100)) return false;
+    if(m_start_func) m_start_func(m_data_1,m_data_2);
+    if(m_socket.verbose()) {
+      m_out << "inlib::sg_client::initialize : connected." << std::endl;
+    }
+#ifdef INLIB_INET_SOCKET_TRY
+    m_socket.setup_tcp();
+#endif
+    return true;
+  }
+
+  void stop() {
+    if(m_stop_func) m_stop_func(m_data_1,m_data_2);
+    m_socket.disconnect();
+  }
+
+  bool steer() {
+    while(true){
+      std::string prot;
+      if(!m_socket.fetch_string(prot)) {
+        m_out << "inlib::sg_client::steer :"
+              << " fetch failed"
+              << std::endl;
+        stop();
+        return false;
+      }
+
+      if(m_socket.verbose()) {
+        m_out << "inlib::sg_client::steer :"
+              << " received prot " << sout(prot)
+              << std::endl;
+      }
+
+      bool handled;
+      if(!dispatch(prot,handled)) {
+        m_out << "inlib::sg_client::steer :"
+              << " distpatch failed"
+              << std::endl;
+        stop();
+        return false;
+      }
+
+    }
+
+    stop();
+
+    return true;
+  }
+
+  bool poll() {
+    while(true){
+      bool have_input;
+      if(!m_socket.is_there_input(have_input)) {
+        m_out << "inlib::sg_client::poll :"
+              << " is_there_input failed"
+              << std::endl;
+        stop();
+        return false;
+      }
+      if(!have_input) return true;
+
+      std::string prot;
+      if(!m_socket.fetch_string(prot)) {
+        m_out << "inlib::sg_client::poll :"
+              << " fetch failed"
+              << std::endl;
+        stop();
+        return false;
+      }
+
+      if(m_socket.verbose()) {
+        m_out << "inlib::sg_client::poll :"
+              << " received prot " << prot
+              << std::endl;
+      }
+
+      bool handled;
+      if(!dispatch(prot,handled)) {
+        m_out << "inlib::sg_client::poll :"
+              << " distpatch failed"
+              << std::endl;
+        stop();
+        return false;
+      }
+      //could have received a sg::s_protocol_disconnect()
+      if(!m_socket.is_connected()) return true;
+
+    }
+  }
+
+  bool send_string(const std::string& a_s) {return m_socket.send_string(a_s);}
+  bool fetch_string(std::string& a_s) {return m_socket.fetch_string(a_s);}
+
+  bool send_buffer_doc(const std::string& a_opts,uint64 a_uc_length,uint64 a_cp_length,const char* a_cp_buffer) {
+    if(!m_socket.send_string(sg::s_protocol_zdoc())) {
+      m_out << "inlib::sg_client::send_doc : send_string(protocol_zdoc) failed." << std::endl;
+      return false;
+    }
+
+    if(!m_socket.send_string(a_opts)) {
+      m_out << "inlib::sg_client::send_doc : send_string(opts) failed." << std::endl;
+      return false;
+    }
+
+    if(!m_socket.send<uint64>(a_uc_length)) { //uncompressed.
+      m_out << "inlib::sg_client::send_doc : send uc_length failed." << std::endl;
+      return false;
+    }
+
+    if(!m_socket.send<uint64>(a_cp_length)) { //compressed.
+      m_out << "inlib::sg_client::send_doc : send cp_length failed." << std::endl;
+      return false;
+    }
+
+    if(!m_socket.send_buffer(a_cp_buffer,a_cp_length)) { //compressed buffer.
+      m_out << "inlib::sg_client::send_doc : send_buffer() failed." << std::endl;
+      return false;
+    }
+
+    return true;
+  }
+  bool send_buffer_doc(uint64 a_uc_length,uint64 a_cp_length,const char* a_cp_buffer,const args& a_opts) {
+    std::vector<std::string> vopts;
+    a_opts.to_vector(vopts);
+    std::string sopts;
+    if(!nums2s<std::string>(vopts,sopts,sg::s_protocol_arg_sep())) return false;
+    return send_buffer_doc(sopts,a_uc_length,a_cp_length,a_cp_buffer);
+  }
+public:
+  bool get_sg_serv_params(std::string& a_params) {
+    // for wall/sg_serv, get params (cols,rows,...) :
+    const std::string& sp = sg::s_protocol_get_wall_params();
+    if(!m_socket.send_string(sp)) {
+      m_out << "inlib::sg_client::get_sg_serv_params :"
+            << " send_string " << sout(sp) << " failed."
+            << std::endl;
+      a_params.clear();
+      return false;
+    }
+    std::string prot;
+    if(!m_socket.fetch_string(prot)) {
+      m_out << "inlib::sg_client::get_sg_serv_params :"
+            << " fetch_string failed."
+            << std::endl;
+      a_params.clear();
+      return false;
+    }
+    if(prot.size()<(sp.size()+1)) {a_params.clear();return false;}
+    a_params = prot.substr(sp.size()+1,prot.size()-(sp.size()+1));
+    return true;
+  }
+protected:
+  virtual bool dispatch(const std::string& a_prot,bool& a_handled) {
+    if(a_prot==sg::s_protocol_disconnect()) {
+      stop();
+      a_handled = true;
+
+    } else if(a_prot==sg::s_protocol_start()) {
+
+      a_handled = true;
+
+    } else {
+      if(m_warn) {
+        m_out << "inlib::sg_client::dispatch :"
+              << " unknown prot " << sout(a_prot) << "."
+              << std::endl;
+      }
+      a_handled = false;
+    }
+
+    return true;
+  }
+protected:
+  std::ostream& m_out;
+  net::inet_socket m_socket;
+  bool m_warn;
+  start_func m_start_func;
+  stop_func m_stop_func;
+  void* m_data_1;
+  void* m_data_2;
+};
+
+}}
+
+//inlib_build_use socket
+
+#endif

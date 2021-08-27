@@ -1,0 +1,124 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_view_sg_client
+#define inlib_sg_view_sg_client
+
+#include "../sep"
+#include "send"
+
+#include "../xml/walls"
+#include "../press_func"
+
+#include "text_button"
+#include "gui_params"
+
+namespace inlib {
+namespace sg {
+
+class view_sg_client {
+public:
+  INLIB_SCLASS(inlib::sg::view_sg_client)
+public:
+  view_sg_client(std::ostream& a_out,const std::string& /*a_app_name*/,const std::string& /*a_data_dir*/,
+                 compress_func a_func,const base_freetype& a_ttf)
+  :m_sg_client(a_out,false,true)
+  ,m_compress_func(a_func)
+  ,m_camenu_send_button(a_ttf)
+  {
+    // <app>.wall is loaded in exlib/app/main.
+  }
+  virtual ~view_sg_client() {
+    disconnect_from_sg_serv();
+  }
+protected:
+  view_sg_client(const view_sg_client& a_from)
+  :m_sg_client(a_from.m_sg_client.out(),false,true)
+  ,m_walls(a_from.m_walls)
+  ,m_compress_func(a_from.m_compress_func)
+  ,m_camenu_send_button(a_from.m_camenu_send_button)
+  {}
+  view_sg_client& operator=(const view_sg_client& a_from){
+    m_walls = a_from.m_walls;
+    m_compress_func = a_from.m_compress_func;
+    return *this;
+  }
+
+public:
+  void set_params(net::sg_client::start_func a_start_func,net::sg_client::stop_func a_stop_func,
+                  void* a_data_1,void* a_data_2) {
+    m_sg_client.set_params(a_start_func,a_stop_func,a_data_1,a_data_2);
+  }
+  bool is_connected() {return m_sg_client.socket().is_connected();}
+  bool is_there_input(bool& a_is,unsigned int a_micro_secs = 10) {
+    return m_sg_client.socket().is_there_input(a_is,a_micro_secs);
+  }
+  SOCKET socket() {return m_sg_client.socket().socket();}
+
+  bool poll() {return m_sg_client.poll();}
+
+  bool send_sg(node& a_sg,const args& a_opts) {
+    return send(m_sg_client,a_sg,m_compress_func,a_opts);
+  }
+
+  bool send_string(const std::string& a_s) {
+    return m_sg_client.socket().send_string(a_s);
+  }
+
+  net::sg_client& sg_client() {return m_sg_client;}
+  const net::sg_client& sg_client() const {return m_sg_client;}
+
+  void disconnect_from_sg_serv() {
+    if(m_sg_client.socket().is_connected()) {
+      if(!m_sg_client.socket().send_string(sg::s_protocol_disconnect())) {}
+    }
+    m_sg_client.stop();
+  }
+
+  const xml::walls& walls() const { return m_walls;}
+  xml::walls& walls() { return m_walls;}
+
+  text_button& camenu_send_button() {return m_camenu_send_button;}
+
+  void update_camenu_send_button(const gui_params& a_params) {
+    if(m_sg_client.socket().is_connected()) {
+      m_camenu_send_button.back_area::color = colorf_pink();
+    } else {
+      m_camenu_send_button.back_area::color = a_params.m_gui_back_color;
+    }
+  }
+protected:
+  net::sg_client m_sg_client;
+  xml::walls m_walls;
+  compress_func m_compress_func;
+  text_button m_camenu_send_button;
+};
+
+}}
+
+#include "viewer"
+
+namespace inlib {
+namespace sg {
+
+inline view_sg_client* cast_view_sg_client(viewer& a_viewer) {
+  return safe_cast<viewer,view_sg_client>(a_viewer);
+}
+
+inline bool s2params(const std::string& a_s,
+                     unsigned int& a_ww,unsigned int& a_wh,
+                     unsigned int& a_bw,unsigned int& a_bh,
+                     unsigned int& a_cols,unsigned int& a_rows){
+  args _args(a_s,"\n",false);
+  if(!_args.find(sg::s_sg_serv_ww(),a_ww)) return false;
+  if(!_args.find(sg::s_sg_serv_wh(),a_wh)) return false;
+  if(!_args.find(sg::s_sg_serv_bw(),a_bw)) return false;
+  if(!_args.find(sg::s_sg_serv_bh(),a_bh)) return false;
+  if(!_args.find(sg::s_sg_serv_cols(),a_cols)) return false;
+  if(!_args.find(sg::s_sg_serv_rows(),a_rows)) return false;
+  return true;
+}
+
+}}
+
+#endif

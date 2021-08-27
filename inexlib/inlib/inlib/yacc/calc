@@ -1,0 +1,99 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_yacc_calc
+#define inlib_yacc_calc
+
+#include <string>
+#include <vector>
+#include <ostream>
+
+#include "cexpr_eval.h"
+
+#include "../sout"
+
+namespace inlib {
+
+inline bool calc(std::ostream& a_out,const std::string& a_formula,const std::vector<double>& a_vals,double& a_value){
+  yacc::cexpr_eval proc(a_out,a_formula);
+  std::vector<std::string> vars;
+  if(!proc.find_variables(vars)) {
+    a_out << "inlib::calc : can't find variables in " << sout(a_formula) << "." << std::endl;
+    return false;
+  }
+  if(!proc.compile(vars)) {
+    a_out << "inlib::calc : can't compile " << sout(a_formula) << "." << std::endl;
+    return false;
+  }
+  size_t number = vars.size();
+  if(a_vals.size()!=number) {
+    a_out << "inlib::calc : bad number of values. " << number << " required." << std::endl;
+    return false;
+  }
+  std::vector<value> vals;
+  vals.resize(number,value(0.));
+
+ {std::vector<double>::const_iterator it1 = a_vals.begin();
+  std::vector<value>::iterator it2 = vals.begin();
+  for(;it1!=a_vals.end();++it1,++it2) (*it2).set(*it1);}
+
+  value res;
+  std::string serror;
+  if(!proc.execute(vals,res,serror)) {
+    a_out << "inlib::calc : execution failure of " << sout(a_formula)
+          << ". Error message " << sout(serror) << std::endl;
+    return false;
+  }
+  return value::to_double(res,a_value);
+}
+
+inline bool calc(std::ostream& a_out,const std::string& a_formula,const std::vector<std::string>& a_vals,std::string& a_value){
+  yacc::cexpr_eval proc(a_out,a_formula);
+  std::vector<std::string> vars;
+  if(!proc.find_variables(vars)) {
+    a_out << "inlib::calc : can't find variables in " << sout(a_formula) << "." << std::endl;
+    return false;
+  }
+  if(!proc.compile(vars)) {
+    a_out << "inlib::calc : can't compile " << sout(a_formula) << "." << std::endl;
+    return false;
+  }
+  size_t number = vars.size();
+  if(a_vals.size()!=number) {
+    a_out << "inlib::calc : bad number of values. " << number << " required." << std::endl;
+    return false;
+  }
+  std::vector<value> vals;
+  vals.resize(number,value(0.));
+
+ {std::vector<std::string>::const_iterator it1 = a_vals.begin();
+  std::vector<value>::iterator it2 = vals.begin();
+  for(;it1!=a_vals.end();++it1,++it2) {
+    double d;
+    if(!to<double>(*it1,d)) {
+      a_out << "inlib::calc : argument " << sout(*it1) << " not a double." << std::endl;
+      return false;
+    }
+    (*it2).set(d);
+  }}
+
+  value res;
+  std::string serror;
+  if(!proc.execute(vals,res,serror)) {
+    a_out << "inlib::calc : execution failure of " << sout(a_formula)
+          << ". Error message " << sout(serror) << std::endl;
+    return false;
+  }
+
+//if(res.type()!=value::DOUBLE) {
+//  a_out << "inlib::calc : result not a double." << std::endl;
+//  return false;
+//}
+
+  a_value = value::to_string(res);
+  return true;
+}
+
+}
+
+#endif

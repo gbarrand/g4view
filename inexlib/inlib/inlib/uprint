@@ -1,0 +1,70 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_uprint
+#define inlib_uprint
+
+// print by columns as UNIX ls.
+
+#include "sjust"
+#include "forit"
+#include "mnmx"
+
+#include <ostream>
+
+namespace inlib {
+
+inline void uprint(std::ostream& a_out,size_t a_term_cols,size_t a_spaces,const std::vector<std::string>& a_list) {
+  if(a_list.empty()) return;
+
+  size_t _mx = a_list.front().size();
+ {inlib_vforcit(std::string,a_list,it) _mx = mx(_mx,(*it).size());}
+
+  _mx += a_spaces;
+
+  size_t cols = a_term_cols/_mx;
+
+  if(!cols) {
+    inlib_vforcit(std::string,a_list,it) a_out << *it << std::endl;
+    return;
+  }
+
+  size_t _size = a_list.size();
+  size_t full_rows = _size/cols;
+  size_t rest = _size-full_rows*cols;
+
+  if(!rest) {
+    for(size_t row=0;row<full_rows;row++) {
+      for(size_t col=0;col<cols;col++) {
+        std::string _s = a_list[col*full_rows+row];
+        justify(_s,_mx,side_left);
+        a_out << _s;
+      }
+      a_out << std::endl;
+    }
+  } else {
+    for(size_t row=0;row<full_rows;row++) {
+     {for(size_t col=0;col<rest;col++) {
+        std::string _s = a_list[col*(full_rows+1)+row];
+        justify(_s,_mx,side_left);
+        a_out << _s;
+      }}
+     {for(size_t col=rest;col<cols;col++) {
+        std::string _s = a_list[rest*(full_rows+1)+(col-rest)*full_rows+row];
+        justify(_s,_mx,side_left);
+        a_out << _s;
+      }}
+      a_out << std::endl;
+    }
+    for(size_t col=0;col<rest;col++) {
+      std::string _s = a_list[col*(full_rows+1)+full_rows];
+      justify(_s,_mx,side_left);
+      a_out << _s;
+    }
+    a_out << std::endl;
+  }
+}
+
+}
+
+#endif

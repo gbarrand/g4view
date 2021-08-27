@@ -1,0 +1,40 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_file_complete
+#define inlib_file_complete
+
+#include "no_dots"
+#include "path"
+#include "sort"
+#include "sbeg"
+
+#include "sys/files" //windows.h
+
+namespace inlib {
+namespace file {
+
+inline void complete(const std::string& a_begin,std::vector<std::string>& a_names) {
+  if(a_begin.empty()) {
+    if(!dir::entries(".",a_names,false)) return;
+    no_dots(a_names);
+  } else {
+    a_names.clear();
+    std::vector<std::string> ls;
+    std::string dir = dir_name(a_begin);
+    if(dir.size()) {
+      if(!dir::entries(dir,ls,true)) return;
+    } else {
+      if(!dir::entries(".",ls,false)) return;
+      no_dots(ls);
+    }
+    inlib_vforcit(std::string,ls,it) {
+      if(is_beg(*it,a_begin)) a_names.push_back(*it);
+    }
+  }
+  sort::sort(a_names);
+}
+
+}}
+
+#endif

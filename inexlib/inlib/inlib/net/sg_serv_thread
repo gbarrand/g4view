@@ -1,0 +1,96 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_net_sg_serv_thread
+#define inlib_net_sg_serv_thread
+
+#include "sg_serv"
+
+#include "sg_serv_main"
+#include "../sg/strings"
+#include "../sys/thread"
+
+namespace inlib {
+namespace net {
+
+class sg_serv_thread : public sg_serv {
+  typedef sg_serv parent;
+public:
+  INLIB_SCLASS(inlib::net::sg_serv_thread)
+public:
+  virtual void stop_sg_client() {
+    if(m_args.m_disconnect_func) {
+      //m_out << "debug : inlib::net::sg_serv_thread::stop_sg_client : call disconnect_func()..." << std::endl;
+      m_args.m_disconnect_func(m_args);
+    }
+    m_sg_client_sock.disconnect();
+    m_data_server_sock.disconnect();
+
+    m_args.m_continue = true;
+    m_args.m_exit = false;
+    pthread_create(&m_sg_serv,0,sg_serv_main,(void*)&m_args);
+  }
+  virtual void finalize() {
+    if(m_sg_client_sock.is_connected()) {
+      //if(!m_sg_client_sock.send_string(sg::s_protocol_exit())) {}
+      //if(!m_sg_client_sock.send_string(to<int>(0))) {}
+      if(!m_sg_client_sock.send_string(sg::s_protocol_disconnect())) {}
+    }
+    m_sg_client_sock.disconnect();
+#ifdef INLIB_NET_THREAD_ACCEPT_NOT_BLOCKING
+    m_data_server_sock.disconnect();
+    m_args.ask_stop();
+    m_args.wait_stop();
+#else
+    m_args.ask_stop(); //to avoid to dump accept() error message.
+    m_sg_client_sock.set_dump_ECONNABORTED(false);
+    m_data_server_sock.disconnect(); //it will trigger the exit of client_sock.accept() in sg_serv_main().
+#endif
+  }
+public:
+  sg_serv_thread(std::ostream& a_out)
+  :parent(a_out)
+  ,m_args(m_out,m_mutex,m_data_server_sock,m_sg_client_sock)
+  {}
+  virtual ~sg_serv_thread() {}
+protected:
+  sg_serv_thread(const sg_serv_thread& a_from)
+  :parent(a_from)
+  ,m_args(a_from.m_args)
+  {}
+  sg_serv_thread& operator=(const sg_serv_thread& a_from){
+    parent::operator=(a_from);
+    m_args = a_from.m_args;
+    return *this;
+  }
+public:
+  bool initialize(const std::string& a_this_host,unsigned int a_dc_port,
+                  sg_serv_args::connect_func a_connect_func,
+                  sg_serv_args::disconnect_func a_disconnect_func,
+                  void* a_sg_serv_args_data_1,void* a_sg_serv_args_data_2,bool a_verbose) {
+    m_args.m_host = a_this_host;
+    m_args.m_port = a_dc_port;
+    m_args.m_connect_func = a_connect_func;
+    m_args.m_disconnect_func = a_disconnect_func;
+    m_args.m_data_1 = a_sg_serv_args_data_1;
+    m_args.m_data_2 = a_sg_serv_args_data_2;
+    m_args.m_verbose = a_verbose;
+
+    m_args.m_continue = true;
+    m_args.m_exit = false;
+    pthread_create(&m_sg_serv,0,sg_serv_main,(void*)&m_args);
+
+    unsigned int _wait = 4*m_args.m_num_try*m_args.m_milli_secs; //default : 4*3*100 = 1.2 secs.
+    sleep_milli_secs(_wait); //wait a bit, so that thread starts.
+    // if m_args.m_exit false, then we are waiting a connection. (We hope !).
+    return m_args.m_exit?false:true;
+  }
+protected:
+  mutex m_mutex;
+  sg_serv_args m_args;
+  pthread_t m_sg_serv;
+};
+
+}}
+
+#endif

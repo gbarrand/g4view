@@ -1,0 +1,178 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_simbad
+#define inlib_simbad
+
+// interface to the Strasbourg simbad catalog.
+
+#ifdef INLIB_MEM
+#include "../mem"
+#endif
+
+#include "../buf2lines"
+#include "../srep"
+#include "../cstr"
+#include "../words"
+#include "star"
+
+#include <ostream>
+#include <cstdio> //sprintf
+
+namespace inlib {
+namespace simbad {
+
+inline void read_catalog(size_t a_size,const char* a_buffer,const std::string& a_type,std::vector<star>& a_stars) {
+  a_stars.clear();
+
+  std::vector<std::string> lines;
+  buf2lines(a_size,a_buffer,lines);
+
+  char* olcn = beg_LC_NUMERIC();
+
+  std::string s_data("::data::");
+  std::vector<std::string> ws;
+  std::string sra,sdec;
+
+  bool beg_data = false;
+
+  inlib_vforcit(std::string,lines,it) {
+    const std::string& line = *it;
+    if(!beg_data) {
+      if((line.size()>=8) && (line.substr(0,8)==s_data) ) beg_data = true;
+    } else {
+      words(line,"\t",false,ws);
+      if(ws.size()==4) {
+        sra = ws[0];
+        replace(sra," ",":");
+        sdec = ws[1];
+        replace(sdec," ",":");
+        const std::string& stype = ws[2];
+        if(a_type.empty()||(stype==a_type)) {
+          const std::string& sname = ws[3];
+          //::printf("%s|%s|%s|%s|\n",sra.c_str(),sdec.c_str(),stype.c_str(),sname.c_str());
+          a_stars.push_back(star(sra,sdec,stype,sname));
+        }
+      }
+    }
+  }
+
+  end_LC_NUMERIC(olcn);
+}
+
+inline void crep(std::string& a_s,char a_char) {
+  char s[32];
+  ::sprintf(s,"%%%02X",a_char);
+  std::string sc = " ";
+  sc[0] = a_char;
+  replace(a_s,sc,std::string(s));
+}
+
+//inline bool is_sex(const std::string& a_s) {
+//  return a_s.find(':')!=std::string::npos?true:false;
+//}
+
+INLIB_GLOBAL_STRING_VALUE(server_simbad,simbad)
+INLIB_GLOBAL_STRING_VALUE(host_simbad,simbad.u-strasbg.fr)
+//INLIB_GLOBAL_STRING_VALUE(host_simbad,simbad.cfa.harvard.edu)
+//INLIB_GLOBAL_STRING_VALUE(epoch_J2000,J2000)
+INLIB_GLOBAL_STRING(failed)
+
+inline bool build_request(std::ostream& a_out,double a_ra,double a_dec,double a_radius,std::string& a_request) {
+  // a_ra, a_dec in dec deg.
+  a_request.clear();
+
+  //SN2005cs
+  //FK5 13:29:56 47:13:50
+  //CDS/SIMBA : 13:29:53.37 +47:10:28.2
+  //a_sra = "13:29:56";        //h.m.s
+  //a_sdec sdec = "47:13:50";  //d.am.as
+  //a_radius = 0.25; //0.25 degree = 15 arcmin
+
+  //std::string epoch;
+  //args.find(s_arg_epoch(),epoch,s_epoch_J2000());
+  //epoch = s_epoch_J2000();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  bool vot = true;
+  vot = false;
+
+  std::string script;
+  if(vot) {
+
+    std::string psky;
+    //psky = "FK4;1950;1950"; //fk4
+    psky = "FK5;2000;2000"; //fk5
+    //psky = "ICRS"; //icrs
+    //psky = "GAL"; //galactic
+    //psky = "ECL"; //ecliptic
+
+    script += "\
+output script=off\n\
+output console=off\n\
+votable v1 { coo(d;"+psky+"), main_id, otype(S), pmra, pmdec, plx, z_value, flux(B), flux(V), sp }\n\
+votable open v1\n\
+";
+  } else {
+    script += "format object f1 \"";
+    script += "%COO(A)";    // hour:minute:second
+    script += "\t%COO(D)";  // degree:arcmin:arcsec
+    script += "\t%OTYPE(S)";
+    script += "\t%IDLIST(1)";
+    //script += "\t%PM(A)";
+    //script += "\t%PM(D)";
+    //script += "\t%PLX(V)";
+    //script += "\t%RV(Z)";
+    //script += "\t%FLUXLIST(B;F)";
+    //script += "\t%FLUXLIST(V;F)";
+    //script += "\t%SP(S)";
+    script += "\"\n";
+    //script += "format object default\n";
+  }
+
+  script += "query coo ";
+  numas(a_ra,script);
+  script += " ";
+  numas(a_dec,script);
+
+  script += " radius=";
+  if(!numas(a_radius,script)){
+    a_out << "numas() failed." << std::endl;
+    return false;
+  }
+  script += "d"; //d,m,s
+  //script += " frame=FK4 epoch=B1950 equinox=1950"; //fk4
+  script += " frame=FK5 epoch=J2000 equinox=2000"; //fk5
+  //script += " frame=ICRS"; //icrs
+  //script += " frame=GAL"; //galactic
+  //script += " frame=ECL"; //ecliptic
+  script += "\n";
+
+  if(vot) {
+    script += "votable close\n";
+  }
+
+  //std::string script_not_encoded = script;
+
+  crep(script,'%');
+  crep(script,'+');
+  crep(script,'=');
+  crep(script,';');
+  crep(script,'"');
+  crep(script,' '); //same as upper line.
+  replace(script,"\n","%0D%0A"); //CR+LF
+  crep(script,'\t');
+
+  a_request = "/simbad/sim-script?";
+  a_request += "script="+script+"&";
+
+  //std::string request_not_encoded = "/simbad/sim-script?";
+  //request_not_encoded += "script="+script_0+"&";
+  return true;
+}
+
+}}
+
+#endif

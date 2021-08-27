@@ -1,0 +1,139 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_s2deg
+#define inlib_s2deg
+
+#include <cstdio>
+#include <string>
+
+namespace inlib {
+
+inline bool deg_sex_to_deg_10(const std::string& a_s,double& a_deg_10) {
+  // <degree:60th_of_degree:3600_th_of_degree> to base 10 degree.
+  // <degree:arcmin:arcsec> to base 10 degree.
+  // <d:am:as> to base 10 degree.
+ {int w1;
+  int w2;
+  double w3;
+  if(::sscanf(a_s.c_str(),"%d:%d:%lg",&w1,&w2,&w3)==3) {
+    //::printf("%d|%d|%g\n",w1,w2,w3);
+    if(w1>=0) {
+      a_deg_10 = w1+w2/60.0+w3/3600.0;
+    } else {
+      a_deg_10 = -(-w1+w2/60.0+w3/3600.0);
+    }
+    return true;
+  }}
+ {int w1;
+  double w2;
+  if(::sscanf(a_s.c_str(),"%d:%lg",&w1,&w2)==2) {
+    //::printf("%d|%g\n",w1,w2);
+    if(w1>=0) {
+      a_deg_10 = w1+w2/60.0;
+    } else {
+      a_deg_10 = -(-w1+w2/60.0);
+    }
+    return true;
+  }}
+  a_deg_10 = 0;
+  return false;
+}
+
+inline bool hour_sex_to_deg_10(const std::string& a_s,double& a_deg_10) {
+  // <hour:60_th_of_hour:3600_th_of_hour> to base 10 degree.
+  // <hour:minute:sec> to base 10 degree.
+  // <h:m:s> to base 10 degree.
+ {int w1;
+  int w2;
+  double w3;
+  if(::sscanf(a_s.c_str(),"%d:%d:%lg",&w1,&w2,&w3)==3) {
+    //::printf("%d|%d|%g\n",w1,w2,w3);
+    if(w1>=0) {
+      // h : 24 -> 360  1h = 15 deg
+      // m : 60 -> 1h   1m = 15/60 deg
+      // s : 60 -> 1m   1s = 15/3600 deg
+      a_deg_10 = w1*15.0+w2*15.0/60.0+w3*15.0/3600.0;
+    } else {
+      a_deg_10 = -(-w1*15.0+w2*15.0/60.0+w3*15.0/3600.0);
+    }
+    return true;
+  }}
+ {int w1;
+  double w2;
+  if(::sscanf(a_s.c_str(),"%d:%lg",&w1,&w2)==2) {
+    //::printf("%d|%g\n",w1,w2);
+    if(w1>=0) {
+      a_deg_10 = w1*15.0+w2*15.0/60.0;
+    } else {
+      a_deg_10 = -(-w1*15.0+w2*15.0/60.0);
+    }
+    return true;
+  }}
+  a_deg_10 = 0;
+  return false;
+}
+
+}
+
+#include <cmath>
+#include "num2s"
+#include "sto"
+
+namespace inlib {
+
+inline bool deg_10_to_deg_sex(double a_deg,std::string& a_s) {
+  double secs = ::fabs(a_deg)*3600;
+  int d = int(secs/3600.0);
+  double rest = secs-d*3600;
+  int m = int(rest/60.0); //arcmin
+  int s = int(rest-m*60); //arcsec
+
+  a_s = a_deg<0?"-":"+";
+  if(!numas<int>(d,a_s)) {a_s.clear();return false;}
+  a_s += ":";
+  if(!numas<int>(m,a_s)) {a_s.clear();return false;}
+  a_s += ":";
+  if(!numas<int>(s,a_s)) {a_s.clear();return false;}
+
+  return true;
+}
+
+inline bool deg_10_to_hour_sex(double a_deg,std::string& a_s) {
+  // a_deg_10 = w1*15.0+w2*15.0/60.0+w3*15.0/3600.0;
+
+  int h = int(a_deg/15.0);
+  double rest = a_deg-h*15.0;
+  int m = int(rest/(15.0/60.0));
+  rest = rest-m*(15.0/60.0);
+  double s = rest/(15.0/3600.0);
+
+  a_s = a_deg<0?"-":"+";
+  if(!numas<int>(h,a_s)) {a_s.clear();return false;}
+  a_s += ":";
+  if(!numas<int>(m,a_s)) {a_s.clear();return false;}
+  a_s += ":";
+  if(!numas<double>(s,a_s)) {a_s.clear();return false;}
+
+  return true;
+}
+
+inline bool string_to_dec_10(const std::string& a_s,double& a_value) {
+ {std::string end;
+  if(a_s.size()>=4) end = a_s.substr(a_s.size()-4,4);
+  if((end==" hms")||(end=="_hms")) {
+    std::string begin = a_s.substr(0,a_s.size()-4);
+    return hour_sex_to_deg_10(begin,a_value);
+  }}
+ {std::string end;
+  if(a_s.size()>=6) end = a_s.substr(a_s.size()-6,6);
+  if((end==" damas")||(end=="_damas")) {
+    std::string begin = a_s.substr(0,a_s.size()-6);
+    return deg_sex_to_deg_10(begin,a_value);
+  }}
+  return to<double>(a_s,a_value);
+}
+
+}
+
+#endif

@@ -1,0 +1,43 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sastro
+#define inlib_sastro
+
+#include "../S_STRING"
+
+namespace inlib {
+
+INLIB_GLOBAL_STRING(get_from_home)
+
+//INLIB_GLOBAL_STRING_VALUE(server_stsci,stsci)
+INLIB_GLOBAL_STRING_VALUE(host_stsci,archive.stsci.edu)
+INLIB_GLOBAL_STRING_VALUE(epoch_J2000,J2000)
+
+// repserv :
+INLIB_GLOBAL_STRING(local)
+inline unsigned int repserv_port() {return 54123;} //=Clermont port.
+inline unsigned int proxy_port() {return 54123+1;}
+
+//INLIB_GLOBAL_STRING_VALUE(Clermont,193.48.81.110)
+//INLIB_GLOBAL_STRING_VALUE(0_0_0_0,0.0.0.0)
+//INLIB_GLOBAL_STRING_VALUE(192_168_0_11,192.168.0.11)
+//INLIB_GLOBAL_STRING_VALUE(LAL_Cloud_247,134.158.75.247) //OpenStack/ubuntu
+//INLIB_GLOBAL_STRING_VALUE(arts_at_lal,134.158.76.71)
+//INLIB_GLOBAL_STRING_VALUE(mbp_barrand_LAL,134.158.91.139)
+
+// used in wall/screen_main :
+INLIB_GLOBAL_STRING_VALUE(LAL_Cloud_40,134.158.75.40)   //OpenStack/ubuntu
+inline unsigned int repserv_port_LAL_Cloud() {return 23541;}
+
+// catalogs :
+INLIB_GLOBAL_STRING(stars_none)
+INLIB_GLOBAL_STRING(stars_simbad)
+INLIB_GLOBAL_STRING(stars_stripe82)
+
+// else :
+INLIB_GLOBAL_STRING(equator)
+
+}
+
+#endif

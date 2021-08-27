@@ -1,0 +1,2635 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_insh
+#define inlib_insh_insh
+
+#include "ishell"
+#include "base_cmd"
+
+#include "../typedefs"
+#include "../S_STRING"
+#include "../args"
+#include "../svar"
+#include "../chars"
+#include "../vpair"
+#include "../srep"
+#include "../b2s"
+#include "../sep"
+#include "../vmanip"
+#include "../mapmanip"
+#include "../s2time"
+#include "../sconc"
+#include "../sjust"
+#include "../num2s"
+#include "../sbeg"
+#include "../sort"
+#include "../uprint"
+#include "../dirs"
+#include "../path"
+#include "../file_exists"
+#include "../file_copy"
+#include "../file_complete"  //sys/files. windows.h
+
+#include "../sys/atime"
+
+#include "../platform"
+
+#include "sinsh"
+
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
+#include <fstream>
+
+namespace inlib {
+
+class insh : public virtual ishell {
+  typedef ishell parent;
+private:
+  INLIB_SCLASS(inlib::insh)
+public: //ishell:
+  virtual bool in_backquote() const {return m_state.m_in_backquote;}
+  virtual bool to_stop() const {return m_state.m_to_stop;}
+
+  virtual void warn(const std::string& a_string,bool a_to_stop = true) {
+    m_out << a_string << std::endl;
+    map_warn(a_string,a_to_stop);
+    if(a_to_stop) m_state.m_to_stop = true;
+  }
+  virtual void out_begin() {if(m_state.m_in_backquote) m_state.m_backquote_return.clear();}
+
+  virtual void out(const std::string& a_s,bool a_append = false,bool a_endl = true)  {
+    if(m_state.m_in_backquote) {
+      if(a_append /*&& a_s.size()*/) {
+        if(m_state.m_backquote_return.size()) m_state.m_backquote_return += " ";
+        m_state.m_backquote_return += a_s;
+      } else {
+        m_state.m_backquote_return = a_s;
+      }
+    } else {
+      m_out << a_s;
+      if(a_endl) m_out << std::endl; else m_out.flush();
+    }
+  }
+  virtual void out(const std::vector<std::string>& a_ss,bool a_append = false,bool a_endl = true)  {
+    if(m_state.m_in_backquote) {
+      if(a_append) {
+        inlib_vforcit(std::string,a_ss,it) {
+          if(m_state.m_backquote_return.size()) m_state.m_backquote_return += " ";
+          m_state.m_backquote_return += *it;
+	}
+      } else if(a_ss.empty()) {
+        m_state.m_backquote_return.clear();
+      } else {
+        m_state.m_backquote_return = a_ss.front(); //or back() ?
+      }
+    } else if(a_ss.size()) {
+      inlib_vforcit(std::string,a_ss,it) {
+        if(it!=a_ss.begin()) m_out << std::endl;
+        m_out << *it;
+      }
+      if(a_endl) m_out << std::endl; else m_out.flush();
+    }
+  }
+  virtual void unix_print(const std::vector<std::string>& a_lines,size_t a_spaces = 2) const {
+    uprint(m_out,m_unix_cols,a_spaces,a_lines);
+  }
+
+  virtual std::ostream& out() const {return m_out;}
+  virtual void set_to_stop() {m_state.m_to_stop = true;}
+
+  virtual void add_variable(const std::string& a_variable,const std::string& a_value) {
+    m_state.add_variable(a_variable,a_value);
+  }
+  virtual void remove_variable(const std::string& a_variable) {m_state.remove_variable(a_variable);}
+
+  virtual void exec_line_reset_to_stop(const std::string& a_line) {
+    m_state.m_to_stop = false;
+    _exec_line(a_line);
+  }
+  virtual bool exec_line_reset_to_stop(const std::string& a_script,std::string& a_value) {
+    static const std::string s_variable("insh_tmp_variable");
+    exec_line_reset_to_stop(s_variable+"=`"+a_script+"`");
+    bool status = to_stop();
+    if(!find_variable(s_variable,a_value)) return false;
+    remove_variable(s_variable);
+    return status;
+  }
+
+  virtual void exec_lines_reset_to_stop(const std::vector<std::string>& a_lines) {
+    m_state.m_to_stop = false;
+    _exec_lines(a_lines);
+  }
+
+  virtual bool exec_file_reset_to_stop(const std::string& a_file) {
+    m_state.m_to_stop = false;
+    return _exec_file(a_file);
+  }
+
+  virtual void exec_names(std::vector<std::string>& a_names,const std::string& a_begin = std::string(),bool a_sort = true) const {  //used in cbk/insh.
+    a_names.clear();
+    if(a_begin.empty()) {
+     {inlib_mforcit(std::string,base_cmd*,m_cmds,it) a_names.push_back((*it).first);}
+     {inlib_mforcit(std::string,base_cmd*,m_builtins,it) a_names.push_back((*it).first);}
+     {inlib_vforcit(alias_t,m_state.m_aliases,it) a_names.push_back((*it).first);}
+    } else {
+     {inlib_mforcit(std::string,base_cmd*,m_cmds,it) {
+       if(is_beg((*it).first,a_begin)) a_names.push_back((*it).first);
+      }}
+     {inlib_mforcit(std::string,base_cmd*,m_builtins,it) {
+       if(is_beg((*it).first,a_begin)) a_names.push_back((*it).first);
+      }}
+     {inlib_vforcit(alias_t,m_state.m_aliases,it) {
+       if(is_beg((*it).first,a_begin)) a_names.push_back((*it).first);
+      }}
+    }
+    if(a_sort) sort::sort(a_names);
+  }
+  
+  virtual void out_size_t(size_t a_v,bool a_append = false,bool a_endl = true)  {
+    if(m_state.m_in_backquote) {
+      std::string sv;
+      if(!size_t2s(a_v,sv)) {
+        warn("insh::out : size_t2s failed.");
+	return;
+      }
+      if(a_append) {
+        if(m_state.m_backquote_return.size()) m_state.m_backquote_return += " ";
+        m_state.m_backquote_return += sv;
+      } else {
+        m_state.m_backquote_return = sv;
+      }
+    } else {
+      m_out << a_v;
+      if(a_endl) m_out << std::endl; else m_out.flush();
+    }
+  }
+
+  virtual void set_decompress_func(decompress_func a_func) {m_decompress_func = a_func;}
+  virtual decompress_func get_decompress_func() const {return m_decompress_func;}
+  virtual void set_unix_cols(size_t a_cols) {m_unix_cols = a_cols;}
+  virtual size_t unix_cols() const {return m_unix_cols;}
+public:
+  virtual void map_warn(const std::string& /*a_message*/,bool /*a_warn*/ = true) {}
+public:
+  class variable {
+#ifdef INLIB_MEM
+    INLIB_SCLASS(inlib::insh::variable)
+#endif
+  public:
+    variable(const std::string& a_value = std::string(),bool a_is_env = false)
+    :m_value(a_value)
+    ,m_is_env(a_is_env)
+    {
+#ifdef INLIB_MEM
+      mem::increment(s_class().c_str());
+#endif
+    }
+    virtual ~variable(){
+#ifdef INLIB_MEM
+      mem::decrement(s_class().c_str());
+#endif
+    }
+  public:
+    variable(const variable& a_from)
+    :m_value(a_from.m_value)
+    ,m_is_env(a_from.m_is_env)
+    {
+#ifdef INLIB_MEM
+      mem::increment(s_class().c_str());
+#endif
+    }
+    variable& operator=(const variable& a_from){
+      m_value = a_from.m_value;
+      m_is_env = a_from.m_is_env;
+      return *this;
+    }
+  public:
+    std::string m_value;
+    bool m_is_env;
+  };
+
+  typedef std::pair<std::string,variable> var_t;
+  typedef std::pair<std::string,std::string> alias_t;
+
+protected:
+  class block : public std::vector<std::string> {
+    typedef std::vector<std::string> parent;
+  public:
+    enum block_type {
+      block_none, //none = none of for and if.
+      block_for,
+      block_if
+    };
+  public:
+    block():m_type(block_none){}
+    virtual ~block(){}
+  public:
+    block(const block& a_from)
+    :parent(a_from)
+    ,m_type(a_from.m_type)
+    ,m_header(a_from.m_header)
+    {}
+    block& operator=(const block& a_from){
+      parent::operator=(a_from);
+      m_type = a_from.m_type;
+      m_header = a_from.m_header;
+      return *this;
+    }
+  public:
+    //void set_header(const std::string& a_s) {m_header = a_s;}
+    //const std::string& header() const {return m_header;}
+    void clear() {parent::clear();m_header.clear();}
+    std::string stype() const {
+      switch(m_type) {
+      case block_none:return "block_none";
+      case block_for:return "block_for";
+      case block_if:return "block_if";
+      }
+    }
+    void dump(std::ostream& a_out) const {
+      a_out << "//////////////////////////////////////////////////////" << std::endl;
+      a_out << "/// block : //////////////////////////////////////////" << std::endl;
+      a_out << "//////////////////////////////////////////////////////" << std::endl;
+      a_out << "type : " << stype() << std::endl;
+      a_out << "header : " << sout(m_header) << std::endl;
+      inlib_vforcit(std::string,*this,it) a_out << *it << std::endl;
+    }
+  //protected:
+  public:
+    block_type m_type;
+    std::string m_header;
+  };
+
+public:
+  class state {
+#ifdef INLIB_MEM
+    INLIB_SCLASS(inlib::insh::state)
+#endif
+public:
+    state(std::ostream& a_out)
+    :m_out(a_out)
+    ,m_to_stop(false)
+    ,m_in_backquote(false)
+    ,m_backquote_return()
+    ,m_is_sourcing(false)
+    ,m_to_return(false)
+    ,m_vars()
+    ,m_aliases()
+    //,m_paths()
+    ,m_set_v(false)
+    ,m_set_x(false)
+    ,m_set_n(false)
+    ,m_set_d(false)
+//  ,m_set_d(true)
+    {
+#ifdef INLIB_MEM
+      mem::increment(s_class().c_str());
+#endif
+    }
+    virtual ~state(){
+#ifdef INLIB_MEM
+      mem::decrement(s_class().c_str());
+#endif
+    }
+public:
+    state(const state& a_from)
+    :m_out(a_from.m_out)
+    ,m_to_stop(a_from.m_to_stop)
+    ,m_in_backquote(a_from.m_in_backquote)
+    ,m_backquote_return(a_from.m_backquote_return)
+    ,m_is_sourcing(a_from.m_is_sourcing)
+    ,m_to_return(a_from.m_to_return)
+    ,m_vars(a_from.m_vars)
+    ,m_aliases(a_from.m_aliases)
+    //,m_paths(a_from.m_paths)
+    ,m_set_v(a_from.m_set_v)
+    ,m_set_x(a_from.m_set_x)
+    ,m_set_n(a_from.m_set_n)
+    ,m_set_d(a_from.m_set_d)
+    {
+#ifdef INLIB_MEM
+      mem::increment(s_class().c_str());
+#endif
+    }
+    state& operator=(const state& a_from){
+      m_to_stop = a_from.m_to_stop;
+      m_in_backquote = a_from.m_in_backquote;
+      m_backquote_return = a_from.m_backquote_return;
+      m_is_sourcing = a_from.m_is_sourcing;
+      m_to_return = a_from.m_to_return;
+      m_vars = a_from.m_vars;
+      m_aliases = a_from.m_aliases;
+      //m_paths = a_from.m_paths;
+      m_set_v = a_from.m_set_v;
+      m_set_x = a_from.m_set_x;
+      m_set_n = a_from.m_set_n;
+      m_set_d = a_from.m_set_d;
+      return *this;
+    }
+  public:
+    void add_variable(const std::string& a_variable,const std::string& a_value) {
+      if(m_set_d) m_out << "inlib::insh::state::add_variable : " << sout(a_variable) << ", value " << sout(a_value) << std::endl;
+      add<std::string,variable>(m_vars,a_variable,variable(a_value));
+    }
+    void remove_variable(const std::string& a_variable) {remove<std::string,variable>(m_vars,a_variable);}
+    bool is_variable(const std::string& a_name) const {return is_key(m_vars,a_name);}
+    bool find_variable(const std::string& a_variable,std::string& a_value) const {
+      variable _var;
+      if(!find<std::string,variable>(m_vars,a_variable,_var)) {a_value.clear();return false;}
+      a_value = _var.m_value;
+      return true;
+    }
+
+    bool is_alias(const std::string& a_name) const {return is_key(m_aliases,a_name);}
+    void add_alias(const std::string& a_alias,const std::string& a_value) {
+      if(m_set_d) m_out << "inlib::insh::state::add_alias : " << sout(a_alias) << ", value " << sout(a_value) << std::endl;
+      add<std::string,std::string>(m_aliases,a_alias,a_value);
+    }
+    void remove_alias(const std::string& a_alias) {remove<std::string,std::string>(m_aliases,a_alias);}
+    bool find_alias(const std::string& a_alias,std::string& a_value) const {
+      return find<std::string,std::string>(m_aliases,a_alias,a_value);
+    }
+    void remove_aliases() {m_aliases.clear();}
+
+    void add_env(const std::string& a_env,const std::string& a_value) {
+      if(m_set_d) m_out << "inlib::insh::state::add_env : " << sout(a_env) << ", value " << sout(a_value) << std::endl;
+      inlib_vforit(var_t,m_vars,it) {
+        if((*it).first==a_env) {
+          (*it).second.m_is_env = true;
+          (*it).second.m_value = a_value;
+          return;
+        }
+      }
+      add<std::string,variable>(m_vars,a_env,variable(a_value,true));
+    }
+    /*
+    void remove_env(const std::string& a_env) {
+      inlib_vforit(var_t,m_vars,it) {
+        if( ((*it).second.m_is_env) && ((*it).first==a_env) ) {
+          m_vars.erase(it);
+          return;
+        }
+      }
+    }
+    */
+    bool set_as_env(const std::string& a_env) {
+      inlib_vforit(var_t,m_vars,it) {
+        if((*it).first==a_env) {
+          (*it).second.m_is_env = true;
+          return true;
+        }
+      }
+      return false;
+    }
+  //bool is_env(const std::string& a_env) const {return is_in(m_envs,a_env);}
+
+    bool find_env(const std::string& a_env,std::string& a_value) const {
+      inlib_vforcit(var_t,m_vars,it) {
+        if( ((*it).second.m_is_env) && ((*it).first==a_env) ){
+          a_value = (*it).second.m_value;
+          return true;
+        }
+      }
+      a_value.clear();
+      return false;
+    }
+
+    void find_paths(std::vector<std::string>& a_paths) const {
+      std::string value;
+      if(!find_env("PATH",value)) {a_paths.clear();return;}
+      words(value,":",false,a_paths);
+    }
+  public:
+    std::ostream& m_out;
+    bool m_to_stop;
+    bool m_in_backquote;
+    std::string m_backquote_return;
+    bool m_is_sourcing;
+    bool m_to_return;
+    std::vector<var_t> m_vars;
+    std::vector<alias_t> m_aliases;
+    //std::vector<std::string> m_paths;
+    bool m_set_v;
+    bool m_set_x;
+    bool m_set_n;
+    bool m_set_d;
+  };
+  const state& get_state() const {return m_state;}
+protected:
+  void pop_state() {
+    m_state = m_states.back();
+    m_states.pop_back();
+  }
+  void push_state() {m_states.push_back(m_state);}
+public:
+  insh(std::ostream& a_out,const std::string& a_history_file = std::string())
+  :parent()
+  ,m_out(a_out)
+  ,m_states()
+  ,m_state(a_out)
+  ,m_history_file(a_history_file)
+  ,m_decompress_func(0)
+  ,m_complete_state(false)
+  ,m_unix_cols(80)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+    init_builtins();
+  }
+  virtual ~insh() {
+    safe_clear(m_cmds);
+    safe_clear(m_builtins);
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  insh(const insh& a_from)
+  :parent(a_from)
+  ,m_out(a_from.m_out)
+  ,m_states(a_from.m_states)
+  ,m_state(a_from.m_state)
+  ,m_history_file(a_from.m_history_file)
+  ,m_decompress_func(a_from.m_decompress_func)
+  ,m_unix_cols(a_from.m_unix_cols)
+  ,m_complete_state(a_from.m_complete_state)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+    safe_clear(m_builtins);
+    copy(m_builtins,a_from.m_builtins);
+    safe_clear(m_cmds);
+    copy(m_cmds,a_from.m_cmds);
+  }
+  insh& operator=(const insh& a_from){
+    //parent::operator=(a_from);
+    if(&a_from==this) return *this;
+    safe_clear(m_builtins);
+    copy(m_builtins,a_from.m_builtins);
+    safe_clear(m_cmds);
+    copy(m_cmds,a_from.m_cmds);
+    m_states = a_from.m_states;
+    m_state = a_from.m_state;
+    m_history_file  = a_from.m_history_file;
+    m_decompress_func = a_from.m_decompress_func;
+    m_unix_cols = a_from.m_unix_cols;
+    m_complete_state = a_from.m_complete_state;
+    return *this;
+  }
+public:
+
+  void set_v(bool a_value) {m_state.m_set_v = a_value;}
+  void set_x(bool a_value) {m_state.m_set_x = a_value;}
+  void set_n(bool a_value) {m_state.m_set_n = a_value;}
+  void set_d(bool a_value) {m_state.m_set_d = a_value;}
+
+  bool set_v() const {return m_state.m_set_v;}
+  bool set_x() const {return m_state.m_set_x;}
+  bool set_n() const {return m_state.m_set_n;}
+  bool set_d() const {return m_state.m_set_d;}
+
+  void set_history_file(const std::string& a_history) {m_history_file = a_history;}
+
+  bool is_command(const std::string& a_name) const {return is_key(m_cmds,a_name);}
+  void add_command(const std::string& a_name,base_cmd* a_cmd) {  //we take ownership of a_cmd.
+    if(is_key(m_cmds,a_name)) {
+      warn("insh::add_command : "+a_name+" already exists.");
+      delete a_cmd;
+      return;
+    }
+    m_cmds[a_name] = a_cmd;
+  }
+  bool remove_command(const std::string& a_name) {return delete_key(m_cmds,a_name);}
+  void command_names(std::vector<std::string>& a_names,const std::string& a_begin = std::string(),bool a_sort = true) const { //for _help_complete.
+    a_names.clear();
+    if(a_begin.empty()) {
+     {inlib_mforcit(std::string,base_cmd*,m_cmds,it) a_names.push_back((*it).first);}
+     {inlib_mforcit(std::string,base_cmd*,m_builtins,it) a_names.push_back((*it).first);}
+    } else {
+     {inlib_mforcit(std::string,base_cmd*,m_cmds,it) {
+        if(is_beg((*it).first,a_begin)) a_names.push_back((*it).first);
+      }}
+     {inlib_mforcit(std::string,base_cmd*,m_builtins,it) {
+        if(is_beg((*it).first,a_begin)) a_names.push_back((*it).first);
+      }}
+    }
+    if(a_sort) sort::sort(a_names);
+  }
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  void reset_to_stop() {m_state.m_to_stop = false;}
+  //void set_return_value(const std::string& a_s) {m_state.m_backquote_return = a_s;}
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  void out(const char* a_s,bool a_append = false,bool a_endl = true)  {out(std::string(a_s),a_append,a_endl);}
+
+  void outb(bool a_v,bool a_append = false,bool a_endl = true)  {
+    if(m_state.m_in_backquote) {
+      std::string sv;
+      b2s(a_v,sv);
+      if(a_append) {
+        if(m_state.m_backquote_return.size()) m_state.m_backquote_return += " ";
+        m_state.m_backquote_return += sv;
+      } else {
+        m_state.m_backquote_return = sv;
+      }
+    } else {
+      m_out << (a_v?"true":"false");
+      if(a_endl) m_out << std::endl; else m_out.flush();
+    }
+  }
+/*
+  template <class T>
+  void out_num(const T& a_v,bool a_append = false,bool a_endl = true)  {
+    if(m_state.m_in_backquote) {
+      std::string sv;
+      if(!num2s(a_v,sv)) {
+        warn("insh::out : num2s failed.");
+	return;
+      }
+      if(a_append) {
+        if(m_state.m_backquote_return.size()) m_state.m_backquote_return += " ";
+        m_state.m_backquote_return += sv;
+      } else {
+        m_state.m_backquote_return = sv;
+      }
+    } else {
+      m_out << a_v;
+      if(a_endl) m_out << std::endl; else m_out.flush();
+    }
+  }
+*/
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+public:
+  void add_env(const std::string& a_env,const std::string& a_value) {m_state.add_env(a_env,a_value);}
+
+  void exec_line_new_state(const std::string& a_line) {  //used in view_sg_serv.
+    push_state();
+    m_state = state(m_out);
+    _exec_line(a_line);
+    pop_state();
+  }
+
+//void remove_env(const std::string& a_env) {m_state.remove_env(a_env);}
+
+  bool is_variable(const std::string& a_name) {return m_state.is_variable(a_name);}
+  bool find_variable(const std::string& a_variable,std::string& a_value) const {return m_state.find_variable(a_variable,a_value);}
+
+  void complete(std::string& a_begin,std::vector<std::string>& a_names) const {
+    // If zero or more than one name is found, a_begin is not touched, else
+    // if only one name is found, a_begin is replaced by its completion and a_names is cleared.
+    if(a_begin.empty()) {a_names.clear();return;}
+
+    std::string::size_type lbegin = a_begin.size();
+    if((2*lbegin)>1024) {a_names.clear();return;}
+    std::string::size_type wps[1024];  //OPTIMIZATION.
+    
+    unsigned int wn;
+    std::string::size_type* wls = wps+lbegin;
+    pos_words(a_begin," ",false,wn,wps,wls);
+    if(!wn) {a_names.clear();return;} //it should not happen.
+
+    std::string ws0 = a_begin.substr(wps[0],wls[0]);
+    
+    base_cmd* _cmd;
+    if(!find(m_builtins,ws0,_cmd)) {
+      if(!find(m_cmds,ws0,_cmd)) _cmd = 0;
+    }
+    
+    if(wn==1) {
+      if(!_cmd) {
+        exec_names(a_names,ws0);
+        if(a_names.size()==1) {
+          a_begin = a_begin.substr(0,wps[0])+a_names[0];
+          a_names.clear();
+        }
+        return;
+      }
+      _cmd->complete_command(std::string(),a_names);
+      if(a_names.size()==1) {
+        a_begin = a_begin+a_names[0];
+        a_names.clear();
+      }
+      return;
+    }
+
+    if(!_cmd) {a_names.clear();return;}
+    std::string ws_end = a_begin.substr(wps[wn-1],wls[wn-1]);
+    _cmd->complete_command(ws_end,a_names);
+    if(a_names.size()==1) {
+      a_begin = a_begin.substr(0,wps[wn-1])+a_names[0];
+      a_names.clear();
+    }
+  }
+protected:
+  bool is_exec(const std::string& a_string) const {
+    if(m_state.is_alias(a_string)) return true;
+    if(is_builtin(a_string)) return true;
+    if(is_command(a_string)) return true;
+    return false;
+  }
+protected:
+  bool is_builtin(const std::string& a_name) const {return is_key(m_builtins,a_name);}
+  void add_builtin(const std::string& a_name,base_cmd* a_cmd) {  //we take ownership of a_cmd.
+    if(is_key(m_builtins,a_name)) {
+      warn("insh::add_builtin : "+a_name+" already exists.",false);
+      delete a_cmd;
+      return;
+    }
+    m_builtins[a_name] = a_cmd;
+  }
+
+  bool copy_state(const state& a_state) {
+    std::vector<var_t> _vars;
+   {inlib_vforcit(var_t,m_state.m_vars,it) {
+      if((*it).second.m_is_env) _vars.push_back(*it);
+    }}
+    m_state = a_state;
+   {inlib_vforcit(var_t,_vars,it) m_state.add_env((*it).first,(*it).second.m_value);}
+    return true;
+  }
+
+  bool _assign(const std::string& a_arg,bool a_env,bool a_alias) {
+    std::string::size_type pos = a_arg.find('=');
+    if(pos==std::string::npos) return false;
+    std::string _var = a_arg.substr(0,pos);
+    if(!is_C_variable(_var)) return false;
+    std::string value = a_arg.substr(pos+1,a_arg.size()-(pos+1));
+    if(a_env) {
+      m_state.add_env(_var,value);
+    } else if(a_alias) {
+      m_state.add_alias(_var,value);
+    } else {
+      m_state.add_variable(_var,value);
+    }
+    return true;
+  }
+
+  bool look_for_alias(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) return false;
+    const std::string& first_word = a_args[0];
+    inlib_vforcit(alias_t,m_state.m_aliases,it) {
+      if((*it).first==first_word) {
+        std::vector<std::string> args;
+        _get_args((*it).second,args);
+        std::vector<std::string>::const_iterator ita = a_args.begin();
+        ita++;
+       {for(;ita!=a_args.end();ita++) args.push_back(*ita);}
+        _exec_args(args);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool replace_dollar_brace_variables(const state& a_state,std::string& a_string,bool& a_rep_done,std::string& a_error) {
+    a_rep_done = false;
+    std::string::size_type dollar_brace;
+    while((dollar_brace=a_string.find("${"))!=std::string::npos){
+      std::string::size_type back_brace = a_string.find('}',dollar_brace+2);
+      if(back_brace==std::string::npos) {
+        a_error = "inlib::insh::replace_dollar_brace_variables : a } is lacking in "+sout(a_string)+".";
+        return false;
+      }
+      // aa${bbb}cccc   12
+      // 012345678901
+      // dollar_brace   = 2
+      // dollar_brace+2 = 4
+      // back_brace     = 7
+      std::string var = a_string.substr(dollar_brace+2,back_brace-(dollar_brace+2));
+      if(var.empty()) {
+        a_error = "inlib::replace_dollar_brace_variables : ${} : bad substitution.";
+        return false;
+      }
+      std::string value;
+      if(!a_state.find_variable(var,value)) {
+        a_error = "inlib::insh::replace_dollar_brace_variables : variable "+sout(var)+" not found.";
+        return false;
+      } else {
+        a_string = a_string.substr(0,dollar_brace)+value+a_string.substr(back_brace+1,a_string.size()-(back_brace+1));
+        a_rep_done = true;
+      }
+    }
+    a_error.clear();
+    return true;
+  }
+
+  static bool replace_dollar_variables(const state& a_state,std::string& a_string,bool& a_rep_done,std::string& a_error) {
+    a_rep_done = false;
+    std::string::size_type dollar_brace;
+    while((dollar_brace=a_string.find("$"))!=std::string::npos){
+      std::string::size_type space_brace = a_string.find(' ',dollar_brace+1);
+      std::string var;
+      if(space_brace==std::string::npos) {
+	if((dollar_brace+1)==a_string.size()) {
+          // aa$ 3
+          // dollar_brace = 2
+          // dollar_brace+1 = 3
+	} else {
+          // aa$bbb 6
+          // dollar_brace = 2
+          // dollar_brace+1 = 3
+          var = a_string.substr(dollar_brace+1,a_string.size()-(dollar_brace+1));
+	}
+      } else {
+        // aa$bbb ccccc   12
+        // 012345678901
+        // dollar_brace   = 2
+        // dollar_brace+1 = 3
+        // space_brace    = 6
+        var = a_string.substr(dollar_brace+1,space_brace-(dollar_brace+1));
+      }
+      if(var.empty()) return true;  // $ consider as a character. echo $ => print $.
+      std::string value;
+      if(!a_state.find_variable(var,value)) {
+        a_error = "inlib::insh::replace_dollar_variables : variable "+sout(var)+" not found.";
+        return false;
+      } else {
+        if(space_brace==std::string::npos) {
+          a_string = a_string.substr(0,dollar_brace)+value;
+	} else {
+          a_string = a_string.substr(0,dollar_brace)+value+a_string.substr(space_brace,a_string.size()-space_brace);
+	}
+        a_rep_done = true;
+      }
+    }
+    a_error.clear();
+    return true;
+  }
+
+protected:
+  void _get_args(const std::string& a_line,std::vector<std::string>& a_args) {
+    a_args.clear();
+    
+  //if(a_line.size() && (a_line.substr(0,1)=="#")) return;
+    if(is_space_sharp(a_line)) return;
+
+    if(m_state.m_set_v) m_out << a_line << std::endl;
+
+    if(m_state.m_set_d) m_out << "inlib::insh::_get_args : begin : " << sout(a_line) << std::endl;
+
+    std::string line = a_line;
+
+    std::string serror;
+
+   {std::string::size_type pos;
+    if(!find_first_sharp(line,pos,serror)) {warn(serror);return;}
+    if(pos!=std::string::npos) line = line.substr(0,pos);}
+
+    strip(line);
+
+    if(line.empty()) return;
+    if(line.substr(0,1)=="#") return;
+
+    if(m_state.m_set_d) m_out << "inlib::insh::_get_args : after strip and not comment : " << sout(line) << std::endl;
+
+    std::vector<sh_string> _words;
+    if(!get_strings(line,_words,serror)) {warn(serror);return;}
+    if(m_state.m_set_d) {
+      m_out << "inlib::insh::_get_args : sh_strings : number " << _words.size() << " :" << std::endl;
+      inlib_vforcit(sh_string,_words,it) m_out << " " << sout(*it) << " " << (*it).stype() << std::endl;
+    }
+
+   {std::vector<sh_string> _words2;
+    inlib_vforit(sh_string,_words,it) {
+      if( ((*it).m_type==sh_string::string_none)   ||
+          ((*it).m_type==sh_string::string_double) ||
+	  ((*it).m_type==sh_string::string_back)   ){
+        bool rep_done_1;
+        if(!replace_dollar_brace_variables(m_state,*it,rep_done_1,serror)) {warn(serror);return;}
+        bool rep_done_2;
+        if(!replace_dollar_variables(m_state,*it,rep_done_2,serror)) {warn(serror);return;}
+        if( ((*it).m_type==sh_string::string_none) && (rep_done_1||rep_done_2) ){
+          std::vector<std::string> ws;
+          words(*it," ",false,ws);
+          inlib_vforit(std::string,ws,it2) {
+            if(it2!=ws.begin()) _words2.push_back(sh_string(" ",sh_string::string_space));
+            _words2.push_back(sh_string(*it2,sh_string::string_none));
+          }
+        } else {
+          _words2.push_back(*it);
+        }
+	/*
+	*/
+        //_words2.push_back(*it);
+      } else {
+        _words2.push_back(*it);
+      }
+    }
+    _words = _words2;}
+    if(m_state.m_set_d) {
+      m_out << "inlib::insh::_get_args : after ${} : sh_strings : number " << _words.size() << " :" << std::endl;
+      inlib_vforcit(sh_string,_words,it) m_out << " " << sout(*it) << " " << (*it).stype() << std::endl;
+    }
+
+   {std::vector<sh_string> _words2;
+    inlib_vforit(sh_string,_words,it) {
+      if((*it).m_type==sh_string::string_back) {
+        if(m_state.m_set_d) {
+          m_out << "inlib::insh::_get_args : backquote " << sout(*it) << "." << std::endl;
+        }
+        bool old_in_backquote = m_state.m_in_backquote;
+        std::string old_backquote_return = m_state.m_backquote_return;
+        m_state.m_in_backquote = true;
+        m_state.m_backquote_return.clear();
+        _exec_line(*it);
+        std::string _ret = m_state.m_backquote_return;
+        if(m_state.m_set_d) {
+           m_out << "inlib::insh::_get_args : backquote value " << sout(_ret) << "." << std::endl;
+        }
+        m_state.m_in_backquote = old_in_backquote;
+        m_state.m_backquote_return = old_backquote_return;
+        if(m_state.m_to_stop) return;
+        std::vector<std::string> ws;
+        words(_ret," ",false,ws);
+        inlib_vforit(std::string,ws,it2) {
+          if(it2!=ws.begin()) _words2.push_back(sh_string(" ",sh_string::string_space));
+          _words2.push_back(sh_string(*it2,sh_string::string_none));
+        }
+	/*
+	*/
+        //*it = _ret;
+        //_words2.push_back(*it);
+      } else {
+        _words2.push_back(*it);
+      }
+    }
+    _words = _words2;}
+    if(m_state.m_set_d) {
+      m_out << "inlib::insh::_get_args : after backquote : sh_strings : number " << _words.size() << " :" << std::endl;
+      inlib_vforcit(sh_string,_words,it) m_out << " " << sout(*it) << " " << (*it).stype() << std::endl;
+    }
+
+    // build args by gathering words not separated by spaces :
+   {std::string arg;
+    inlib_vforcit(sh_string,_words,it) {
+      if((*it).m_type==sh_string::string_space) {
+        if(arg.size()) {a_args.push_back(arg);arg.clear();}
+      } else {
+        arg += *it;
+      }
+    }
+    if(arg.size()) {a_args.push_back(arg);arg.clear();}}
+    if(m_state.m_set_d) {
+      m_out << "inlib::insh::_get_args : args : number " << a_args.size() << " :" << std::endl;
+      inlib_vforcit(std::string,a_args,it) m_out << " " << sout(*it) << std::endl;
+    }
+
+  }
+
+  void _exec_args(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) return;
+
+    std::vector<std::string> args = a_args;
+
+   {std::string sa;
+    conc(args," ",sa);
+    if(_assign(sa,false,false)) return;}  //assignement has priority on alias.
+
+    if(look_for_alias(args)) return;
+
+    std::string cmd = args[0];
+    args.erase(args.begin());
+
+    if(m_state.m_set_d) {
+      m_out << "inlib::insh::_exec_args : cmd : " << sout(cmd) << std::endl;
+      m_out << "inlib::insh::_exec_args : args : number " << args.size() << " :" << std::endl;
+      inlib_vforcit(std::string,args,it) m_out << " " << sout(*it) << std::endl;
+    }
+
+    //if one day we have functions, they will be executed here.
+
+    if(m_state.m_set_x) {
+      m_out << cmd;
+      inlib_vforcit(std::string,args,it) m_out << " '" << *it << "'";
+      m_out << std::endl;
+    }
+
+   {base_cmd* _cmd;
+    if(!find(m_builtins,cmd,_cmd)) {
+      if(!find(m_cmds,cmd,_cmd)) _cmd = 0;
+    }
+    if(_cmd) {
+      if(m_state.m_set_n) {
+        if( (cmd=="set") && args.size() && (args[0]=="+n") ) _cmd->execute(args);
+      } else {
+        _cmd->execute(args);
+      }
+      return;
+    }}
+
+    if(_search_file(cmd)) {
+      _exec_file_new_state(cmd,args);
+      return;
+    }
+
+    warn("inlib::insh::_exec_args : "+sout(cmd)+" not found.");
+  }
+
+public:
+  void _exec_line(const std::string& a_line) {
+    std::vector<std::string> args;
+    _get_args(a_line,args);
+    _exec_args(args);
+  }
+
+  bool _search_file(std::string& a_file) {
+    if(file::exists(a_file)) return true;
+    std::vector<std::string> paths;
+    m_state.find_paths(paths);
+    inlib_vforcit(std::string,paths,it) {
+      std::string path = (*it)+sep()+a_file;
+      if(m_state.m_set_d) m_out << "inlib::insh::_search_file : search file : try " << sout(path) << std::endl;
+      if(file::exists(path)) {
+        a_file = path;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool get_blocks(const std::vector<std::string>& a_lines,std::vector<block>& a_blocks,std::string& a_error) {
+    // a block is a group of lines within a for/done, a if/fi or consequtive lines in none of these.
+    a_blocks.clear();
+    size_t _size = a_lines.size();
+    int in_for_block = 0;
+    int in_if_block = 0;
+    block token;
+    for(size_t pos=0;pos<=_size;pos++) {
+      if(pos==_size) {
+        if(token.size()) a_blocks.push_back(token);
+        break;
+      }
+      const std::string& const_line = a_lines[pos];
+      std::string line = a_lines[pos];
+      strip(line);
+      if((line.size()>=4)&&(line.substr(0,4)=="for ")) {
+        if(in_if_block) {
+          token.push_back(const_line);
+	  continue;
+	}
+        in_for_block++;
+        if(in_for_block==1) {
+          if(token.size()) {a_blocks.push_back(token);token.clear();}
+          token.m_type = block::block_for;
+          token.m_header = const_line;
+        } else {
+          token.push_back(const_line);
+        }
+      } else if(line=="done") {
+        if(in_if_block) {
+          token.push_back(const_line);
+	  continue;
+	}
+        in_for_block--;
+        if(in_for_block==0) {
+          if(token.size()) {a_blocks.push_back(token);token.clear();}
+          token.m_type = block::block_none;
+        } else {
+          token.push_back(const_line);
+        }
+
+      } else if((line.size()>=3)&&(line.substr(0,3)=="if ")) {
+        if(in_for_block) {
+          token.push_back(const_line);
+	  continue;
+	}
+        in_if_block++;
+        if(in_if_block==1) {
+          if(token.size()) {a_blocks.push_back(token);token.clear();}
+          token.m_type = block::block_if;
+          token.m_header = const_line;
+        } else {
+          token.push_back(const_line);
+        }
+      } else if(line=="fi") {
+        if(in_for_block) {
+          token.push_back(const_line);
+	  continue;
+	}
+        in_if_block--;
+        if(in_if_block==0) {
+          if(token.size()) {a_blocks.push_back(token);token.clear();}
+          token.m_type = block::block_none;
+        } else {
+          token.push_back(const_line);
+        }
+
+      } else {
+        token.push_back(const_line);
+      }
+    }
+    if(in_for_block) {
+      a_blocks.clear();
+      a_error = "inlib::get_blocks : bad for/done balance.";
+      return false;
+    }
+    if(in_if_block) {
+      a_blocks.clear();
+      a_error = "inlib::get_blocks : bad balance of if/fi expected.";
+      return false;
+    }
+    a_error.clear();
+    return true;
+  }
+
+  void _exec_raw_lines(const std::vector<std::string>& a_lines) {
+    inlib_vforcit(std::string,a_lines,it) {
+      _exec_line(*it);
+      if(m_state.m_to_stop) break;
+      if(m_state.m_is_sourcing && m_state.m_to_return) break;
+    }
+  }
+
+  void _exec_lines(const std::vector<std::string>& a_lines) {
+    std::vector<block> blocks;
+    std::string serror;
+    if(!get_blocks(a_lines,blocks,serror)) {warn(serror);return;}
+    inlib_vforcit(block,blocks,itb) {
+      const block& _block = *itb;
+      //_block.dump(m_out);
+      if(_block.m_type==block::block_none) {
+        _exec_raw_lines(_block);
+        if(m_state.m_to_stop) break;
+        if(m_state.m_is_sourcing && m_state.m_to_return) break;
+
+      } else if(_block.m_type==block::block_for) {
+        std::vector<std::string> args;
+        _get_args(_block.m_header,args);
+        std::string var;
+        std::vector<std::string> range;
+        if(!for_get_var_range(args,var,range)) {
+          warn("inlib::insh::_exec_lines : can't get for_block range in "+sout(_block.m_header)+".");
+          return;
+        }
+        inlib_vforcit(std::string,range,itr) {
+          m_state.add_variable(var,*itr);
+          _exec_lines(_block);
+          if(m_state.m_to_stop) break;
+          if(m_state.m_is_sourcing && m_state.m_to_return) break;
+        }
+        if(m_state.m_to_stop) break;
+        if(m_state.m_is_sourcing && m_state.m_to_return) break;
+
+      } else if(_block.m_type==block::block_if) {
+        std::vector<std::string> args;
+        _get_args(_block.m_header,args);
+        bool value;
+        if(!if_do_test(args,value)) {
+          warn("inlib::insh::_exec_lines : can't get if_block test in "+sout(_block.m_header)+".");
+          return;
+        }
+        if(value) {
+	  _exec_lines(_block);
+          if(m_state.m_to_stop) break;
+          if(m_state.m_is_sourcing && m_state.m_to_return) break;
+        }
+      }
+    }
+  }
+  bool _exec_file(const std::string& a_file) {
+    if(!file::exists(a_file)) {
+      warn("insh::_exec_file : "+a_file+" not found.");
+      return false;
+    }
+    std::vector<std::string> lines;
+    if(!file::read(a_file,lines)) {
+      warn("insh::_exec_file : can't read "+a_file);
+      return false;
+    }
+    _exec_lines(lines);
+    return true;
+  }
+  void _source_file(const std::string& a_file) {
+    bool old_is_sourcing = m_state.m_is_sourcing;
+    bool old_to_return = m_state.m_to_return;
+    m_state.m_is_sourcing = true;
+    m_state.m_to_return = false;
+    _exec_file(a_file);
+    m_state.m_is_sourcing = old_is_sourcing;
+    m_state.m_to_return = old_to_return;
+  }
+  void _exec_file_new_state(const std::string& a_file,const std::vector<std::string>& a_args) {
+    state _state(m_out);
+    push_state();
+    if(copy_state(_state)) {
+     {std::string sc;
+      size_t2s(a_args.size(),sc);
+      m_state.add_variable("#",sc);
+      m_state.add_variable("0",a_file);
+      for(size_t count=0;count<a_args.size();count++) {
+        size_t2s(count+1,sc);
+        m_state.add_variable(sc,a_args[count]);
+      }}
+      _exec_file(a_file);
+    }
+    bool to_stop = m_state.m_to_stop;
+    pop_state();
+    if(to_stop) m_state.m_to_stop = true;
+  }
+  void print_last_history(size_t a_n,bool a_all) {
+    std::vector<std::string> lines;
+    if(!file::read(m_history_file,lines)) {
+      warn("inlib::insh::print_last_history : can't read history file "+m_history_file+".");
+      return;
+    }
+    size_t _size = lines.size();
+    if(!_size) return;
+    std::string _ss;
+    size_t2s(_size,_ss);
+    size_t _size_size = _ss.size();
+
+    size_t beg = 0;
+    if(!a_all) {
+      if(size_t(a_n)>_size) {
+        //std::string _sn;
+        //num2s(a_n,_sn);
+        //warn("inlib::insh::history : "+_sn+" greater than history size "+_ss+" .");
+        //return;
+        beg = 0;
+      } else {
+        beg = _size-a_n;
+      }
+    }
+   {std::string _si;
+    for(size_t index=beg;index<_size;index++) {
+      size_t2s(index+1,_si);
+      justify(_si,_size_size,side_right);
+      m_out << " " << _si << " " << lines[index] << std::endl;
+    }}
+  }
+public:
+  bool append_to_history(const std::string& a_line) {
+    std::vector<std::string> lines;
+    if(!file::read(m_history_file,lines)) {
+      warn("inlib::insh::append_to_history : can't read history file "+m_history_file+".");
+      return false;
+    }
+    lines.push_back(a_line);
+    if(!file::write(m_history_file,lines)) {
+      warn("inlib::insh::append_to_history : write history file "+m_history_file+" failed.");
+      return false;
+    }
+    return true;
+  }
+  bool get_history_line(size_t a_index,bool a_last,std::string& a_line) {
+    std::vector<std::string> lines;
+    if(!file::read(m_history_file,lines)) {
+      warn("inlib::insh::get_history_line : can't read history file "+m_history_file+".");
+      a_line.clear();
+      return false;
+    }
+    size_t _size = lines.size();
+    if(!_size) {a_line.clear();return false;}
+    if(a_last) {
+      a_line = lines[lines.size()-1];
+      return true;
+    }
+    if((a_index<=0)||(a_index>lines.size())) {
+      std::string _s;
+      size_t2s(a_index,_s);
+      warn("inlib::insh::get_history_line : "+_s+" not found.");
+      a_line.clear();
+      return false;
+    }
+    a_line = lines[a_index-1].c_str();
+    return true;
+  }
+  bool get_history_line_beg(const std::string& a_begin,std::string& a_line) {
+    std::vector<std::string> lines;
+    if(!file::read(m_history_file,lines)) {
+      warn("inlib::insh::get_history_line_beg : can't read history file "+m_history_file+".");
+      a_line.clear();
+      return false;
+    }
+    inlib_vforcrit(std::string,lines,it) {
+      if(is_beg(*it,a_begin)) {
+        a_line = *it;
+	return true;
+      }
+    }
+    warn("inlib::insh::get_history_line : line starting with "+a_begin+" not found.");
+    a_line.clear();
+    return false;
+  }
+
+public:
+  static int tab_hook(char* a_buffer,int /*a_size_prompt*/,int* a_loc,void* a_tag) {
+    inlib::insh& _insh = *((inlib::insh*)a_tag);
+    std::ostream& out = _insh.out();
+    std::string _buffer(a_buffer);
+    if(_buffer.empty() || !_insh.is_exec(_buffer)) {
+      if(!_insh.m_complete_state) {
+        out << '\a' << std::flush; //beep.
+        _insh.m_complete_state = true;
+        return *a_loc;
+      }
+      _insh.m_complete_state = false;
+      std::vector<std::string> names;
+      if(_buffer.empty()) {
+        _insh.exec_names(names);
+      } else {
+        _insh.complete(_buffer,names);
+      }
+      if(names.empty()) {
+        ::strcpy(a_buffer,_buffer.c_str());
+        int i = *a_loc;
+        *a_loc = i+int(_buffer.size());
+        return i;
+      }
+      out << '\a' << std::flush; //beep.
+      out << std::endl;
+    //inlib_vforcit(std::string,names,it) out << *it << std::endl;
+      _insh.unix_print(names);
+      return -2;
+    }
+    return *a_loc;
+  }
+protected:
+  bool for_get_var_range(const std::vector<std::string>& a_args,std::string& a_var,std::vector<std::string>& a_range) {
+    a_var.clear();
+    a_range.clear();
+    const std::vector<std::string>& ws = a_args;
+    // for <var> in <item> ; done  // at least 5 words.
+    // for i in a b c ; done       //8 words
+    size_t _size = ws.size();
+    if(_size<5) return false;
+    if(ws[0]!="for") return false;
+    if(ws[2]!="in") return false;
+    if(ws[_size-2]!=";") return false;
+    if(ws[_size-1]!="do") return false;
+    a_var = ws[1];
+    for(size_t index=3;index<(_size-2);index++) a_range.push_back(ws[index]);
+    return true;
+  }
+
+  bool if_do_test(const std::vector<std::string>& a_args,bool& a_value) {
+    a_value = false;
+    const std::vector<std::string>& ws = a_args;
+  //::printf("debug : if_do_test %lu:\n",ws.size());
+ //{inlib_vforcit(std::string,ws,it){::printf("debug : |%s|\n",(*it).c_str());}}
+    size_t _size = ws.size();
+    if(_size==6) {  // if [ <op> ] ; then
+      if(ws[0]!="if") return false;
+      if(ws[1]!="[") return false;
+      if(ws[3]!="]") return false;
+      if(ws[4]!=";") return false;
+      if(ws[5]!="then") return false;
+      const std::string& op = ws[2];
+      if(op=="=") {
+        a_value = true;
+        return true;
+      }
+      if(op=="!=") {
+        a_value = false;
+        return true;
+      }
+      return false;
+    }    
+    if(_size==7) {
+      if(ws[0]!="if") return false;
+      if(ws[1]!="[") return false;
+      if(ws[4]!="]") return false;
+      if(ws[5]!=";") return false;
+      if(ws[6]!="then") return false;
+      // if [ <string> <op> ] ; then
+     {//const std::string& left = ws[2];
+      const std::string& op = ws[3];
+      if(op=="=") {
+        a_value = false;
+        return true;
+      }
+      if(op=="!=") {
+        a_value = true;
+        return true;
+      }}
+      // if [ <op> <string> ] ; then
+     {const std::string& op = ws[2];
+    //const std::string& right = ws[3];
+      if(op=="=") {
+        a_value = false;
+        return true;
+      }
+      if(op=="!=") {
+        a_value = true;
+        return true;
+      }}
+      return false;
+    }    
+    // if [ <string> <op> <string> ] ; then  // at least 8 words.
+    if(_size!=8) return false;
+    if(ws[0]!="if") return false;
+    if(ws[1]!="[") return false;
+    if(ws[5]!="]") return false;
+    if(ws[6]!=";") return false;
+    if(ws[7]!="then") return false;
+    const std::string& left = ws[2];
+    const std::string& op = ws[3];
+    const std::string& right = ws[4];
+    if(op=="=") {
+      a_value = left==right;
+      return true;
+    }
+    if(op=="!=") {
+      a_value = left!=right;
+      return true;
+    }
+    int ileft;
+    if(to<int>(left,ileft)) {
+      int iright;
+      if(to<int>(right,iright)) {
+        if(op=="-gt") {a_value = ileft>iright?true:false;return true;}
+        if(op=="-ge") {a_value = ileft>=iright?true:false;return true;}
+        if(op=="-lt") {a_value = ileft<iright?true:false;return true;}
+        if(op=="-le") {a_value = ileft<=iright?true:false;return true;}
+        if(op=="-eq") {a_value = ileft==iright?true:false;return true;}
+        if(op=="-ne") {a_value = ileft!=iright?true:false;return true;}
+      }
+    }
+    return false;
+    /*
+    std::vector<std::string> args;
+    for(size_t index=2;index<(_size-3);index++) args.push_back(ws[index]);
+    if(args.size()!=3) return false;
+    std::string test;
+    test += "(\"'"+args[0]+"'\")";
+    const std::string& op = args[1];
+         if(op=="=") test += "==";
+    else if(op=="!=") test += "!=";
+    //else if(op=="-gt") test += ">";
+    //else if(op=="-ge") test += ">=";
+    //else if(op=="-lt") test += "<";
+    //else if(op=="-le") test += "<=";
+    //else if(op=="-eq") test += "==";
+    //else if(op=="-ne") test += "!=";
+    else return false;
+    test += "(\"'"+args[2]+"'\")";
+    //::printf("debug : test \"%s\"\n",test.c_str());
+    bool old_back = m_state.m_in_backquote;
+    m_state.m_in_backquote = true;
+    _exec_line("calc "+test);
+    m_state.m_in_backquote = old_back;
+    if(m_state.m_to_stop) return false;
+    a_value = m_state.m_backquote_return=="true"?true:false;
+    return true;
+    */
+  }
+
+public:  //builtins :
+  static const std::string& no_help() {static const std::string s_help("no help\n");return s_help;}
+  static void no_complete(const insh&,const std::string&,std::vector<std::string>& a_names) {a_names.clear();}
+protected:
+//  void _command(const std::string& a_rest) {
+//  }
+
+  void _dot(const std::vector<std::string>& a_args) {
+    std::vector<std::string> args = a_args;
+    if(args.empty()) {
+      warn("inlib::insh::_dot : one argument expected.");
+      return;
+    }
+    std::string file = args[0];
+    if(_search_file(file)) {
+      args.erase(args.begin());
+
+      std::string sc;
+     {size_t2s(args.size(),sc);
+      m_state.add_variable("#",sc);
+      m_state.add_variable("0",file);
+     {for(size_t count=0;count<args.size();count++) {
+        size_t2s(count+1,sc);
+        m_state.add_variable(sc,args[count]);
+      }}}
+
+      _source_file(file);
+
+      m_state.remove_variable("#");
+      m_state.remove_variable("0");
+     {for(size_t count=0;count<args.size();count++) {
+        size_t2s(count+1,sc);
+        m_state.remove_variable(sc);
+      }}
+ 
+      return;
+    }
+    warn("inlib::insh::_exec_line : . : file "+sout(file)+" not found.");
+  }
+  static const std::string& _dot_help() {
+    static const std::string s_help("\
+.: . path\n\
+  Source a insh file.\n\
+");
+    return s_help;
+  }
+  
+  void _history(const std::vector<std::string>& a_args) {
+    static const std::string s_cmd("history");
+    if(m_history_file.empty()) {
+      warn(s_cmd+": no history file specified.");
+      return;
+    }
+    if(a_args.empty()) {
+      print_last_history(0,true); // true = all.
+      return;
+    }
+    args _args(a_args);
+    if(_args.is_arg("-c")) {
+      file::make_empty(m_history_file);
+      return;
+    }
+    std::string fnh;
+    if(!_args.first_not_hyphen(fnh)) return;
+    unsigned int n;
+    ishell& a_insh = *this;
+    INLIB_ISHELL_ARG_UINT(fnh,n)
+    print_last_history(n,false); // n last lines.
+  }
+  static const std::string& _history_help() {
+    static const std::string s_help("\
+history: history [-c] [n]\n\
+  Display the history list with line numbers.\n\
+  Argument of n says to list only the last n lines.\n\
+  The -c option causes the history list to be\n\
+  cleared by deleting all of the entries.\n\
+");
+    return s_help;
+  }
+
+  void _help(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) return;
+    const std::string& scmd = a_args[0];
+    base_cmd* _cmd;
+    if(!find(m_builtins,scmd,_cmd)) {
+      if(!find(m_cmds,scmd,_cmd)) _cmd = 0;
+    }
+    if(!_cmd) {
+      warn("inlib::insh::_help : command "+sout(scmd)+" not found.");
+      return;
+    }
+    //out_begin();
+    //out(_cmd->help(),true,false);
+    out(_cmd->help(),false,false);
+  }
+  static void _help_complete(const insh& a_holder,const std::string& a_begin,std::vector<std::string>& a_names) {a_holder.command_names(a_names,a_begin);}
+  static const std::string& _help_help() {
+    static const std::string s_help("\
+help: help [command]\n\
+  Display informations about a command.\n\
+");
+    return s_help;
+  }
+
+  void _helps(const std::vector<std::string>& a_args) {
+    if(a_args.size()&&(a_args[0]=="-doxygen")) {
+      std::ofstream _out("helps.h");
+      _out << "/**" << std::endl;
+      _out << std::endl;
+      _out << "@page insh_helps <h2>help text of commands</h2>" << std::endl;
+      _out << std::endl;
+     {inlib_mforcit(std::string,base_cmd*,m_builtins,it) {
+        _out << "@verbatim" << std::endl;
+        const std::string& _s = (*it).second->help();
+        if(_s==no_help()) {
+          _out << (*it).first << ": no help." << std::endl;
+        } else {
+          _out << _s;
+        }
+        _out << "@endverbatim" << std::endl;
+        _out << "@par" << std::endl;
+        _out << std::endl;
+      }}
+     {inlib_mforcit(std::string,base_cmd*,m_cmds,it) {
+        _out << "@verbatim" << std::endl;
+        const std::string& _s = (*it).second->help();
+        if(_s==no_help()) {
+          _out << (*it).first << ": no help." << std::endl;
+        } else {
+          _out << _s;
+        }
+        _out << "@endverbatim" << std::endl;
+        _out << "@par" << std::endl;
+        _out << std::endl;
+      }}
+      _out << "*/" << std::endl;
+      return;
+    }
+
+   {inlib_mforcit(std::string,base_cmd*,m_builtins,it) {
+      const std::string& _s = (*it).second->help();
+      if(_s==no_help()) {
+        m_out << (*it).first << ": no help." << std::endl;
+      } else {
+        m_out << _s;
+      }
+      m_out << std::endl;
+   }}
+   {inlib_mforcit(std::string,base_cmd*,m_cmds,it) {
+      const std::string& _s = (*it).second->help();
+      if(_s==no_help()) {
+        m_out << (*it).first << ": no help." << std::endl;
+      } else {
+        m_out << _s;
+      }
+      m_out << std::endl;
+    }}
+  }
+  static const std::string& _helps_help() {
+    static const std::string s_help("\
+helps: helps [-doxygen]\n\
+  Print the help text of known commands.\n\
+  -doxygen permits to print at some doxygen format in a helps.h file.\n\
+");
+    return s_help;
+  }
+
+  void _return(const std::vector<std::string>& /*a_args*/) {
+    if(!m_state.m_is_sourcing) {
+      warn("inlib::insh::_return : can only return when sourcing.");
+      return;
+    }
+    m_state.m_to_return = true;
+  }
+  static const std::string& _return_help() {
+    static const std::string s_help("\
+return: return\n\
+  Causes a sourced file to exit.\n\
+");
+    return s_help;
+  }
+
+  static const std::string& _exit_help() {
+    static const std::string s_help("\
+exit: exit\n\
+  Causes a not sourced file to exit.\n\
+  In interactives mode, it stops the shell.\n\
+");
+    return s_help;
+  }
+
+  void _alias(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) {
+      out_begin();
+      inlib_vforcit(alias_t,m_state.m_aliases,it) out("alias "+(*it).first+"='"+(*it).second+"'",true);
+      return;
+    }
+    if(a_args.size()!=1) {
+      warn("inlib::insh::_alias : one argument expected.");
+      return;
+    }
+    const std::string& _arg = a_args[0];
+    if(_arg.find('=')==std::string::npos) {
+      std::string value;
+      if(!m_state.find_alias(_arg,value)) {
+        warn("inlib::insh::_alias : "+sout(_arg)+" not found.");
+        return;
+      }
+      out("alias "+_arg+"='"+value+"'");
+      return;
+    }
+    _assign(_arg,false,true);
+  }
+  static const std::string& _alias_help() {
+    static const std::string s_help("\
+alias: alias [name[=value]]\n\
+  With no arguments, print the list of aliases in the form alias name='value'.\n\
+  Otherwise, an alias is defined for each name whose value is given.\n\
+  Example:\n\
+    alias x='echo hello'\n\
+    alias\n\
+    x\n\
+");
+    return s_help;
+  }
+
+
+  void _let(const std::vector<std::string>& a_args) {
+    if(a_args.size()!=1) {
+      warn("inlib::insh::_let : one argument expected.");
+      return;
+    }
+    if(!is_command("calc")) {
+      warn("inlib::insh::_let : calc is not a command.");
+      return;
+    }
+    const std::string& _first = a_args[0];
+    std::string::size_type pos = _first.find('=');
+    if(pos==std::string::npos) {
+      warn("inlib::insh::_let : no '=' found in "+sout(_first)+".");
+      return;
+    }
+    std::string _var = _first.substr(0,pos);
+    if(!is_C_variable(_var)) {
+      warn("inlib::insh::_let : "+sout(_var)+" has not a variable syntax.");
+      return;
+    }
+    std::string rest = _first.substr(pos+1,_first.size()-(pos+1));
+    bool old_back = m_state.m_in_backquote;
+    m_state.m_in_backquote = true;
+    _exec_line("calc "+rest);
+    m_state.m_in_backquote = old_back;
+    if(!m_state.m_to_stop) m_state.add_variable(_var,m_state.m_backquote_return);
+  }
+  static const std::string& _let_help() {
+    static const std::string s_help("\
+let: let arg\n\
+  arg is an arithmetic expression to be evaluated.\n\
+  Evaluation is done in double.\n\
+  Example:\n\
+    let x=2+3\n\
+    let x=2.0/3.0\n\
+    let x=cos(3.1416)\n\
+    echo ${x}\n\
+");
+    return s_help;
+  }
+
+
+  void _echo(const std::vector<std::string>& a_args) {
+    std::vector<std::string> args(a_args);
+    bool opt_n = false;
+    if(args.size() && (args[0]=="-n")) {
+      opt_n = true;
+      args.erase(args.begin());
+    }
+    out_begin();
+    std::string sa;
+    conc(args," ",sa);
+    out(sa,true,opt_n?false:true);
+  }
+  static const std::string& _echo_help() {
+    static const std::string s_help("\
+echo: [-n] [arg ...]\n\
+  Output the args.\n\
+  If -n is specified, the trailing newline is suppressed.\n\
+");
+    return s_help;
+  }
+
+  void _printenv(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) {
+      out_begin();
+      inlib_vforcit(var_t,m_state.m_vars,it) {
+        if((*it).second.m_is_env) out((*it).first+"="+(*it).second.m_value,true);
+      }
+      return;
+    }
+    const std::string& arg0 = a_args[0];
+    std::string value;
+    if(!m_state.find_env(arg0,value)) {
+      warn("inlib::insh::_printenv : "+sout(arg0)+" is not an env.");
+      return;
+    }
+    out(value);
+  }
+  static const std::string& _printenv_help() {
+    static const std::string s_help("\
+printenv: printenv [name]\n\
+  The printenv utility prints out the names and values of the variables in the environment,\n\
+  with one name/value pair per line.  If name is specified, only its value is printed.\n\
+  Example:\n\
+    printenv\n\
+    printenv HOME\n\
+");
+    return s_help;
+  }
+
+  void _compgen(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) return;
+    bool opt_c = false;
+    bool opt_b = false;
+    bool opt_a = false;
+    bool opt_e = false;
+    const std::string& _opt = a_args[0];
+         if(_opt=="-c") opt_c = true;
+    else if(_opt=="-b") opt_b = true;
+    else if(_opt=="-a") opt_a = true;
+    else if(_opt=="-e") opt_e = true;
+    else {
+      warn("inlib::insh::_compgen : option "+sout(_opt)+" unknown.");
+      return;
+    }
+    out_begin();
+    if(opt_c || opt_a) {inlib_vforcit(alias_t,m_state.m_aliases,it) out((*it).first,true);}
+    if(opt_c || opt_b) {inlib_mforcit(std::string,base_cmd*,m_builtins,it) out((*it).first,true);}
+    if(opt_c) {inlib_mforcit(std::string,base_cmd*,m_cmds,it) out((*it).first,true);}
+    if(opt_e) {inlib_vforcit(var_t,m_state.m_vars,it) if((*it).second.m_is_env) out((*it).first,true);}
+  }
+  static const std::string& _compgen_help() {
+    static const std::string s_help("\
+compgen: compgen [-cbae]\n\
+  -c list all aliases, builtins and other commands.\n\
+  -b list all builtins.\n\
+  -a list all aliases.\n\
+  -e list all environment variables.\n\
+");
+    return s_help;
+  }
+
+  void _type(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) return;
+    std::vector<std::string>::const_iterator it_begin = a_args.begin();
+    bool opt_t = false;
+    if(a_args[0][0]=='-') {
+      if(a_args[0]=="-t") {
+        opt_t = true;
+        it_begin++;
+      } else {
+        warn("inlib::insh::_type : "+sout(a_args[0])+" is not an option.");
+        return;
+      }
+    }
+    out_begin();
+    inlib_vforcit_beg(std::string,a_args,it_begin,it) {
+      if(m_state.is_alias(*it)) {
+        if(opt_t) {
+          out("alias",true);
+        } else {
+          out((*it)+" is an alias",true);
+        }
+        continue;
+      }
+     {base_cmd* _cmd;
+      if(find(m_builtins,*it,_cmd)) {
+        if(opt_t) {
+          out("builtin",true);
+        } else {
+          out((*it)+" is a builtin",true);
+        }
+        continue;
+      }}
+     {base_cmd* _cmd;
+      if(find(m_cmds,*it,_cmd)) {
+        if(opt_t) {
+          out("compiled",true);
+        } else {
+          out((*it)+" is compiled",true);
+        }
+        continue;
+      }}
+     {std::string file = *it;
+      if(_search_file(file)) {
+        if(opt_t) {
+          out("file",true);
+        } else {
+          out((*it)+" is a file",true);
+        }
+        continue;
+      }}
+      out("unfound",true);
+    }
+  }
+  static const std::string& _type_help() {
+    static const std::string s_help("\
+type: type [-t] name [name ...]\n\
+  For each name, indicate how it would be interpreted if used as a command name.\n\
+\n\
+  If the -t option is used, it outputs a single word which is one of\n\
+  [alias, builtin, compiled, file, unfound] if the name is an alias, shell builtin,\n\
+  other compiled command, a file or is unfound.\n\
+");
+    return s_help;
+  }
+
+  void _exit(const std::vector<std::string>&) {m_state.m_to_stop = true;}
+
+  void _date(const std::vector<std::string>&) {
+    std::string sdate;
+    time2s(sdate);
+    out(sdate);
+  }
+  static const std::string& _date_help() {
+    static const std::string s_help("\
+date: date\n\
+  Print date and time.\n\
+");
+    return s_help;
+  }
+
+  void _time(const std::vector<std::string>& a_args) {
+    std::string sa;
+    conc(a_args," ",sa);
+    atime _start = atime::now();
+    _exec_line(sa);
+    atime _end = atime::elapsed(_start);
+
+    sa.clear();
+    numas(_end.seconds(),sa);
+    sa += " secs ";
+    numas(_end.micro_seconds(),sa);
+    sa += " micro_secs";
+    out(sa);
+  }
+  static const std::string& _time_help() {
+    static const std::string s_help("\
+time: time command\n\
+  Execute command and print the real time spent executing it.\n\
+");
+    return s_help;
+  }
+
+  void _unset(const std::vector<std::string>& a_args) {
+    inlib_vforcit(std::string,a_args,it) m_state.remove_variable(*it);
+  }
+  static const std::string& _unset_help() {
+    static const std::string s_help("\
+unset: unset variable\n\
+  Remove the corresponding variable.\n\
+");
+    return s_help;
+  }
+
+  void _unalias(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) {
+      warn("inlib::insh::_unalias : one argument expected.");
+      return;
+    }
+    const std::string& arg0 = a_args[0];
+    if(arg0=="-a") {
+      m_state.remove_aliases();
+      return;
+    }
+    if(!is_C_variable(arg0)) {
+      warn("inlib::insh::_unalias : "+sout(arg0)+" has not a variable syntax.");
+      return;
+    }
+    m_state.remove_alias(arg0);
+  }
+  static const std::string& _unalias_help() {
+    static const std::string s_help("\
+unalias: unalias [-a] name\n\
+  Remove name from the list of defined aliases.\n\
+  -a removes all aliases.\n\
+");
+    return s_help;
+  }
+
+  void _export(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) {
+      out_begin();
+      inlib_vforcit(var_t,m_state.m_vars,it) {if((*it).second.m_is_env) out("export "+(*it).first+"=\""+(*it).second.m_value+"\"",true);}
+      return;
+    }
+    if(a_args.size()!=1) {
+      warn("inlib::insh::_export : one argument expected.");
+      return;
+    }
+    const std::string& _arg = a_args[0];
+    if(_arg.find('=')==std::string::npos) {
+      if(!is_C_variable(_arg)) {
+        warn("inlib::insh::_export : "+sout(_arg)+" has not a variable syntax.");
+        return;
+      }
+      if(!m_state.set_as_env(_arg)) {
+        warn("inlib::insh::_export : "+sout(_arg)+" is not a variable.");
+        return;
+      }
+      return;
+    }
+    _assign(_arg,true,false);
+  }
+  static const std::string& _export_help() {
+    static const std::string s_help("\
+export: export [name[=value]] \n\
+  name is marked for automatic export to the environment.\n\
+  If no name is given, a list of all names that are exported\n\
+  is printed.\n\
+  Example:\n\
+    a=b\n\
+    export a\n\
+    export a=b\n\
+    export\n\
+");
+    return s_help;
+  }
+
+  void _set(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) {
+      out_begin();
+      inlib_vforcit(var_t,m_state.m_vars,it) {
+        if((*it).second.m_value.find(' ')!=std::string::npos) {
+          out((*it).first+"='"+(*it).second.m_value+"'",true);
+        } else {
+          out((*it).first+"="+(*it).second.m_value,true);
+	}
+      }
+      return;
+    }
+    const std::string& _opt = a_args[0];
+    if(_opt=="-v") {m_state.m_set_v = true;return;}
+    if(_opt=="+v") {m_state.m_set_v = false;return;}
+    if(_opt=="-x") {m_state.m_set_x = true;return;}
+    if(_opt=="+x") {m_state.m_set_x = false;return;}
+    if(_opt=="-n") {m_state.m_set_n = true;return;}
+    if(_opt=="+n") {m_state.m_set_n = false;return;}
+    if(_opt=="-d") {m_state.m_set_d = true;return;}
+    if(_opt=="+d") {m_state.m_set_d = false;return;}
+    warn("inlib::insh::_set : option "+sout(_opt)+" unknown.");
+  }
+  static const std::string& _set_help() {
+    static const std::string s_help("\
+set: set [-+v,-+x,-+n,-+d]\n\
+  -v print shell input lines as they are read.\n\
+  -x print commands and their arguments as they are executed.\n\
+  -n read commands but do not execute them.\n\
+  -d pass in debug mode.\n\
+  Using + rather than - causes these flags to be turned off.\n\
+  Without options, all shell variables are printed.\n\
+  Example:\n\
+    set -v\n\
+    set +v\n\
+    set\n\
+");
+    return s_help;
+  }
+
+/*void _mount(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) {
+      warn("inlib::insh::_mount : one argument expected.");
+      return;
+    }
+    const std::string& arg0 = a_args[0];
+    if(!file::exists(arg0)) {
+      warn("insh::_mount : "+arg0+" not found.");
+      return;
+    }
+  }
+  static const std::string& _mount_help() {
+    static const std::string s_help("\
+mount: mount path\n\
+");
+    return s_help;
+  }
+*/
+
+  void _pwd(const std::vector<std::string>&) {
+    std::string _pwd;
+    if(!dir::pwd(_pwd)) {
+      warn("inlib::insh::_pwd : can't get pwd.");
+      return;
+    }
+    out(_pwd);
+  }
+  static const std::string& _pwd_help() {
+    static const std::string s_help("\
+pwd: pwd\n\
+    Print the current working directory.\n\
+");
+    return s_help;
+  }
+
+  void _cd(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) {
+      std::string home;
+      if(!dir::home(home)) {
+        warn("inlib::insh::_cd : can't get home dir.");
+        return;
+      }
+      if(!dir::cd(home)) {
+        warn("inlib::insh::_cd : cd(home) failed..");
+        return;
+      }
+      return;
+    }
+    const std::string& arg0 = a_args[0];
+    if(!dir::cd(arg0)) {
+      warn("inlib::insh::_cd : cd("+arg0+") failed..");
+      return;
+    }
+  }
+  static const std::string& _cd_help() {
+    static const std::string s_help("\
+cd: cd [path]\n\
+  Change the current directory to path. Without argument it goes in ${HOME}\n\
+  on UNIXes (including CYGWIN) and ${USERPROFILE} on Windows from a DOS prompt.\n\
+");
+    return s_help;
+  }
+
+  static void _cd_complete(const insh&,const std::string& a_begin,std::vector<std::string>& a_names) {
+    a_names.clear();
+    if(a_begin.empty()) {
+      if(!dir::dirs(".",a_names,false)) return;
+    } else {
+      std::vector<std::string> items;
+      std::string dir = dir_name(a_begin);
+      if(dir.size()) {
+        if(!dir::dirs(dir,items,true)) return;
+      } else {
+        if(!dir::dirs(".",items,false)) return;
+      }
+      inlib_vforcit(std::string,items,it) {
+        if(is_beg(*it,a_begin)) a_names.push_back(*it);
+      }
+    }
+    sort::sort(a_names);
+  }
+
+
+  void _cp(const std::vector<std::string>& a_args) {
+    if(a_args.size()!=2) {
+      warn("inlib::insh::_cp : two arguments expected.");
+      return;
+    }
+    const std::string& from = a_args[0];
+    std::string to = a_args[1];
+    if(to==".") base_name(from,to);
+    if(!file::copy_bytes(from,to)) {
+      warn("inlib::insh::_cp : file::copy_bytes("+sout(from)+","+sout(to)+") failed.");
+      return;
+    }
+  }
+
+  static const std::string& _cp_help() {
+    static const std::string s_help("\
+cp: cp source target\n\
+  Copy the contents of source file in the target file.\n\
+  If target is ., a file with name being the source base name will be created\n\
+  in the current directory.\n\
+");
+    return s_help;
+  }
+
+  void _rm(const std::vector<std::string>& a_args) {
+    args _args(a_args);
+    std::vector<std::string> fnhs;
+    _args.not_hyphens(fnhs);
+    //bool _R = ;
+    inlib_vforcit(std::string,fnhs,it) {
+      const std::string& _path = *it;
+      if(!file::exists(_path)) {
+        if(!_args.is_arg("-f")) warn("inlib::insh::_rm : file "+sout(_path)+" does not exist.",false);
+      } else {
+        bool is_dir;
+        if(!dir::is_a(_path,is_dir)) {
+          warn("inlib::insh::_rm : dir::is_a() failed for "+sout(_path)+".");
+          return;
+        }
+        if(is_dir) {
+          if(_args.is_arg("-R")) {
+            if(!dir::rmdir(_path)) {
+              warn("inlib::insh::_rm : dir::rmdir() failed for "+sout(_path)+".");
+              return;
+            }
+          } else {
+            warn("inlib::insh::_rm : "+_path+" is a directory");
+          }
+        } else {
+          if(::remove(_path.c_str())) {
+            warn("inlib::insh::_rm : ::remove("+sout(_path)+") failed.");
+            return;
+          }
+        }
+      }
+    }
+  }
+  static const std::string& _rm_help() {
+    static const std::string s_help("\
+rm: rm [-R] paths\n\
+  Remove the files specified by paths.\n\
+  -R if a path is a directory, remove it with all its content.\n\
+  Example:\n\
+    touch file_1 file_2\n\
+    rm file_1 file_2\n\
+    rm -R dir_1\n\
+");
+    return s_help;
+  }
+
+  void _mkdir(const std::vector<std::string>& a_args) {
+    if(a_args.empty()) {
+      warn("inlib::insh::_mkdir : one arguments expected.");
+      return;
+    }
+    args _args(a_args);
+    std::string fnh;
+    if(!_args.first_not_hyphen(fnh)) return;
+    if(!has_dir(fnh)) {
+      if(!dir::mkdir(fnh)) warn("inlib::insh::_mkdir : can't create directory "+sout(fnh)+".");
+      return;
+    }
+    if(inlib::dir::is_a(fnh)) return;
+    if(!_args.is_arg("-p")) {
+      warn("inlib::insh::_mkdir : use -p to create a chain of directories.");
+      return;
+    }
+    if(!inlib::mkdirs(m_out,fnh)) {
+      warn("inlib::insh::_mkdir : can't create directory "+sout(fnh)+".");
+    }
+  }
+  static const std::string& _mkdir_help() {
+    static const std::string s_help("\
+mkdir: mkdir [-p] name\n\
+  Create directory name.\n\
+  -p permits to create intermediate directories if needed.\n\
+  Example:\n\
+    mkdir my_dir\n\
+    mkdir -p dir_0/dir_1/my_dir\n\
+");
+    return s_help;
+  }
+
+  void _basename(const std::vector<std::string>& a_args) {
+    if(a_args.size()!=1) {
+      warn("inlib::insh::_basename : one arguments expected.");
+      return;
+    }
+    std::string name;
+    base_name(a_args[0],name);
+    out(name);
+  }
+  static const std::string& _basename_help() {
+    static const std::string s_help("\
+basename: basename path\n\
+  Return the file name portion of a path.\n\
+  Example:\n\
+    basename /a/b/c.d  # return c.d\n\
+");
+    return s_help;
+  }
+
+  void _dirname(const std::vector<std::string>& a_args) {
+    if(a_args.size()!=1) {
+      warn("inlib::insh::_dirname : one arguments expected.");
+      return;
+    }
+    std::string p,n,s;
+    path_name_suffix(a_args[0],p,n,s);
+    out(p);
+  }
+  static const std::string& _dirname_help() {
+    static const std::string s_help("\
+dirname: dirname path\n\
+  Return the directory portion of a path.\n\
+  Example:\n\
+    dirname /a/b/c.d  # return /a/b\n\
+");
+    return s_help;
+  }
+
+  void _suffix(const std::vector<std::string>& a_args) {
+    if(a_args.size()!=1) {
+      warn("inlib::insh::_suffix : one arguments expected.");
+      return;
+    }
+    std::string p,n,s;
+    path_name_suffix(a_args[0],p,n,s);
+    out(s);
+  }
+  static const std::string& _suffix_help() {
+    static const std::string s_help("\
+suffix: suffix path\n\
+  Return the suffix portion of a path.\n\
+  Example:\n\
+    suffix /a/b/c.d  # return d\n\
+");
+    return s_help;
+  }
+
+  void _sys_os(const std::vector<std::string>& /*a_args*/) {out(os());}
+
+  void _sys_device_has_stop_app_button(const std::vector<std::string>&) {
+    out_bool(device::stop_app_button());
+  }
+
+  void _print_args(const std::vector<std::string>& a_args) {
+    //inlib_vforcit(std::string,a_args,it) m_out << *it << std::endl;
+    out_begin();
+    out(a_args,true);
+  }
+  static const std::string& _print_args_help() {
+    static const std::string s_help("\
+print_args: print_args [args]\n\
+  Print the arguments. It helps debugging string manipulations in insh.\n\
+");
+    return s_help;
+  }
+
+  void _system(const std::vector<std::string>& a_args) {
+#if TARGET_OS_IPHONE
+    warn("inlib::insh::_system : not available on iOS.");
+#else
+    if(a_args.empty()) return;
+    if(::system(a_args[0].c_str())==(-1)) {}
+#endif
+  }
+
+  void _eval(const std::vector<std::string>& a_args) {
+    std::string sa;
+    conc(a_args," ",sa);
+    if(sa.empty()) return;
+    _exec_line(sa);
+  }
+  static const std::string& _eval_help() {
+    static const std::string s_help("\
+eval: eval [args]\n\
+  Read args as input to the shell and execute the resulting command.\n\
+");
+    return s_help;
+  }
+
+  void _unique(const std::vector<std::string>& a_args) {
+    std::vector<std::string> vs = a_args;
+    unique(vs);
+    out_begin();
+    out(vs,true);
+  }
+  static const std::string& _unique_help() {
+    static const std::string s_help("\
+unique: unique [args]\n\
+  Remove duplicates in args and print result.\n\
+");
+    return s_help;
+  }
+
+  void _seq(const std::vector<std::string>& a_args) {
+    if(a_args.size()!=2) {
+      warn("inlib::insh::_seq : two arguments expected.");
+      return;
+    }
+    unsigned int first;
+    if(!to(a_args[0],first)) {
+      warn("inlib::insh::_seq : "+a_args[0]+" not a uint.");
+      return;
+    }
+    unsigned int last;
+    if(!to(a_args[1],last)) {
+      warn("inlib::insh::_seq : "+a_args[1]+" not a uint.");
+      return;
+    }
+    out_begin();
+    std::string sindex;
+    if(first<=last)  {
+      for(unsigned int index=first;index<=last;index++) {
+        num2s(index,sindex);
+        out(sindex,true);
+      }
+    } else {
+      for(int index=int(first);index>=int(last);index--) {
+        num2s(index,sindex);
+        out(sindex,true);
+      }
+    }
+  }
+  static const std::string& _seq_help() {
+    static const std::string s_help("\
+seq: seq [first last]\n\
+  Print numbers from first to last.\n\
+  Example:\n\
+    seq 1 10\n\
+    seq 10 0\n\
+");
+    return s_help;
+  }
+
+  void _cat(const std::vector<std::string>& a_args) {
+    if(a_args.size()!=1) {
+      warn("inlib::insh::_cat : one arguments expected.");
+      return;
+    }
+    const std::string& file = a_args[0];
+    FILE* _FILE = ::fopen(file.c_str(),"rb");
+    if(!_FILE) {
+      warn("inlib::insh::_cat : file "+sout(file)+" does not exist.");
+      return;
+    }
+    unsigned int BUFSIZE = 65536;
+    char* buffer = new char[BUFSIZE+1];
+    if(!buffer) {
+      warn("inlib::insh::_cat : can't alloc buffer.");
+      ::fclose(_FILE);
+      return;
+    }
+    /*
+    out_begin();
+    while(true) {
+      size_t l;
+      if(!file::read_cstring(_FILE,buffer,BUFSIZE,l)) break; // EOF.
+    //out(buffer,true);  //it does not reproduce UNIX bash.
+      if(m_state.m_in_backquote) {
+        if(m_state.m_backquote_return.size()) m_state.m_backquote_return += "\n";
+        m_state.m_backquote_return += buffer;
+      } else {
+        m_out << buffer << std::endl;
+      }
+    }
+    */
+    while(true) {
+      size_t l;
+      if(!file::read_cstring(_FILE,buffer,BUFSIZE,l)) break; // EOF.
+      m_out << buffer << std::endl;
+    }
+    delete [] buffer;
+    ::fclose(_FILE);
+  }
+  static const std::string& _cat_help() {
+    static const std::string s_help("\
+cat: cat path\n\
+  Print a file.\n\
+");
+    return s_help;
+  }
+  static void _cat_complete(const insh&,const std::string& a_begin,std::vector<std::string>& a_names) {
+    file::complete(a_begin,a_names);
+  }
+
+  void _head(const std::vector<std::string>& a_args) {
+    args _args(a_args);
+    size_t number = 10;    
+   {std::string sn;
+    if(_args.find_hyphen_next("-n",sn,"10",true)) {  //true=remove "-n" and next arg value from _args.
+      if(!to<size_t>(sn,number,10)) {
+        warn("inlib::insh::_head : "+sout(sn)+" not a size_t.");
+        return;
+      }
+    }}
+    std::string fnh;
+    if(!_args.first_not_hyphen(fnh)) {
+      warn("inlib::insh::_head : no file given.");
+      return;
+    }
+    const std::string& file = fnh;
+    FILE* _FILE = ::fopen(file.c_str(),"rb");
+    if(!_FILE) {
+      warn("inlib::insh::_head : file "+sout(file)+" does not exist.");
+      return;
+    }
+    unsigned int BUFSIZE = 65536;
+    char* buffer = new char[BUFSIZE+1];
+    if(!buffer) {
+      warn("inlib::insh::_cat : can't alloc buffer.");
+      ::fclose(_FILE);
+      return;
+    }
+    size_t count = 0;
+    while(count<number) {
+      size_t l;
+      if(!file::read_cstring(_FILE,buffer,BUFSIZE,l)) break; // EOF.
+      m_out << buffer << std::endl;
+      count++;
+    }
+    delete [] buffer;
+    ::fclose(_FILE);
+  }
+  static const std::string& _head_help() {
+    static const std::string s_help("\
+head: head  [-n uint] path\n\
+  Display first lines of a file.\n\
+  -n uint, number of lines to be displayed.\n\
+");
+    return s_help;
+  }
+
+  void _tail(const std::vector<std::string>& a_args) {
+    args _args(a_args);
+    size_t number = 10;    
+   {std::string sn;
+    if(_args.find_hyphen_next("-n",sn,"10",true)) {  //true=remove "-n" and next arg value from _args.
+      if(!to<size_t>(sn,number,10)) {
+        warn("inlib::insh::_tail : "+sout(sn)+" not a size_t.");
+        return;
+      }
+    }}
+    std::string fnh;
+    if(!_args.first_not_hyphen(fnh)) {
+      warn("inlib::insh::_tail : no file given.");
+      return;
+    }
+    const std::string& file = fnh;
+    FILE* _FILE = ::fopen(file.c_str(),"rb");
+    if(!_FILE) {
+      warn("inlib::insh::_tail : file "+sout(file)+" does not exist.");
+      return;
+    }
+    size_t linen;
+    if(!file::read_number_of_lines(_FILE,linen)) {
+      warn("inlib::insh::_cat : can't get number of lines.");
+      ::fclose(_FILE);
+      return;
+    }
+    ::rewind(_FILE);
+    if(number>linen) number = linen;
+    unsigned int BUFSIZE = 65536;
+    char* buffer = new char[BUFSIZE+1];
+    if(!buffer) {
+      warn("inlib::insh::_cat : can't alloc buffer.");
+      ::fclose(_FILE);
+      return;
+    }
+    size_t count = 0;
+    while(true) {
+      size_t l;
+      if(!file::read_cstring(_FILE,buffer,BUFSIZE,l)) break; // EOF.
+      if((count>=(linen-number))&&(count<linen)) {
+        m_out << buffer << std::endl;
+      }
+      count++;
+    }
+    delete [] buffer;
+    ::fclose(_FILE);
+  }
+  static const std::string& _tail_help() {
+    static const std::string s_help("\
+tail: tail [-n uint] path\n\
+  Display the last part of a file.\n\
+  -n uint, number of lines to be displayed.\n\
+");
+    return s_help;
+  }
+
+  void _grep(const std::vector<std::string>& a_args) {
+    if(a_args.size()!=2) {
+      warn("inlib::insh::_grep : two arguments expected.");
+      return;
+    }
+    const std::string& what = a_args[0];
+    const std::string& file = a_args[1];
+    FILE* _FILE = ::fopen(file.c_str(),"rb");
+    if(!_FILE) {
+      warn("inlib::insh::_grep : file "+sout(file)+" does not exist.");
+      return;
+    }
+    unsigned int BUFSIZE = 65536;
+    char* buffer = new char[BUFSIZE+1];
+    if(!buffer) {
+      warn("inlib::insh::_grep : can't alloc buffer.");
+      ::fclose(_FILE);
+      return;
+    }
+    out_begin();
+    while(true) {
+      size_t l;
+      if(!file::read_cstring(_FILE,buffer,BUFSIZE,l)) break; // EOF.
+      if(::strstr(buffer,what.c_str())) {
+        //m_out << buffer << std::endl;
+        out(buffer,true);
+      }
+    }
+    delete [] buffer;
+    ::fclose(_FILE);
+  }
+  static const std::string& _grep_help() {
+    static const std::string s_help("\
+grep: grep what path\n\
+  Print lines in file 'path' with 'what' in them.\n\
+");
+    return s_help;
+  }
+
+  void _touch(const std::vector<std::string>& a_args) {
+    inlib_vforcit(std::string,a_args,it) {
+      if(!file::exists(*it)) {
+        FILE* _FILE = ::fopen((*it).c_str(),"wb");
+        if(!_FILE) {
+          warn("inlib::insh::_touch : fopen(wb) failed for "+sout(*it)+".");
+          return;
+        }
+        ::fclose(_FILE);
+      } else {
+        if(!touch_file(*it)) {
+          warn("inlib::insh::_touch : touch() failed for "+sout(*it)+".");
+          return;
+	}
+      }
+    }
+  }
+  static const std::string& _touch_help() {
+    static const std::string s_help("\
+touch: touch paths\n\
+  The touch utility sets the modification and access times of files.\n\
+  If any file does not exist, it is created with default permissions.\n\
+  Example:\n\
+    touch file_1 file_2\n\
+");
+    return s_help;
+  }
+
+  void _string_replace(const std::vector<std::string>& a_args) {
+    if(a_args.size()!=3) {
+      warn("inlib::insh::_string_replace : three arguments expected.");
+      return;
+    }
+    std::string _s = a_args[2];
+    const std::string& _old = a_args[0];
+    const std::string& _new = a_args[1];
+    replace(_s,_old,_new);
+    out(_s);
+  }
+
+protected:  //end builtins.
+
+  INLIB_INSH_CLASS_CMD(insh)
+
+#define INLIB_INSH_ADD_VOID_ARGS_BUILTIN(a__name,a__method,a__help)\
+   add_builtin(#a__name,new insh_cmd(*this,&insh::a__method,a__help));
+
+#define INLIB_INSH_ADD_VOID_ARGS_BUILTIN_COMPLETE(a__name,a__method,a__help,a__complete)\
+   add_builtin(#a__name,new insh_cmd(*this,&insh::a__method,a__help,a__complete));
+
+protected:
+  void init_builtins() {
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN_COMPLETE(.,_dot,_dot_help,_cat_complete)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN_COMPLETE(help,_help,_help_help,_help_complete)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(return,_return,_return_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(echo,_echo,_echo_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(type,_type,_type_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(exit,_exit,_exit_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(history,_history,_history_help)
+
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(printenv,_printenv,_printenv_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(date,_date,_date_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(compgen,_compgen,_compgen_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(unset,_unset,_unset_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(unalias,_unalias,_unalias_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(export,_export,_export_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(set,_set,_set_help)
+  //INLIB_INSH_ADD_VOID_ARGS_BUILTIN(let,_let,_let_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(alias,_alias,_alias_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(time,_time,_time_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(pwd,_pwd,_pwd_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN_COMPLETE(cd,_cd,_cd_help,_cd_complete)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(cp,_cp,_cp_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(mkdir,_mkdir,_mkdir_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN_COMPLETE(rm,_rm,_rm_help,_cat_complete)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(basename,_basename,_basename_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(dirname,_dirname,_dirname_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(eval,_eval,_eval_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(unique,_unique,_unique_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(seq,_seq,_seq_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN_COMPLETE(cat,_cat,_cat_help,_cat_complete)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN_COMPLETE(head,_head,_head_help,_cat_complete)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN_COMPLETE(tail,_tail,_tail_help,_cat_complete)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN_COMPLETE(grep,_grep,_grep_help,_cat_complete)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(touch,_touch,_touch_help)
+
+    // not bash like:
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(suffix,_suffix,_suffix_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(print_args,_print_args,_print_args_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(helps,_helps,_helps_help)
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(system,\
+      _system,\
+"system: system command\n\
+  Pass command to the C ::system() function.\n\
+  Note that a command with arguments must be passed as one string.\n\
+  Example:\n\
+    system ls\n\
+    system 'ls -al'\n\
+")\
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(sys_os,\
+      _sys_os,\
+"sys_os: sys_os\n\
+  Return OS type. It is defined in inlib/platform/os().\n\
+  It could be:\n\
+    iOS,Android,emscripten,Windows_NT,Darwin,Linux,CYGWIN,OSF1.\n\
+  Example:\n\
+    sys_os\n\
+");\
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(sys_device_has_stop_app_button,\
+      _sys_device_has_stop_app_button,\
+"sys_device_has_stop_app_button: sys_device_has_stop_app_button\n\
+  Return true if the device has a button (or gesture) to stop the current application, false if none.\n\
+  Android and iOS have a button to stop the current application (or a gesture to do that).\n\
+  Example:\n\
+    sys_device_has_stop_app_button\n\
+")\
+    INLIB_INSH_ADD_VOID_ARGS_BUILTIN(string_replace,\
+      _string_replace,\
+"string_replace: string_replace old new string\n\
+  Replace occurences of old by new in string.\n\
+  Example:\n\
+    # the below should print 'hello world... what the hell?'\n\
+    string_replace xy ll 'hexyo world... what the hexy?'\n\
+")
+
+  }
+
+#undef INLIB_INSH_ADD_VOID_ARGS_BUILTIN
+
+protected:
+  std::ostream& m_out;
+  std::map<std::string,base_cmd*> m_builtins;
+  std::map<std::string,base_cmd*> m_cmds;
+  std::vector<state> m_states;
+  state m_state;
+  std::string m_history_file;
+  decompress_func m_decompress_func;
+  size_t m_unix_cols;
+public:
+  bool m_complete_state;
+};
+
+}
+
+#endif
+
+

@@ -1,0 +1,33 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_compiler
+#define inlib_insh_compiler
+
+#include "ishell"
+
+#include "../platform"
+#include "../typedefs"
+#include <sys/types.h>  //off_t
+
+namespace inlib {
+
+inline void insh_cpp_sizeof_void_star(ishell& a_insh,const std::vector<std::string>&) {
+  a_insh.out_num<uint32>(sizeof(void*));
+}
+inline void insh_cpp_sizeof_long(ishell& a_insh,const std::vector<std::string>&) {
+  a_insh.out_num<uint32>(sizeof(long));
+}
+inline void insh_cpp_sizeof_long_long(ishell& a_insh,const std::vector<std::string>&) {
+  a_insh.out_num<uint32>(sizeof(long long));
+}
+inline void insh_cpp_sizeof_off_t(ishell& a_insh,const std::vector<std::string>&) {
+  a_insh.out_num<uint32>(sizeof(off_t));
+}
+inline void insh_sys_is_little_endian(ishell& a_insh,const std::vector<std::string>&) {
+  a_insh.out_num<uint32>(is_little_endian()?1:0);
+}
+
+}
+
+#endif

@@ -1,0 +1,188 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_view_evd
+#define inlib_insh_view_evd
+
+#include "ishell"
+#include "../sg/view_evd"
+
+namespace inlib {
+
+inline void insh_scene_set_layout(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  static const std::string s_cmd("scene_set_layout");
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  INLIB_ISHELL_GET_ARGS_MATRIX
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  sg::matrix& _matrix = a_evd.layout();
+  _matrix.mul_translate(translate);                                      //applied third.
+  _matrix.mul_rotate(rotate.v0(),rotate.v1(),rotate.v2(),rotate.v3());   //applied second.
+  _matrix.mul_scale(scale);                                              //applied first.
+}
+
+inline void insh_camera_set_ortho(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  static const std::string s_cmd("camera_set_ortho");
+  if(a_args.empty()) {
+    a_insh.warn(s_cmd+": one argument expected.");
+    return;
+  }
+  float height;
+  INLIB_ISHELL_ARG_FLOAT(a_args[0],height)
+  sg::ortho* camera = new sg::ortho();
+  camera->height = height;
+  a_evd.replace_camera(camera);
+}
+
+inline void insh_camera_set_perspective(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  static const std::string s_cmd("camera_set_perspective");
+  if(a_args.empty()) {
+    a_insh.warn(s_cmd+": one argument expected.");
+    return;
+  }
+  float height_angle;
+  INLIB_ISHELL_ARG_FLOAT(a_args[0],height_angle)
+  sg::perspective* camera = new sg::perspective();
+  camera->height_angle = height_angle;
+  a_evd.replace_camera(camera);
+}
+
+inline const std::string& insh_camera_set_perspective_help() {
+  static const std::string s_help("\
+camera_set_perspective: camera_set_perspective angle\n\
+  Replace the current camera by a perspective camera with angle (in radians) height_angle.\n\
+  Example:\n\
+    camera_set_perspective 0.785  # pi/4.\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_create(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  args _args(a_args);
+  float radius;
+  _args.find<float>("-radius",radius,1);
+  a_evd.create_sg_evd(radius);
+}
+
+inline void insh_scene_clear_static(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  a_evd.static_sg().clear();
+}
+inline void insh_scene_clear_dynamic(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  a_evd.dynamic_sg().clear();
+}
+inline void insh_scene_clear_static_blend(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  a_evd.static_blend_sg().clear();
+}
+
+}
+
+#include "node_to_bsg"
+#include "send_sg"
+
+namespace inlib {
+
+inline void insh_scene_write_static_to_bsg(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  insh_node_to_bsg(a_insh,a_args,a_evd.gv(),a_evd.static_sg());
+}
+inline void insh_scene_write_dynamic_to_bsg(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  insh_node_to_bsg(a_insh,a_args,a_evd.gv(),a_evd.dynamic_sg());
+}
+
+inline void insh_scene_send_static(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  static const std::string s_cmd("scene_send_static");
+  insh_scene_send_sg(s_cmd,a_insh,a_args,a_evd.gv(),a_evd.static_sg());
+}
+inline void insh_scene_send_dynamic(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  static const std::string s_cmd("scene_send_dynamic");
+  insh_scene_send_sg(s_cmd,a_insh,a_args,a_evd.gv(),a_evd.dynamic_sg());
+}
+
+inline void insh_scene_static_to_vertices(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  a_evd.gv().separator_to_vertices(a_evd.static_sg());
+}
+inline void insh_scene_dynamic_to_vertices(ishell& a_insh,const std::vector<std::string>& a_args,sg::view_evd& a_evd) {
+  a_evd.gv().separator_to_vertices(a_evd.dynamic_sg());
+}
+
+}
+
+#include "ishell_args_view_evd_cmd"
+
+#define INLIB_INSH_VIEW_EVD_ADDS(a__insh,a__evd)\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_create,\
+    inlib::insh_scene_create,\
+"scene_create: scene_create [-radius]\n\
+  Create a scene graph structure ready for event display.\n\
+  In particular, beside the creation of a camera node, are created\n\
+  a 'static scene graph' used for example to deposit 'detector' representations,\n\
+  and also a 'dynamic scene graph' used to deposit 'event' representations.\n\
+  -radius=number used to set default camera setup (default 1).\n\
+  See also:\n\
+    scene_clear_static\n\
+    scene_clear_dynamic\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_clear_static,\
+    inlib::insh_scene_clear_static,\
+"scene_clear_static: scene_clear_static\n\
+  Clear the static scene graph.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_clear_dynamic,\
+    inlib::insh_scene_clear_dynamic,\
+"scene_clear_dynamic: scene_clear_dynamic\n\
+  Clear the dynamic scene graph.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_clear_static_blend,\
+    inlib::insh_scene_clear_static_blend,\
+"scene_clear_static_blend: scene_clear_static_blend\n\
+  Clear the static blend scene graph.\n\
+")\
+/*INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_clear_screen,m_holder.screen_sg().clear(),insh::no_help())*/\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,camera_set_ortho,\
+    inlib::insh_camera_set_ortho,\
+"camera_set_ortho: camera_set_ortho height\n\
+  Replace the current camera by an orthographic camera of given height.\n\
+  Example:\n\
+    camera_set_ortho 4\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,camera_set_perspective,\
+    inlib::insh_camera_set_perspective,inlib::insh_camera_set_perspective_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_write_static_to_bsg,\
+    inlib::insh_scene_write_static_to_bsg,inlib::insh_scene_write_static_to_bsg_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_write_dynamic_to_bsg,\
+    inlib::insh_scene_write_dynamic_to_bsg,inlib::insh_scene_write_dynamic_to_bsg_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_send_static,\
+    inlib::insh_scene_send_static,inlib::insh_scene_send_static_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_send_dynamic,\
+    inlib::insh_scene_send_dynamic,inlib::insh_scene_send_dynamic_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_static_to_vertices,\
+    inlib::insh_scene_static_to_vertices,\
+"scene_static_to_vertices: scene_static_to_vertices\n\
+  Transform the content of the static scene graph to three inlib::sg::atb_vertices nodes;\n\
+  one containing the points, another the segments, and a last one with the triangles.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_dynamic_to_vertices,\
+    inlib::insh_scene_dynamic_to_vertices,\
+"scene_dynamic_to_vertices: scene_dynamic_to_vertices\n\
+  Transform the content of the dynamic scene graph to three inlib::sg::atb_vertices nodes;\n\
+  one containing the points, another the segments, and a last one with the triangles.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_VIEW_EVD_CMD(a__insh,a__evd,scene_set_layout,\
+    inlib::insh_scene_set_layout,\
+"scene_set_layout: scene_set_layout [-translate,-rotate,-scale] \n\
+  Set the overall layout matrix.\n\
+  -scale=real overall scale (default 1).\n\
+  -rotate='real real real real' overall rotation (default '0 0 1 0'). First\n\
+  three numbers specify the axis, the last one the angle in radians.\n\
+  -translate='real real real' overall translation (default '0 0 0').\n\
+  Scale, rotation, translation are applied in this order.\n\
+  Example:\n\
+    scene_set_layout -rotate='0 1 0 1.570796'\n\
+")
+
+#endif

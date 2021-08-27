@@ -1,0 +1,341 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_gui_items
+#define inlib_sg_gui_items
+
+#include "text_button"
+#include "image_text_button"
+#include "arrow_button"
+#include "gui_params"
+#include "blend"
+#include "ghost"
+#include "_switch"
+#include "../image_reader"
+#include "../sep"
+
+namespace inlib {
+namespace sg {
+
+inline bool set_img_from_res_file(std::ostream& a_out,const std::string& a_res_dir,const image::readers& a_image_readers,const std::string& a_file,img_byte& a_img) {
+  if(a_file.empty()) {a_img.clear();return true;}
+  std::string path;
+  if(a_res_dir.size()) path = a_res_dir+sep();
+  path += a_file;
+  inlib_vforcit(image::readers::named_reader,a_image_readers.named_readers(),it) {
+    image::ireader* _reader = (*it).second;
+    if(!_reader->is(path)) continue;
+    unsigned int w,h,bpp;
+    unsigned char* buffer = _reader->read(a_out,path,w,h,bpp);
+    if(!buffer) continue;
+    a_img.set(w,h,bpp,buffer,true);
+    return true;
+  }
+  a_img.clear();
+  return false;
+}
+
+inline void set_button_style(const gui_params& a_params,text_button& a_node) {
+  a_node.back_area::color = a_params.m_gui_back_color;
+  a_node.back_area::border_color = a_params.m_gui_border_color;
+  a_node.color = a_params.m_gui_front_color;
+  a_node.arm_color = a_params.m_gui_arm_color;
+  a_node.hmargin_factor = 0.5f; //Apple seems to have that.
+  a_node.font = a_params.m_gui_font;
+  a_node.font_modeling = a_params.m_gui_font_modeling;
+}
+
+inline void set_image_button_style(const gui_params& a_params,image_button& a_node) {
+  a_node.back_area::color = a_params.m_gui_back_color;
+  a_node.back_area::border_color = a_params.m_gui_border_color;
+  a_node.color = a_params.m_gui_back_color;
+  a_node.arm_color = a_params.m_gui_arm_color;
+  //a_node.hmargin_factor = 0.8f;
+  a_node.hmargin_factor = 0.6f;
+}
+
+inline void set_arrow_button_style(const gui_params& a_params,arrow_button& a_node) {
+  a_node.back_area::color = a_params.m_gui_back_color;
+  a_node.back_area::border_color = a_params.m_gui_border_color;
+  a_node.color = a_params.m_gui_front_color;
+  a_node.arm_color = a_params.m_gui_arm_color;
+}
+
+inline void set_arconf(const gui_params& a_params,text& a_text,const std::string& a_s){
+  a_text.strings.clear();
+  a_text.strings.add(a_s);
+  a_text.font = a_params.m_gui_font;
+  a_text.font_modeling = a_params.m_gui_font_modeling;
+  a_text.confine = true;
+  a_text.hjust = center;
+}
+
+inline void set_arconf(const gui_params& a_params,text& a_text,const std::vector<std::string>& a_ss){
+  a_text.strings = a_ss;
+  a_text.font = a_params.m_gui_font;
+  a_text.font_modeling = a_params.m_gui_font_modeling;
+  a_text.confine = true;
+  a_text.hjust = center;
+}
+
+inline void create_main_button(std::ostream& a_out,
+                          const std::string& a_res_dir,
+                          const gui_params& a_params,
+			  const image::readers& a_image_readers,
+			  const base_freetype& a_ttf,
+                          separator& a_parent,
+                          float a_wcw,float a_wch,float a_wb,float a_hb,
+                          float a_roffset,
+                          unsigned int a_col,unsigned int a_row,
+                          const std::string& a_label,
+                          const std::string& a_img_label,
+                          const std::string& a_img,
+                          bcbk* a_cbk) { //take ownerhship.
+    //a_col=[0,a_cols-1] 0=left
+    //a_row=[0,a_rows-1] 0=bottom
+    //a_roffset : for Wt : to see right border of buttons at right.
+
+    //float wbutton = a_wcw/float(a_cols);
+    //float hbutton = a_wch/float(a_rows);
+    float wbutton = a_wb;
+    float hbutton = a_hb;
+
+    separator* sep = new separator;
+    a_parent.add(sep);
+
+    matrix* m = new matrix;
+
+    float x = -a_wcw*0.5F+wbutton*0.5f; //at left.
+    x += a_col*wbutton;
+    x -= a_wcw*a_roffset;
+
+    float y = -a_wch*0.5F+hbutton*0.5f; //at bottom.
+    y += a_row*hbutton;
+
+    m->set_translate(x,y,0);
+    sep->add(m);
+
+    if(a_img.size()&&a_params.m_image_buttons) {
+      image_text_button* b = new image_text_button(a_ttf);
+      b->width = wbutton;
+      b->height = hbutton;
+
+      set_image_button_style(a_params,*b);
+      set_img_from_res_file(a_out,a_res_dir,a_image_readers,a_img,b->img.value());
+      b->img.touch();
+
+      if(a_img_label.size()) {
+        b->text().strings.clear();
+        b->text().strings.add(a_img_label);
+        b->text().font = a_params.m_gui_font;
+        b->text().font_modeling = a_params.m_gui_font_modeling;
+        b->text().color = a_params.m_gui_front_color;
+      }
+      s2layout_policy(a_params.m_list_item_layout,b->layout.value());
+      b->corner_radius = a_params.m_corner_radius;
+
+      b->add_callback(a_cbk);
+      sep->add(b);
+
+    } else {
+      text_button* b = new text_button(a_ttf);
+      b->width = wbutton;
+      b->height = hbutton;
+
+      set_button_style(a_params,*b);
+      set_arconf(a_params,*b,a_label);
+
+      b->corner_radius = a_params.m_corner_radius;
+
+      b->add_callback(a_cbk);
+      sep->add(b);
+    }
+}
+
+inline void create_main_button(std::ostream& a_out,
+                          const std::string& a_res_dir,
+                          const gui_params& a_params,
+			  const image::readers& a_image_readers,
+                          separator& a_parent,
+                          float a_wcw,float a_wch,float a_wb,float a_hb,
+                          float a_roffset,
+                          unsigned int a_col,unsigned int a_row,
+                          image_button& a_img_button,
+                          text_button& a_button,
+                          const std::string& a_label,
+                          const std::string& a_img,
+                          bcbk* a_cbk) { //take ownerhship.
+    float wbutton = a_wb;
+    float hbutton = a_hb;
+
+    separator* sep = new separator;
+    a_parent.add(sep);
+
+    matrix* m = new matrix;
+
+    float x = -a_wcw*0.5F+wbutton*0.5f; //at left.
+    x += a_col*wbutton;
+    x -= a_wcw*a_roffset;
+
+    float y = -a_wch*0.5F+hbutton*0.5f; //at bottom.
+    y += a_row*hbutton;
+
+    m->set_translate(x,y,0);
+    sep->add(m);
+
+    if(a_params.m_image_buttons) {
+      a_img_button.width = wbutton;
+      a_img_button.height = hbutton;
+
+      set_image_button_style(a_params,a_img_button);
+      set_img_from_res_file(a_out,a_res_dir,a_image_readers,a_img,a_img_button.img.value());
+      a_img_button.img.touch();
+
+      a_img_button.corner_radius = a_params.m_corner_radius;
+
+      a_img_button.clear_cbks();
+      a_img_button.add_callback(a_cbk);
+      sep->add(new noderef(a_img_button));
+
+    } else {
+      a_button.width = wbutton;
+      a_button.height = hbutton;
+
+      set_button_style(a_params,a_button);
+      set_arconf(a_params,a_button,a_label);
+
+      a_button.corner_radius = a_params.m_corner_radius;
+
+      a_button.clear_cbks();
+      a_button.add_callback(a_cbk);
+      sep->add(new noderef(a_button));
+    }
+}
+
+inline void create_main_button(
+                          const gui_params& a_params,
+                          separator& a_parent,
+                          float a_wcw,float a_wch,float a_wb,float a_hb,
+                          float a_roffset,
+                          unsigned int a_col,unsigned int a_row,
+                          const std::string& a_label,
+                          text_button& a_button,
+                          bcbk* a_cbk) { //take ownerhship.
+    float wbutton = a_wb;
+    float hbutton = a_hb;
+
+    separator* sep = new separator;
+    a_parent.add(sep);
+
+    matrix* m = new matrix;
+
+    float x = -a_wcw*0.5F+wbutton*0.5f; //at left.
+    x += a_col*wbutton;
+    x -= a_wcw*a_roffset;
+
+    float y = -a_wch*0.5F+hbutton*0.5f; //at bottom.
+    y += a_row*hbutton;
+
+    m->set_translate(x,y,0);
+    sep->add(m);
+
+    a_button.width = wbutton;
+    a_button.height = hbutton;
+
+    set_button_style(a_params,a_button);
+    set_arconf(a_params,a_button,a_label);
+
+    a_button.corner_radius = a_params.m_corner_radius;
+
+    a_button.clear_cbks();
+    a_button.add_callback(a_cbk);
+
+    sep->add(new noderef(a_button));
+}
+
+inline void create_arrow(const gui_params& a_params,
+                           separator& a_parent,
+                           float a_wcw,float a_wch,float a_wb,float a_hb,
+                           float a_roffset,
+                           unsigned int a_col,unsigned int a_row,
+                           arrow_type a_type,
+                           bcbk* a_cbk) { //take ownerhship.
+    float wbutton = a_wb;
+    float hbutton = a_hb;
+
+    separator* sep = new separator;
+    a_parent.add(sep);
+
+    matrix* m = new matrix;
+
+    float x = -a_wcw*0.5F+wbutton*0.5f; //at left.
+    x += a_col*wbutton;
+    x -= a_wcw*a_roffset;
+
+    float y = -a_wch*0.5F+hbutton*0.5f; //at bottom.
+    y += a_row*hbutton;
+
+    m->set_translate(x,y,0);
+    sep->add(m);
+
+    arrow_button* b = new arrow_button;
+    b->width = wbutton;
+    b->height = hbutton;
+    b->orientation = a_type;
+    set_arrow_button_style(a_params,*b);
+
+    b->corner_radius = a_params.m_corner_radius;
+
+    b->add_callback(a_cbk);
+
+    sep->add(b);
+}
+
+inline void create_meta_zone(const gui_params& a_params,
+                               const base_freetype& a_ttf,
+                               separator& a_parent,
+                               _switch& a_meta_switch,
+                               float a_wcw,float a_wch,float a_hzone,
+                               bcbk* a_cbk) { //take ownerhship.
+    int old_meta_switch_which = a_meta_switch.which;
+
+    separator* sep = new separator;
+    a_parent.add(sep);
+
+    matrix* m = new matrix;
+    float wbutton = a_wcw;
+    float x = 0;
+    float y = -a_wch*0.5F+a_hzone*0.5f;
+    m->set_translate(x,y,-0.1f);
+    sep->add(m);
+
+    blend* _blend = new blend;
+    _blend->on = true; //to handle transparency.
+    sep->add(_blend);
+
+    a_meta_switch.clear();
+    sep->add(new noderef(a_meta_switch));
+
+   {text_button* b = new text_button(a_ttf);
+    set_arconf(a_params,*b,"scene to menu area (shown once)");
+    set_button_style(a_params,*b);
+    // transparent back :
+    b->back_area::color = colorf(0.7f,0.9f,1,0.4f);  //alpha = 0.5f so that it is visible on a black back (case of pmx).
+    //b->width = wbutton*(1-2*0.3f);
+    b->width = wbutton;
+    b->height = a_hzone;
+    b->add_callback(a_cbk->copy());
+    a_meta_switch.add(b);}
+
+   {ghost* b = new ghost;
+    b->width = wbutton;
+    b->height = a_hzone;
+    b->add_callback(a_cbk);
+    a_meta_switch.add(b);}
+
+    a_meta_switch.which = old_meta_switch_which;
+}
+
+}}
+
+#endif

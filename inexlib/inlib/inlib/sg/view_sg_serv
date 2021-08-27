@@ -1,0 +1,245 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_view_sg_serv
+#define inlib_sg_view_sg_serv
+
+#include "view_evd"
+#include "../net/sg_serv_thread"
+#include "../num2s"
+#include "../sbeg"
+
+namespace inlib {
+namespace sg {
+
+class view_sg_serv {
+public:
+  typedef void(*initialize_func)(void*,void*);
+  typedef void(*finalize_func)(void*,void*);
+public:
+  INLIB_SCLASS(inlib::sg::view_sg_serv)
+public:
+  view_sg_serv(gui_viewer& a_viewer,bool /*a_verbose*/ = false)
+  :m_viewer(a_viewer)
+  ,m_initialize_func(0)
+  ,m_connect_func(0)
+  ,m_disconnect_func(0)
+  ,m_finalize_func(0)
+  ,m_data_1(0)
+  ,m_data_2(0)
+  ,m_sg_serv(a_viewer.out())
+  {}
+  virtual ~view_sg_serv(){
+    m_sg_serv.finalize(); //WARNING : it should end the "waiting data client" thread here
+                          //          since m_sg_serv.m_dc_args is used in the thread.
+  }
+protected: //not copyable
+  view_sg_serv(const view_sg_serv& a_from)
+  :m_viewer(a_from.m_viewer)
+  ,m_initialize_func(a_from.m_initialize_func)
+  ,m_connect_func(a_from.m_connect_func)
+  ,m_disconnect_func(a_from.m_disconnect_func)
+  ,m_finalize_func(a_from.m_finalize_func)
+  ,m_data_1(a_from.m_data_1)
+  ,m_data_2(a_from.m_data_2)
+  ,m_sg_serv(a_from.m_viewer.out())
+  {}
+  view_sg_serv& operator=(const view_sg_serv& a_from){
+    m_initialize_func = a_from.m_initialize_func;
+    m_connect_func = a_from.m_connect_func;
+    m_disconnect_func = a_from.m_disconnect_func;
+    m_finalize_func = a_from.m_finalize_func;
+    m_data_1 = a_from.m_data_1;
+    m_data_2 = a_from.m_data_2;
+    return *this;
+  }
+public:
+  void set_params(initialize_func a_initialize_func,
+                  net::sg_serv_args::connect_func a_connect_func,
+                  net::sg_serv_args::disconnect_func a_disconnect_func,
+                  finalize_func a_finalize_func,
+                  void* a_data_1,void* a_data_2) {
+    m_initialize_func = a_initialize_func;
+    m_connect_func = a_connect_func;
+    m_disconnect_func = a_disconnect_func;
+    m_finalize_func = a_finalize_func;
+    m_data_1 = a_data_1;
+    m_data_2 = a_data_2;
+  }
+  bool initialize(const std::string& a_host,unsigned int a_port) {
+    if(m_viewer.verbose()) {
+      m_viewer.out() << "inlib::sg::view_sg_serv::initialize :"
+                     << " with host " << sout(a_host) << ", and port " << a_port << "."  << std::endl;
+    }
+    if(m_initialize_func) m_initialize_func(m_data_1,m_data_2);
+    return m_sg_serv.initialize(a_host,a_port,m_connect_func,m_disconnect_func,m_data_1,m_data_2,m_viewer.verbose());
+  }
+  void finalize() {
+    if(m_viewer.verbose()) {
+      m_viewer.out() << "inlib::sg::view_sg_serv::stop." << std::endl;
+    }
+    m_sg_serv.finalize();
+    if(m_finalize_func) m_finalize_func(m_data_1,m_data_2);
+  }
+  net::sg_serv& sg_serv() {return m_sg_serv;}
+public:
+  bool is_connected() {return m_sg_serv.sg_client_sock().is_connected();}
+  bool is_there_input(bool& a_is,unsigned int a_micro_secs = 10) {
+    return m_sg_serv.sg_client_sock().is_there_input(a_is,a_micro_secs);
+  }
+  SOCKET socket() {return m_sg_serv.sg_client_sock().socket();}
+
+  bool treat_event(decompress_func a_decompress_func) { //sg_serv being not a wall_master.
+    std::ostream& out = m_viewer.out();
+    bool verbose = m_viewer.verbose();
+    std::string prot;
+    if(!m_sg_serv.sg_client_sock().fetch_string(prot)) {
+      out  << "inlib::sg::view_sg_serv::treat_event : fetch_string failed." << std::endl;
+      m_sg_serv.stop_sg_client();
+      return false;
+    }
+
+    if(verbose)
+      out << "inlib::sg::view_sg_serv::treat_event : received prot " << inlib::sout(prot) << "." << std::endl;
+
+    std::string cmd;
+
+    if(prot==inlib::sg::s_protocol_disconnect()) {
+      m_sg_serv.stop_sg_client();
+/*
+    } else if(prot==inlib::sg::s_protocol_acknowledge()) {
+      if(!m_sg_serv.sg_client_sock().send_string("ok")) {
+        out  << "inlib::sg::view_sg_serv::treat_event : send_string() failed." << std::endl;
+        m_sg_serv.stop_sg_client();
+        return false;
+      }
+*/
+    } else if(prot==inlib::sg::s_protocol_view_all()) {
+      m_viewer.adapt_camera_to_scene();
+      m_viewer.win_render();
+    } else if(prot==inlib::sg::s_protocol_disable_anim()) {
+      m_viewer.disable_anim();
+      m_viewer.win_render();
+    } else if(prot==inlib::sg::s_protocol_set_background_black()) {
+      m_viewer.set_scene_clear_color(colorf_black());
+      m_viewer.win_render();
+    } else if(prot==inlib::sg::s_protocol_set_background_white()) {
+      m_viewer.set_scene_clear_color(colorf_white());
+      m_viewer.win_render();
+    } else if(prot==inlib::sg::s_protocol_reset_camera()) {
+      m_viewer.reset_camera();
+      m_viewer.win_render();
+
+    } else if(prot==inlib::sg::s_protocol_clear_static_sg()) {
+    //m_viewer.insh().exec_line_new_state(s_insh_clear_static_scene());
+      inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(m_viewer);
+      if(_evd) _evd->static_sg().clear();
+      m_viewer.win_render();
+    } else if(prot==inlib::sg::s_protocol_clear_dynamic_sg()) {
+    //m_viewer.insh().exec_line_new_state(s_insh_clear_dynamic_scene());
+      inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(m_viewer);
+      if(_evd) _evd->dynamic_sg().clear();
+      m_viewer.win_render();
+    } else if(prot==inlib::sg::s_protocol_clear_screen_sg()) {
+    //m_viewer.insh().exec_line_new_state(s_insh_clear_screen_scene());
+      inlib::sg::view_evd* _evd = inlib::sg::cast_view_evd(m_viewer);
+      if(_evd) _evd->screen_sg().clear();
+      m_viewer.win_render();
+
+    } else if(prot==inlib::sg::s_protocol_zdoc()) {
+      char* buffer;
+      inlib::uint64 length;
+      if(m_sg_serv.receive_zdoc(a_decompress_func,buffer,length) && length && buffer) {
+        if(verbose) {
+          out << "inlib::sg::view_sg_serv::treat_event :"
+              << " for prot " << inlib::sout(prot) << " :"
+              << " got " << length << " decompressed bytes."
+              << std::endl;
+        }
+        if(!m_viewer.receive_document_buffer(buffer,length,inlib::sg::s_protocol_arg_sep())) {
+	  //m_viewer.set_to_exit();
+        }
+      }
+      delete [] buffer;
+
+    } else if(prot==inlib::sg::s_protocol_get_wall_params()) {
+
+      std::string _prot;
+      _prot = inlib::sg::s_protocol_get_wall_params();
+
+      _prot += "\n";
+      _prot += sg::s_sg_serv_ww()+"=";
+      numas(m_viewer.width(),_prot);
+
+      _prot += "\n";
+      _prot += sg::s_sg_serv_wh()+"=";
+      numas(m_viewer.height(),_prot);
+
+      _prot += "\n";
+      _prot += sg::s_sg_serv_bw()+"=";
+      numas(0,_prot);
+
+      _prot += "\n";
+      _prot += sg::s_sg_serv_bh()+"=";
+      numas(0,_prot);
+
+      _prot += "\n";
+      _prot += sg::s_sg_serv_cols()+"=";
+      numas(1,_prot);
+
+      _prot += "\n";
+      _prot += sg::s_sg_serv_rows()+"=";
+      numas(1,_prot);
+
+      if(!m_sg_serv.sg_client_sock().send_string(_prot)) {
+        out << "inlib::sg::view_sg_serv::treat_event : send_string failed." << std::endl;
+        return false;
+      }
+
+    } else if(is_beg(prot,inlib::sg::s_protocol_set_params(),cmd)) { //inlib/app/file_to_sg_serv.cpp :
+      inlib::args args(cmd,"\n",false);
+      if(!m_viewer.args2params(args.get_args(),false)) {}
+      m_viewer.win_render();
+
+    } else if(is_beg(prot,inlib::sg::s_protocol_set_camera(),cmd)) { //inlib/app/file_to_sg_serv.cpp :
+      inlib::args args(cmd,"\n",false);
+      if(!m_viewer.args2camera(args.get_args(),false)) {}
+      m_viewer.win_render();
+
+    } else {
+      out << "inlib::sg::view_sg_serv::treat_event : prot " << inlib::sout(prot) << " not handled." << std::endl;
+      return false;
+    }
+    return true;
+  }
+/*
+    create_main_button(m_out,m_res_dir,m_params,m_image_readers,
+                       m_camenu_sep,a_wcw,a_wch,a_wb,a_hb,0,
+                       a_nb-6,0,
+                       "-|",
+                       m_camenu_sg_serv_has_client_text_button,
+                       new gv_cbk(*this,action_none))
+    if(m_params.m_sg_serv_has_client) {
+      m_camenu_sg_serv_has_client_text_button.back_color::color = colorf_pink();
+    } else {
+      m_camenu_sg_serv_has_client_text_button.back_color::color = m_params.m_gui_back_color;
+    }
+*/
+protected:
+  gui_viewer& m_viewer;
+  initialize_func m_initialize_func;
+  net::sg_serv_args::connect_func m_connect_func;
+  net::sg_serv_args::disconnect_func m_disconnect_func;
+  finalize_func m_finalize_func;
+  void* m_data_1;
+  void* m_data_2;
+  net::sg_serv_thread m_sg_serv;
+};
+
+inline view_sg_serv* cast_view_sg_serv(viewer& a_viewer) {
+  return safe_cast<viewer,view_sg_serv>(a_viewer);
+}
+
+}}
+
+#endif

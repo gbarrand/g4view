@@ -1,0 +1,47 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_find_val_funcs
+#define inlib_insh_find_val_funcs
+
+#include "../omanager"
+
+#include "../forit"
+#include "../val_func"
+#include "../sbeg"
+#include "../sort"
+
+namespace inlib {
+
+INLIB_GLOBAL_STRING(functions)
+
+inline val_funcs* find_val_funcs(omanager& a_mgr) {
+  val_funcs* funcs = a_mgr.find_object<val_funcs>(s_functions());
+  if(!funcs) {
+    funcs = new val_funcs();
+    a_mgr.manage_object<val_funcs>(funcs,s_functions(),false,false,false);
+  }
+  return a_mgr.find_object<val_funcs>(s_functions());
+}
+
+inline void val_funcs_complete(omanager& a_mgr,const std::string& a_begin,std::vector<std::string>& a_names) {
+  a_names.clear();
+  val_funcs* funcs = find_val_funcs(a_mgr);
+  if(!funcs) return;
+  if(a_begin.empty()) {
+    std::string name;
+    inlib_vforcit(ival_func*,funcs->funcs(),it) a_names.push_back((*it)->name());
+  } else {
+    std::vector<std::string> names;
+   {std::string name;
+    inlib_vforcit(base_oholder*,a_mgr.bohs(),it) {
+      inlib_vforcit(ival_func*,funcs->funcs(),it) names.push_back((*it)->name());
+    }}
+    inlib_vforcit(std::string,names,it) {if(is_beg(*it,a_begin)) a_names.push_back(*it);}
+  }
+  sort::sort(a_names);
+}
+
+}
+
+#endif

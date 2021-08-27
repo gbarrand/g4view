@@ -1,0 +1,75 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_omanager
+#define inlib_insh_omanager
+
+#include "ishell"
+#include "../args"
+#include "../omanager"
+
+#include "../sort"
+
+namespace inlib {
+
+inline void insh_omanager_ls(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  std::vector<std::string> vs;
+  inlib_vforcit(base_oholder*,a_mgr.bohs(),it) {
+    vs.push_back((*it)->name());
+  }
+  sort::sort(vs);
+  if(a_insh.in_backquote()) {
+    a_insh.out_begin();
+    inlib_vforcit(std::string,vs,it) a_insh.out(*it,true);
+  } else {
+    a_insh.unix_print(vs);
+  }
+}
+
+inline void insh_omanager_remove(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  args _args(a_args);
+  if(_args.is_arg("-all")) {
+    a_mgr.clear();
+    return;
+  }
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn("omanager_remove : no name given.");
+    return;
+  }
+  a_mgr.remove_object(fnh,true,true);
+}
+
+}
+
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+#include "ishell_args_omanager_cmd"
+
+#define INLIB_INSH_OMANAGER_ADDS(a__insh,a__omanager)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,omanager_remove,\
+    inlib::insh_omanager_remove,\
+"omanager_remove: omanager_remove [-all] managed_name\n\
+  Remove a managed object.\n\
+  -all remove all managed objects.\n\
+  Example:\n\
+    omanager_ls\n\
+    random_create rg  # create a rgaussd named rg\n\
+    omanager_ls\n\
+    omanager_remove rg\n\
+    omanager_ls\n\
+    random_create rg  # create a rgaussd named rg\n\
+    omanager_remove -all\n\
+    omanager_ls\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,omanager_ls,\
+    inlib::insh_omanager_ls,\
+"omanager_ls: omanager_ls\n\
+  List managed objects.\n\
+  Example:\n\
+    omanager_ls\n\
+")
+
+#endif

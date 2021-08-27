@@ -1,0 +1,45 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh
+#define inlib_insh
+
+#ifdef INLIB_MEM
+#include "../mem"
+#endif
+#include "../S_STRING"
+
+#include <vector>
+
+namespace inlib {
+
+class base_cmd {
+  INLIB_SCLASS(inlib::base_cmd)
+public:
+  virtual base_cmd* copy() const = 0;
+  virtual void execute(const std::vector<std::string>& a_args) = 0;
+  virtual const std::string& help() = 0;
+  virtual void complete_command(const std::string&,std::vector<std::string>& a_names) const {a_names.clear();}
+public:
+  base_cmd() {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~base_cmd() {
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+protected:
+  base_cmd(const base_cmd&) {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  base_cmd& operator=(const base_cmd&) {return *this;}
+};
+
+}
+
+#endif

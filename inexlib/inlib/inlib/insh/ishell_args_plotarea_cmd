@@ -1,0 +1,17 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_ishell_args_plotarea_cmd
+#define inlib_insh_ishell_args_plotarea_cmd
+
+#include "ishell_args_class_cmd"
+
+#include "../sg/plotarea"
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_PLOTAREA_CMD(a__insh,a__plotarea,a__name,a__func,a__help)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_class_cmd<inlib::sg::plotarea>(a__insh,a__plotarea,a__func,a__help));
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_PLOTAREA_CMD_COMPLETE(a__insh,a__plotarea,a__name,a__func,a__help,a__complete)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_class_cmd<inlib::sg::plotarea>(a__insh,a__plotarea,a__func,a__help,a__complete));
+
+#endif

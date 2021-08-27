@@ -1,0 +1,447 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_ishell
+#define inlib_insh_ishell
+
+#include <string>
+#include <vector>
+#include <ostream>
+#include <sstream>
+
+namespace inlib {
+
+class ishell {
+public:
+  virtual ~ishell() {}
+public:
+  virtual void exec_line_reset_to_stop(const std::string&) = 0;
+  virtual bool exec_line_reset_to_stop(const std::string&,std::string&) = 0;
+  virtual void exec_lines_reset_to_stop(const std::vector<std::string>&) = 0;
+  virtual bool exec_file_reset_to_stop(const std::string&) = 0;
+  virtual bool in_backquote() const = 0;
+  virtual bool to_stop() const = 0;
+  virtual void warn(const std::string&,bool /*a_to_stop*/ = true) = 0;
+  virtual void out_begin() = 0;
+  virtual void out(const std::string&,bool /*a_append*/ = false,bool /*a_endl*/ = true) = 0;
+  virtual void out(const std::vector<std::string>& a_ss,bool a_append = false,bool a_endl = true) = 0;
+  virtual void unix_print(const std::vector<std::string>&,size_t /*a_spaces*/ = 2) const = 0;
+  virtual std::ostream& out() const = 0;
+  virtual void set_to_stop() = 0;
+  virtual void add_variable(const std::string&,const std::string&) = 0;
+  virtual void remove_variable(const std::string&) = 0;
+  virtual void exec_names(std::vector<std::string>&,const std::string& = std::string(),bool = true) const = 0;
+  virtual void out_size_t(size_t,bool = false,bool = true) = 0;
+public:
+  typedef bool (*decompress_func)(std::ostream&,unsigned int,const char*,unsigned int,char*,unsigned int&);
+  virtual void set_decompress_func(decompress_func) = 0;
+  virtual decompress_func get_decompress_func() const = 0;
+  virtual void set_unix_cols(size_t) = 0;
+  virtual size_t unix_cols() const = 0;
+public:
+  template <class T>
+  void out_num(const T& a_v,bool a_append = false,bool a_endl = true)  {
+    std::ostringstream oss;
+    oss.str().clear();
+    oss << a_v;
+    out(oss.str(),a_append,a_endl);
+  }
+  void out_bool(const bool& a_v,bool a_append = false,bool a_endl = true)  {
+    out(a_v?"true":"false",a_append,a_endl);
+  }
+};
+
+}
+
+#define INLIB_INSH_CLASS_CMD(a__name) \
+  class a__name##_cmd : public inlib::base_cmd {\
+    typedef inlib::base_cmd parent;\
+    typedef void(a__name::*method)(const std::vector<std::string>&);\
+    typedef const std::string&(*help_func)();\
+    typedef void(*complete_func)(const a__name&,const std::string&,std::vector<std::string>&);\
+  public:\
+    virtual base_cmd* copy() const {return new a__name##_cmd(*this);}\
+    virtual void execute(const std::vector<std::string>& a_args) {(m_##a__name.*m_exec)(a_args);}\
+    virtual const std::string& help() {\
+      if(m_help) return m_help();\
+      return m_help_text;\
+    }\
+    virtual void complete_command(const std::string& a_begin,std::vector<std::string>& a_names) const {\
+      if(m_complete) {m_complete(m_##a__name,a_begin,a_names);return;}\
+      a_names.clear();\
+    }\
+  public:\
+    a__name##_cmd(a__name& a_##a__name,method a_exec,help_func a_help)\
+    :m_##a__name(a_##a__name)\
+    ,m_exec(a_exec)\
+    ,m_help(a_help)\
+    ,m_help_text()\
+    ,m_complete(0)\
+    {}\
+    a__name##_cmd(a__name& a_##a__name,method a_exec,const std::string& a_help_text)\
+    :m_##a__name(a_##a__name)\
+    ,m_exec(a_exec)\
+    ,m_help(0)\
+    ,m_help_text(a_help_text)\
+    ,m_complete(0)\
+    {}\
+    a__name##_cmd(a__name& a_##a__name,method a_exec,help_func a_help,complete_func a_complete)\
+    :m_##a__name(a_##a__name)\
+    ,m_exec(a_exec)\
+    ,m_help(a_help)\
+    ,m_complete(a_complete)\
+    {}\
+    virtual ~a__name##_cmd() {}\
+  public:\
+    a__name##_cmd(const a__name##_cmd& a_from)\
+    :parent(a_from)\
+    ,m_##a__name(a_from.m_##a__name)\
+    ,m_exec(a_from.m_exec)\
+    ,m_help(a_from.m_help)\
+    ,m_help_text(a_from.m_help_text)\
+    ,m_complete(a_from.m_complete)\
+    {}\
+    a__name##_cmd& operator=(const a__name##_cmd& a_from) {\
+      parent::operator=(a_from);\
+      m_exec = a_from.m_exec;\
+      m_help = a_from.m_help;\
+      m_help_text = a_from.m_help_text;\
+      m_complete = a_from.m_complete;\
+      return *this;\
+    }\
+  protected:\
+    a__name& m_##a__name;\
+    method m_exec;\
+    help_func m_help;\
+    std::string m_help_text;\
+    complete_func m_complete;\
+  };
+
+#define INLIB_ISHELL_GET_ARG_FNH\
+  std::string fnh;\
+  if(!_args.first_not_hyphen(fnh)) {\
+    a_insh.warn(s_cmd+": no name given.");\
+    return;\
+  }\
+  _args.remove(fnh);
+  
+#define INLIB_ISHELL_IS_ARG(a__variable)\
+ {std::string _key = std::string("-")+#a__variable;\
+  if(_args.is_arg(_key)) {\
+    _args.remove(_key);\
+    a__variable  = true;\
+  } else {\
+    a__variable  = false;\
+  }}
+
+#define INLIB_ISHELL_IS_ARG_VARIABLE(a__key,a__variable)\
+ {std::string _key = std::string("-")+#a__key;\
+  if(_args.is_arg(_key)) {\
+    _args.remove(_key);\
+    a__variable  = true;\
+  } else {\
+    a__variable  = false;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_STRING(a__key)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__key;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    s##a__key  = svalue;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_STRING_VARIABLE(a__key,a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__key;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    a__variable  = svalue;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_FLOAT(a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    float _value;\
+    if(!inlib::to<float>(svalue,_value)) {\
+      a_insh.warn(s_cmd+": "+svalue+" is not a float.");\
+      return;\
+    }\
+    a__variable  = _value;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_DOUBLE(a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    double _value;\
+    if(!inlib::to<double>(svalue,_value)) {\
+      a_insh.warn(s_cmd+": "+svalue+" is not a double.");\
+      return;\
+    }\
+    a__variable  = _value;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_INT(a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    int _value;\
+    if(!inlib::to<int>(svalue,_value)) {\
+      a_insh.warn(s_cmd+": "+svalue+" is not a uint.");\
+      return;\
+    }\
+    a__variable  = _value;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_UINT(a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    unsigned int _value;\
+    if(!inlib::to<unsigned int>(svalue,_value)) {\
+      a_insh.warn(s_cmd+": "+svalue+" is not a uint.");\
+      return;\
+    }\
+    a__variable  = _value;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_UINT64(a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    inlib::uint64 _value;\
+    if(!inlib::to<inlib::uint64>(svalue,_value)) {\
+      a_insh.warn(s_cmd+": "+svalue+" is not a uint64.");\
+      return;\
+    }\
+    a__variable  = _value;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_BOOL(a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    bool _value;\
+    if(!inlib::to(svalue,_value)) {\
+      a_insh.warn(s_cmd+": "+svalue+" is not a bool.");\
+      return;\
+    }\
+    a__variable  = _value;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_COLOR(a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    inlib::colorf _value;\
+    if(!inlib::sg::find_color(a_gv.styles().cmaps(),svalue,_value)) {\
+      a_insh.warn(s_cmd+": "+svalue+" is not a color.");\
+      return;\
+    }\
+    a__variable  = _value;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_GL_PRIM(a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    inlib::gl::mode_t _value;\
+    if(!inlib::gl::s2glprim(svalue,_value)) {\
+      a_insh.warn(s_cmd+": "+svalue+" is not a gl primitive mode.");\
+      return;\
+    }\
+    a__variable  = _value;\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_VEC3F(a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    float x,y,z;\
+    if(!inlib::to_3(svalue,x,y,z)) {\
+      a_insh.warn(s_cmd+": "+svalue+" is not three floats.");\
+      return;\
+    }\
+    a__variable.set_value(x,y,z);\
+  }}
+
+#define INLIB_ISHELL_GET_ARG_VEC4F(a__variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    float x,y,z,t;\
+    if(!inlib::to_4(svalue,x,y,z,t)) {\
+      a_insh.warn(s_cmd+": "+svalue+" is not four floats.");\
+      return;\
+    }\
+    a__variable.set_value(x,y,z,t);\
+  }}
+
+#define INLIB_ISHELL_GET_PLACEMENT_STATIC\
+  std::string splacement;\
+  INLIB_ISHELL_GET_ARG_STRING(placement)\
+  if(splacement.empty()) {\
+    if(_args.is_arg("-dynamic")) {\
+      _args.remove("-dynamic");\
+      splacement = inlib::sg::s_placement_dynamic();\
+    } else if(_args.is_arg("-static")) {\
+      _args.remove("-static");\
+      splacement = inlib::sg::s_placement_static();\
+    } else {\
+      splacement = inlib::sg::s_placement_static();\
+    }\
+  }
+
+#define INLIB_ISHELL_GET_PLACEMENT_DYNAMIC\
+  std::string splacement;\
+  INLIB_ISHELL_GET_ARG_STRING(placement)\
+  if(splacement.empty()) {\
+    if(_args.is_arg("-dynamic")) {\
+      _args.remove("-dynamic");\
+      splacement = inlib::sg::s_placement_dynamic();\
+    } else if(_args.is_arg("-static")) {\
+      _args.remove("-static");\
+      splacement = inlib::sg::s_placement_static();\
+    } else {\
+      splacement = inlib::sg::s_placement_dynamic();\
+    }\
+  }
+
+#define INLIB_ISHELL_SEP_PLACEMENT\
+ {inlib::args opts;\
+  if((splacement==inlib::sg::s_placement_static())) {\
+    _evd->static_sg().add(sep);\
+    opts.add(inlib::sg::s_send_placement(),inlib::sg::s_placement_static());\
+  } else if(splacement.empty()||(splacement==inlib::sg::s_placement_dynamic())) {\
+    _evd->dynamic_sg().add(sep);\
+    opts.add(inlib::sg::s_send_placement(),inlib::sg::s_placement_dynamic());\
+  } else if(splacement==inlib::sg::s_placement_static_blend()) {\
+    _evd->static_blend_sg().add(sep);\
+    opts.add(inlib::sg::s_send_placement(),inlib::sg::s_placement_static_blend());\
+  } else {\
+    a_insh.warn(s_cmd+": unknown placement "+inlib::sout(splacement)+".");\
+    delete sep;\
+    return;\
+  }\
+  inlib::sg::view_sg_client* wc = inlib::sg::cast_view_sg_client(a_gv);\
+  if(wc && wc->is_connected()) {if(!wc->send_sg(*sep,opts)){}}}
+
+#define INLIB_ISHELL_GET_ARGS_MATRIX\
+  bool do_mtx = false;\
+  if(_args.is_arg("-translate")) do_mtx = true;\
+  if(_args.is_arg("-rotate"))    do_mtx = true;\
+  if(_args.is_arg("-scale"))     do_mtx = true;\
+  inlib::vec3f translate(0,0,0);\
+  INLIB_ISHELL_GET_ARG_VEC3F(translate)\
+  inlib::vec4f rotate(0,0,1,0);\
+  INLIB_ISHELL_GET_ARG_VEC4F(rotate)\
+  float scale = 1;\
+  INLIB_ISHELL_GET_ARG_FLOAT(scale)
+
+#define INLIB_ISHELL_GET_ARG_RAND(a__variable,a__rand_variable)\
+ {std::string svalue;\
+  std::string _key = std::string("-")+#a__variable;\
+  if(_args.find(_key,svalue)) {\
+    _args.remove(_key);\
+    double _value;\
+    if(inlib::to<double>(svalue,_value)) {\
+      a__variable = _value;\
+    } else {\
+      a__rand_variable = inlib::find_rand(a_mgr,svalue);\
+      if(!a__rand_variable) {\
+        a_insh.warn(s_cmd+": "+svalue+" is not a double or a managed rand.");\
+        return;\
+      }\
+    }\
+  }}
+
+#define INLIB_ISHELL_SEP_ADD_MATRIX\
+  if(do_mtx) {\
+    inlib::sg::matrix* _mtx = new inlib::sg::matrix;\
+    _mtx->mul_translate(translate);                                      /*applied third.*/\
+    _mtx->mul_rotate(rotate.v0(),rotate.v1(),rotate.v2(),rotate.v3());   /*applied second.*/\
+    _mtx->mul_scale(scale);                                              /*applied first.*/\
+    sep->add(_mtx);\
+  }
+
+#define INLIB_ISHELL_ARGS_UNEXPECTED\
+  if(_args.size()) {\
+    a_insh.warn(s_cmd+": unexpected arguments.");\
+    _args.dump(a_insh.out());\
+    return;\
+  }
+  
+#define INLIB_ISHELL_ARGS_UNEXPECTED_DELETE(a__node)\
+  if(_args.size()) {\
+    delete a__node;\
+    a_insh.warn(s_cmd+": unexpected arguments.");\
+    _args.dump(a_insh.out());\
+    return;\
+  }
+  
+#define INLIB_ISHELL_SET_SG_STYLE\
+  inlib::sg::style _style;\
+  _style.modeling.value().clear();\
+  _style.color = inlib::colorf_default();\
+  std::string sstyle;\
+  INLIB_ISHELL_GET_ARG_STRING(style)\
+  if(sstyle.size()) {\
+    const inlib::xml::styles::style_t* sty = a_gv.styles().find_style(sstyle);\
+    if(sty) {\
+      std::string _s;\
+      inlib_vforcit(inlib::xml::styles::style_item_t,*sty,vit) {\
+        if(vit!=(*sty).begin()) _s += "\n";\
+        _s += (*vit).first+" "+(*vit).second;\
+      }\
+      _style.from_string(a_insh.out(),a_gv.styles().cmaps(),_s);\
+    }\
+  }\
+  inlib::args_to_style(s_cmd,a_insh,_args,a_gv.styles().cmaps(),_style);
+  
+#define INLIB_ISHELL_ARG_BOOL(a__string,a__value)\
+  if(!inlib::to(a__string,a__value)) {\
+    a_insh.warn(s_cmd+": "+a__string+" is not a bool.");\
+    return;\
+  }
+
+#define INLIB_ISHELL_ARG_INT(a__string,a__value)\
+  if(!inlib::to<int>(a__string,a__value)) {\
+    a_insh.warn(s_cmd+": "+a__string+" is not a int.");\
+    return;\
+  }
+
+#define INLIB_ISHELL_ARG_UINT(a__string,a__value)\
+  if(!inlib::to<unsigned int>(a__string,a__value)) {\
+    a_insh.warn(s_cmd+": "+a__string+" is not a uint.");\
+    return;\
+  }
+
+#define INLIB_ISHELL_ARG_FLOAT(a__string,a__value)\
+  if(!inlib::to<float>(a__string,a__value)) {\
+    a_insh.warn(s_cmd+": "+a__string+" is not a float.");\
+    return;\
+  }
+
+#define INLIB_ISHELL_ARG_FLOAT_COLOR(a__string,a__value)\
+  if(!inlib::to<float>(a__string,a__value)) {\
+    a_insh.warn(s_cmd+": "+a__string+" is not a float.");\
+    return;\
+  }\
+  if((a__value<0)||(a__value>1)) {\
+    a_insh.warn(s_cmd+" argument "+a__string+" must be in [0,1].");\
+    return;\
+  }
+
+#endif

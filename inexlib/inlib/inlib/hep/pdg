@@ -1,0 +1,39 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_hep_pdg
+#define inlib_hep_pdg
+
+namespace inlib {
+namespace pdg {
+
+inline int e_minus() {return  11;}
+inline int e_plus()  {return -11;}
+
+inline int mu_minus() {return  13;}
+inline int mu_plus()  {return -13;}
+
+inline int     nu_e() {return  12;}
+inline int nu_e_bar() {return -12;}
+
+inline int     nu_mu() {return  14;}
+inline int nu_mu_bar() {return -14;}
+
+inline int gamma()     {return 22;}
+
+inline int proton()  {return 2212;}
+inline int neutron() {return 2112;}
+
+inline int pi_plus()  {return 211;}
+inline int pi_minus() {return -211;}
+inline int pi0()      {return 111;}
+
+inline int K_plus()  {return 321;}
+inline int K_minus() {return -321;}
+inline int K0()      {return 311;}
+
+inline int cherenkov() {return 50000050;} //not in pdg_table.txt
+
+}}
+
+#endif

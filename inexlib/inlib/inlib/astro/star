@@ -1,0 +1,62 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_star
+#define inlib_star
+
+#ifdef INLIB_MEM
+#include "../mem"
+#endif
+
+#include "../S_STRING"
+#include "../s2deg"
+
+namespace inlib {
+
+class star {
+  INLIB_SCLASS(inlib::star)
+public:
+  star(const std::string& a_ra,const std::string& a_dec,const std::string& a_type,const std::string& a_name)
+  :m_ra(a_ra),m_dec(a_dec),m_type(a_type),m_name(a_name) {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~star(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  star(const star& a_from):m_ra(a_from.m_ra),m_dec(a_from.m_dec),m_type(a_from.m_type),m_name(a_from.m_name) {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  star& operator=(const star& a_from){
+    m_ra = a_from.m_ra;
+    m_dec = a_from.m_dec;
+    m_type = a_from.m_type;
+    m_name = a_from.m_name;
+    return *this;
+  }
+public:
+  bool radec(double& a_ra,double& a_dec) const {
+    if(!hour_sex_to_deg_10(m_ra,a_ra)) return false;
+    if(!deg_sex_to_deg_10(m_dec,a_dec)) return false;
+    return true;
+  }
+  const std::string& ra() const {return m_ra;}
+  const std::string& dec() const {return m_dec;}
+  const std::string& type() const {return m_type;}
+  const std::string& name() const {return m_name;}
+protected:
+  std::string m_ra;
+  std::string m_dec;
+  std::string m_type;
+  std::string m_name;
+};
+
+}
+
+#endif

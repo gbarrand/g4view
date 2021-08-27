@@ -1,0 +1,39 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_text_dumper
+#define inlib_sg_text_dumper
+
+#include "base_dumper"
+
+namespace inlib {
+namespace sg {
+
+class text_dumper : public sg::base_dumper {
+  typedef sg::base_dumper parent;
+public:
+  virtual void get_infos(const std::string& a_tag,std::vector<std::string>& a_v) const {a_v = m_infos;}
+  virtual base_dumper* copy() const {return new text_dumper(*this);}
+public:
+  text_dumper(sg::gui_viewer& a_gv,const std::vector<std::string>& a_infos)
+  :parent(a_gv)
+  ,m_infos(a_infos)
+  {}
+  virtual ~text_dumper(){}
+public:
+  text_dumper(const text_dumper& a_from)
+  :parent(a_from)
+  ,m_infos(a_from.m_infos)
+  {}
+  text_dumper& operator=(const text_dumper& a_from){
+    parent::operator=(a_from);
+    m_infos = a_from.m_infos;
+    return *this;
+  }
+public:
+  std::vector<std::string> m_infos;
+};
+
+}}
+
+#endif

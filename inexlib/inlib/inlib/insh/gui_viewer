@@ -1,0 +1,2335 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_gui_viewer
+#define inlib_insh_gui_viewer
+
+#include "../sg/item_insh"
+#include "guib"
+
+#include "../sconc"
+#include "../sjust"
+
+namespace inlib {
+
+/*
+inline void insh_window_set_size(ishell& a_insh,const std::vector<std::string>& a_args,viewer& a_viewer){ 
+  args _args(a_args);
+  unsigned int ww,wh;
+  args_to_window_size(_args,ww,wh);
+  if((ww==0)||(wh==0)) return;
+  a_viewer.set_size(ww,wh);
+}
+
+inline const std::string& insh_window_set_size_help() {
+  static const std::string s_help("\
+window_set_size: window_set_size [-ww,-wh,-land,-portrait]\n\
+  Set window size in pixels.\n\
+  -width uint window width (default is 1000).\n\
+  -height uint window height (default is 707 to have a A4 landscape).\n\
+  -land set landscape mode.\n\
+  -portrait set portrait mode.\n\
+  Example:\n\
+    window_set_size -portrait\n\
+    window_set_size -width=700 -height=900\n\
+");
+  return s_help;
+}
+*/
+
+inline void insh_gui_text(ishell&,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv){
+  a_gv.gui_text(a_args);
+}
+inline void insh_gui_scroll_text(ishell&,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv){
+  a_gv.gui_scroll_text(a_args);
+}
+inline void insh_gui_push_scroll_infos(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv){
+  static const std::string s_cmd("gui_push_scroll_infos");
+  if(a_args.empty()) {
+    a_insh.warn(s_cmd+": some arguments expected.");
+    return;
+  }
+  size_t nitem = a_args.size()/2;
+  if(nitem*2!=a_args.size()) {
+    a_insh.warn(s_cmd+": even number of arguments expected.");
+    return;
+  }
+  sg::scroll_infos* _scroll_infos = new sg::scroll_infos(a_gv.ttf());
+  a_gv.set_style(*_scroll_infos);
+  for(size_t index=0;index<nitem;index++) {
+    _scroll_infos->ltext.add(a_args[2*index+0]);
+    _scroll_infos->rtext.add(a_args[2*index+1]);
+  }
+  a_gv.push_list(_scroll_infos);
+}
+
+
+inline void insh_gui_push_list(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv){
+  static const std::string s_cmd("gui_push_list");
+  if(a_args.empty()) {
+    a_insh.warn(s_cmd+": some arguments expected.");
+    return;
+  }
+  size_t nitem = a_args.size()/2;
+  if(nitem*2!=a_args.size()) {
+    a_insh.warn(s_cmd+": even number of arguments expected.");
+    return;
+  }
+  sg::list* _list = new sg::list(a_gv.ttf());
+  a_gv.set_style(*_list);
+  for(size_t index=0;index<nitem;index++) {
+    add_white_item_insh(a_gv,*_list,a_args[2*index+0],a_insh,a_args[2*index+1]);
+  }
+  a_gv.push_list(_list);
+}
+
+inline void insh_gui_push_list_items(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv){
+  static const std::string s_cmd("gui_push_list_items");
+  if(a_args.empty()) {
+    a_insh.warn(s_cmd+": some arguments expected.");
+    return;
+  }
+  args _args(a_args);
+  std::string ssep = ":";
+  INLIB_ISHELL_GET_ARG_STRING(sep)
+  sg::list* _list = new sg::list(a_gv.ttf());
+  a_gv.set_style(*_list);
+  inlib_vforcit(args::arg,_args.get_args(),it) {
+    if((*it).first=="-item") {
+      // format -item='label:image:script'.
+      // It is assumed that label and image do not contain the sep.
+      // Note that script can contain sep (for exa when passing a url).
+      std::vector<std::string> ws;
+      words((*it).second,ssep,false,ws); //(true would accept empty script)
+      if(ws.size()<3) {
+        a_insh.warn
+	(s_cmd+": at least three words, separated by "+sout(ssep)+", expected in "+sout((*it).second)+".");
+	return;
+      }
+      std::string _label = ws[0];
+      ws.erase(ws.begin());
+      std::string _image = ws[0];
+      ws.erase(ws.begin());
+      std::string srest;
+     {inlib_vforcit(std::string,ws,it) {
+        if(it!=ws.begin()) srest += ssep;
+	srest += *it;
+      }}
+      add_image_item_insh(a_gv,*_list,_label,_image,a_insh,srest);
+    } else {
+      a_insh.warn(s_cmd+": unknown keyword "+sout((*it).first)+".");
+      return;
+    }
+  }
+  a_gv.push_list(_list);
+}
+
+template <class WIDGET>
+class xxx_data {
+#ifdef INLIB_MEM
+  INLIB_T_SCLASS(WIDGET,inlib::xxx_data)
+#endif
+public:
+  xxx_data(WIDGET& a_widget,const std::string& a_script)
+  :m_widget(a_widget)
+  ,m_script(a_script)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~xxx_data(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  xxx_data(const xxx_data& a_from)
+  :m_widget(a_from.m_widget)
+  ,m_script(a_from.m_script)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  xxx_data& operator=(const xxx_data& a_from){
+    m_script = a_from.m_script;
+    return *this;
+  }
+public:
+  WIDGET& m_widget;
+  std::string m_script;
+};
+
+inline sg::return_action action_entries(ishell& a_insh,const xxx_data<sg::entries>& a_data) {
+  sg::entries& _entries = a_data.m_widget;
+  const std::vector<std::string>& labels = _entries.labels.values();
+  const std::vector<std::string>& vals = _entries.values.values();
+  if(labels.size()!=vals.size()) {
+    a_insh.warn("action_entries : labels/values size mismatch.");
+    return sg::return_to_render;
+  }
+ {for(size_t index=0;index<labels.size();index++) {
+    std::string sindex;
+    size_t2s(index,sindex);
+    a_insh.add_variable("inlib_sg_entries_value_"+sindex,vals[index]);
+  }}
+  std::vector<std::string> lines;
+  get_lines(a_data.m_script,lines);
+  a_insh.exec_lines_reset_to_stop(lines);
+ {for(size_t index=0;index<labels.size();index++) {
+    std::string sindex;
+    size_t2s(index,sindex);
+    a_insh.remove_variable("inlib_sg_entries_value_"+sindex);
+  }}
+  return sg::return_to_render;
+}
+
+inline void insh_gui_push_entries(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv){
+  static const std::string s_cmd("gui_push_entries");
+  if(a_args.empty()) {
+    a_insh.warn(s_cmd+": some arguments expected.");
+    return;
+  }
+  sg::entries* _entries = new sg::entries(a_gv.ttf());
+  a_gv.set_style(*_entries);
+  //
+  //  gui_push_entries [-string='name:default',-opts='name:default[:opt]']
+  //
+  args _args(a_args);
+  std::string sscript;
+  INLIB_ISHELL_GET_ARG_STRING(script)
+  if(sscript.size()) {
+    xxx_data<sg::entries> _data(*_entries,sscript);
+    _entries->add_callback(new sg::ishell_fundata_cbk< xxx_data<sg::entries> >(a_insh,action_entries,_data));
+  }
+  std::string ssep = ":";
+  INLIB_ISHELL_GET_ARG_STRING(sep)
+  inlib_vforcit(args::arg,_args.get_args(),it) {
+    std::vector<std::string> ws;
+    words((*it).second,ssep,false,ws);
+    if((*it).first=="-string") {
+      if(ws.size()==1) {
+        _entries->add_string(ws[0],"");
+      } else if(ws.size()==2) {
+        _entries->add_string(ws[0],ws[1]);
+      } else {
+        delete _entries;
+        a_insh.warn(s_cmd+": -string='name:default' expected.");
+        return;
+      }
+
+    } else if((*it).first=="-not_editable") {
+      if(ws.size()==2) {
+        _entries->add_not_editable(ws[0],ws[1]);
+      } else {
+        delete _entries;
+        a_insh.warn(s_cmd+": -not_editable='name:value' expected.");
+        return;
+      }
+
+    } else if((*it).first=="-uint") {
+      if(ws.size()==2) {
+        unsigned int v;
+        if(!to<unsigned int>(ws[1],v)) {
+          delete _entries;
+          a_insh.warn(s_cmd+": "+ws[1]+" not a uint.");
+          return;
+	}
+        _entries->add_uint(ws[0],v);
+      } else {
+        delete _entries;
+        a_insh.warn(s_cmd+": -uint='name:default' expected.");
+        return;
+      }
+
+    } else if((*it).first=="-int") {
+      if(ws.size()==2) {
+        int v;
+        if(!to<int>(ws[1],v)) {
+          delete _entries;
+          a_insh.warn(s_cmd+": "+ws[1]+" not a int.");
+          return;
+	}
+        _entries->add_int(ws[0],v);
+      } else {
+        delete _entries;
+        a_insh.warn(s_cmd+": -int='name:default' expected.");
+        return;
+      }
+
+    } else if((*it).first=="-double") {
+      if(ws.size()==2) {
+        double v;
+        if(!to<double>(ws[1],v)) {
+          delete _entries;
+          a_insh.warn(s_cmd+": "+ws[1]+" not a double.");
+          return;
+	}
+        _entries->add_double(ws[0],v);
+      } else {
+        delete _entries;
+        a_insh.warn(s_cmd+": -double='name:default' expected.");
+        return;
+      }
+
+    } else if((*it).first=="-bool") {
+      if(ws.size()==2) {
+        bool v;
+        if(!tob(ws[1],v)) {
+          delete _entries;
+          a_insh.warn(s_cmd+": "+ws[1]+" not a bool.");
+          return;
+	}
+        _entries->add_bool(ws[0],v);
+      } else {
+        delete _entries;
+        a_insh.warn(s_cmd+": -bool='name:default' expected.");
+        return;
+      }
+
+    } else if((*it).first=="-radec") {
+      if(ws.size()<2) {
+        delete _entries;
+        a_insh.warn(s_cmd+": -radec='name:default' expected.");
+        return;
+      }
+      std::string _name = ws[0];
+      ws.erase(ws.begin());
+      std::string srest;
+     {inlib_vforcit(std::string,ws,it) {
+        if(it!=ws.begin()) srest += ssep;
+        srest += *it;
+      }}
+      _entries->add_radec(_name,srest);
+      
+    } else if( ((*it).first=="-options") || ((*it).first=="-opts") ) {
+      if(ws.size()<2) {
+        delete _entries;
+        a_insh.warn(s_cmd+": -options='name:default[:opt]' expected.");
+        return;
+      }
+      std::string _name = ws[0];
+      ws.erase(ws.begin());
+      std::string _default = ws[0];
+      ws.erase(ws.begin());
+      if(!is_in(ws,_default)) {
+        delete _entries;
+        a_insh.warn(s_cmd+": default "+_default+" not in options list.");
+        return;
+      }
+      _entries->add_opts(_name,_default,ws);
+
+    } else if((*it).first=="-combo_string") {
+      if(ws.size()<2) {
+        delete _entries;
+        a_insh.warn(s_cmd+": -combo_string='name:default[:opt]' expected.");
+        return;
+      }
+      std::string _name = ws[0];
+      ws.erase(ws.begin());
+      std::string _default = ws[0];
+      ws.erase(ws.begin());
+      _entries->add_combo_string(_name,_default,ws);
+      
+    } else if((*it).first=="-file") {
+      if(ws.size()!=4) {
+        delete _entries;
+        a_insh.warn(s_cmd+": -file='name:default:[ext;]:[dir;]' expected.");
+        return;
+      }
+      _entries->add_file(ws[0],ws[1]);
+      sg::file_chooser& fch = _entries->file_chooser();
+      std::vector<std::string> vs;
+      words(ws[2],";",false,vs);
+     {inlib_vforcit(std::string,vs,vit) fch.exts.add(*vit);}
+      words(ws[3],";",false,vs);
+     {inlib_vforcit(std::string,vs,vit) fch.dirs.add(*vit);}
+      fch.initialize(a_insh.out());
+      
+    } else if((*it).first=="-color") {
+      if(ws.size()!=2) {
+        delete _entries;
+        a_insh.warn(s_cmd+": -color='name:default' expected.");
+        return;
+      }
+      colorf _color;
+      if(!sg::find_color(a_gv.styles().cmaps(),ws[1],_color)) {
+        delete _entries;
+        a_insh.warn(s_cmd+": "+ws[1]+" is not a color.");
+        return;
+      }
+      _entries->add_color(ws[0],_color);
+
+    } else {
+      delete _entries;
+      a_insh.warn(s_cmd+": unexpected keyword "+inlib::sout((*it).first)+".");
+      return;
+    }
+  }
+  a_gv.push_list(_entries);
+}
+
+inline sg::return_action action_keyboard(ishell& a_insh,const xxx_data<sg::keyboard>& a_data) {
+  sg::keyboard& _keyboard = a_data.m_widget;
+  a_insh.add_variable("inlib_sg_keyboard_value",_keyboard.value.value());
+  std::vector<std::string> lines;
+  get_lines(a_data.m_script,lines);
+  a_insh.exec_lines_reset_to_stop(lines);
+  a_insh.remove_variable("inlib_sg_keyboard_value");
+  return sg::return_to_render;
+}
+
+inline void insh_gui_push_keyboard(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv){
+  static const std::string s_cmd("gui_push_keyboard");
+  if(a_args.empty()) {
+    a_insh.warn(s_cmd+": some arguments expected.");
+    return;
+  }
+  sg::keyboard* _keyboard = new sg::keyboard(a_gv.ttf());
+  a_gv.set_style(*_keyboard);
+  args _args(a_args);
+ {std::string script;
+  if(_args.find("-script",script,"") && script.size()) {
+    xxx_data<sg::keyboard> _data(*_keyboard,script);
+    _keyboard->add_callback(new sg::ishell_fundata_cbk< xxx_data<sg::keyboard> >(a_insh,action_keyboard,_data));
+  }}
+  a_gv.push_list(_keyboard);
+}
+
+inline void insh_gui_warn(ishell&,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv){
+  args _args(a_args);
+  bool _warn = _args.is_arg("-warn");
+  std::string fnh;
+  _args.first_not_hyphen(fnh);
+  a_gv.map_warn(fnh,_warn);
+}
+
+inline sg::return_action cbk_show_color(sg::gui_viewer& a_gv,sg::colors& a_widget) {
+  a_gv.map_warn(a_widget.value.value(),false);
+  return sg::return_to_render;
+}
+
+inline void insh_gui_show_colors(ishell&,const std::vector<std::string>&,sg::gui_viewer& a_gv){
+  sg::colors* node = new sg::colors(a_gv.ttf());
+  a_gv.set_style(*node);
+  sg::add_callback(a_gv,*node,cbk_show_color);
+  a_gv.push_list(node);
+}
+
+inline void insh_gui_show_styles(ishell&,const std::vector<std::string>&,sg::gui_viewer& a_gv){
+  std::vector<std::string> ltext;
+  std::vector<std::string> rtext;
+
+ {typedef xml::styles::style_t style_t;
+  typedef xml::styles::named_style_t named_style_t;
+  const std::vector<named_style_t>& nstys = a_gv.styles().named_styles();
+  std::vector<named_style_t>::const_iterator it;
+  for(it=nstys.begin();it!=nstys.end();++it) {
+    ltext.push_back("//////////////////////////////////////////////////////////////////////////////");
+    rtext.push_back(" ");
+
+    ltext.push_back((*it).first+" :");
+    rtext.push_back(" ");
+
+    ltext.push_back("//////////////////////////////////////////////////////////////////////////////");
+    rtext.push_back(" ");
+
+    const style_t& sty = (*it).second;
+    style_t::const_iterator vit;
+    for(vit=sty.begin();vit!=sty.end();++vit) {
+      //text->lstrings.add((*vit).first);
+      //text->rstrings.add((*vit).second);
+      ltext.push_back((*vit).first);
+      rtext.push_back((*vit).second);
+    }
+  }}
+
+  a_gv.gui_scroll_infos(ltext,rtext);
+}
+
+inline void insh_gui_exec_main_menu_item(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  if(a_args.empty()) {
+    a_insh.warn("gui_exec_main_menu_item : one argument expected.");
+    return;
+  }
+  if(!a_gv.find_exec_menu_item(a_args[0])) {
+    a_insh.warn("gui_exec_main_menu_item : menu item "+sout(a_args[0])+" not found. Stop.");
+    return;
+  }
+}
+
+inline const std::string& insh_gui_exec_main_menu_item_help() {
+  static const std::string s_help("\
+gui_exec_main_menu_item: gui_exec_main_menu_item menu_item_label\n\
+  Given its label, find a menu item in the\n\
+  current main menu and execute its callback.\n\
+  Example:\n\
+    gui_exec_main_menu_item exit\n\
+");
+  return s_help;
+}
+
+inline void insh_gui_has_open_panel(ishell& a_insh,const std::vector<std::string>&,sg::gui_viewer& a_gv){
+  a_insh.out_bool(a_gv.has_open_panel());
+}
+
+inline void insh_gui_open_panel(ishell& a_insh,const std::vector<std::string>&,sg::gui_viewer& a_gv) {
+  std::string path;
+  a_gv.open_panel(path);
+  a_insh.out(path);
+}
+
+}
+
+#include "../cbk/files"
+
+namespace inlib {
+
+inline void insh_gui_menu_files(ishell&,const std::vector<std::string>&,sg::gui_viewer& a_gv) {
+  cbk::action_menu_files(a_gv,sg::pos_data(false,0,0));
+}
+
+}
+
+#include "../mime"
+#include "../sort"
+
+namespace inlib {
+
+inline void insh_gui_has_mail_panel(ishell& a_insh,const std::vector<std::string>&,sg::gui_viewer& a_gv){
+  a_insh.out_bool(a_gv.has_mail_panel());
+}
+
+inline void insh_gui_mail_file(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("gui_mail_file");
+  if(!a_gv.has_mail_panel()) {
+    a_insh.warn(s_cmd+": mail from app not supported.");
+    return;
+  }
+  args _args(a_args);
+  std::string fnh;
+  _args.first_not_hyphen(fnh);
+  if(fnh.empty()) {
+    a_insh.warn(s_cmd+": no file given.");
+    return;
+  }    
+  std::string subject;
+  _args.find("-subject",subject,a_gv.app_name()+" export");
+  std::string msg;
+  _args.find("-message",msg,"sent from "+a_gv.app_name()+" app.");
+  std::string mime;
+  if(!file::mime_type(fnh,mime)){
+    //mime set to application/octet_stream
+  }
+  std::string to; //get from address book.
+  if(!a_gv.mail_panel(to,subject,msg,fnh,mime)) {
+    a_insh.warn(s_cmd+": failed.");
+    return;
+  }
+}
+
+}
+
+namespace inlib {
+
+inline void insh_render_manager_infos(inlib::ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("render_manager_infos");
+  if(a_args.empty()) {
+    a_insh.out_begin();
+    a_insh.out("GL_VERSION",true);
+    a_insh.out("GL_VENDOR",true);
+    a_insh.out("GL_RENDERER",true);
+    a_insh.out("GL_MAX_TEXTURE_SIZE",true);
+    return;
+  }
+  std::string value;
+  if(!a_gv.render_manager().get_infos(a_args[0],value)) {
+  //a_insh.warn(s_cmd+": can't get value for "+sout(a_args[0])+".");
+    a_insh.out("unknown");  //do not warn. (It fails on MacOS/X11).
+    return;
+  }
+  a_insh.out(value);
+}
+
+inline void insh_window_to_png(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  a_gv.hide_popup();
+  a_gv.hide_main_menu();
+  a_gv.hide_meta_zone();
+  args _args(a_args);
+  if(_args.is_arg("-hide_camera_menu")) a_gv.hide_camera_menu();
+  unsigned int bpp;
+  _args.find("-bpp",bpp,a_gv.produce_out_bpp());
+  std::string fnh;
+  if(_args.first_not_hyphen(fnh)) a_gv.set_produce_out_file(fnh);
+  a_gv.set_produce_out_png(true);
+  a_gv.set_produce_out_bpp(bpp);
+  a_gv.win_render();  //it should trigger after_render().
+}
+
+inline const std::string& insh_window_to_png_help() {
+  static const std::string s_help("\
+window_to_png: window_to_png [-hide_camera_menu] [-bpp] [path]\n\
+  Produce a png file from the displayed window contents.\n\
+  If no path is given, a out.png file is produced in the output directory of the application.\n\
+  -hide_camera_menu permits to hide the camera menu panel before writing.\n\
+  -bpp permits to choose to produce three or four bytes per pixel (rgb or rgba).\n\
+  It is four by default. It permits to save transparency/blending in the png.\n\
+  Example:\n\
+    window_to_png -bpp=3 out.png  # to produce an out.png in the current directory\n\
+  See also:\n\
+    app_out_dir\n\
+");
+  return s_help;
+}
+
+inline void insh_window_to_jpeg(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  a_gv.hide_popup();
+  a_gv.hide_main_menu();
+  a_gv.hide_meta_zone();
+  args _args(a_args);
+  if(_args.is_arg("-hide_camera_menu")) a_gv.hide_camera_menu();
+  std::string fnh;
+  if(_args.first_not_hyphen(fnh)) a_gv.set_produce_out_file(fnh);
+  a_gv.set_produce_out_jpeg(true);
+  a_gv.win_render();  //it should trigger after_render().
+}
+
+inline const std::string& insh_window_to_jpeg_help() {
+  static const std::string s_help("\
+window_to_jpeg: window_to_jpeg [-hide_camera_menu] [path]\n\
+  Produce a jpeg file from the displayed window contents.\n\
+  If no path is given, a out.jpeg file is produced in the output directory of the application.\n\
+  -hide_camera_menu permits to hide the camera menu panel before writing.\n\
+  Note that no alpha channel is written in the jpeg, if you want it, use the window_to_png command.\n\
+  Example:\n\
+    window_to_jpeg out.jpeg  # to produce an out.jpeg in the current directory\n\
+  See also:\n\
+    app_out_dir\n\
+    window_to_png\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_set_clear_color(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_set_clear_color");
+  if(a_args.size()==1) {
+    colorf _value;
+    if(!find_color(a_gv.styles().cmaps(),a_args[0],_value)) {
+      a_insh.warn(s_cmd+": "+sout(a_args[0])+" is not a known color.");
+      return;
+    }
+    a_gv.set_scene_clear_color(_value);
+    return;
+  }
+  if(a_args.size()==3) {
+    float r,g,b;
+    INLIB_ISHELL_ARG_FLOAT_COLOR(a_args[0],r)
+    INLIB_ISHELL_ARG_FLOAT_COLOR(a_args[1],g)
+    INLIB_ISHELL_ARG_FLOAT_COLOR(a_args[2],b)
+    a_gv.set_scene_clear_color(r,g,b,1);
+    return;
+  }
+  if(a_args.size()==4) {
+    float r,g,b,a;
+    INLIB_ISHELL_ARG_FLOAT_COLOR(a_args[0],r)
+    INLIB_ISHELL_ARG_FLOAT_COLOR(a_args[1],g)
+    INLIB_ISHELL_ARG_FLOAT_COLOR(a_args[2],b)
+    INLIB_ISHELL_ARG_FLOAT_COLOR(a_args[3],a)
+    a_gv.set_scene_clear_color(r,g,b,a);
+    return;
+  }
+  a_insh.warn(s_cmd+": one, three or four arguments expected");
+}
+
+inline const std::string& insh_scene_set_clear_color_help() {
+  static const std::string s_help("\
+scene_set_clear_color: scene_set_clear_color [color name] [colormap/color name] [#rrggbb] [r g b] [r g b a]\n\
+  Set the color of the background of the scene.\n\
+  It can be given by a common color name in the default colormap,\n\
+  by giving the name of a color in a known colormap, by giving an hexa encoding or by giving\n\
+  the three or four r,g,b,a (in [0,1]) of the color.\n\
+  See style_print_colormaps to print the known colormaps with their colors.\n\
+  Example:\n\
+    scene_set_clear_color lightgrey\n\
+    scene_set_clear_color ROOT/kMagenta+3\n\
+    scene_set_clear_color '#FFFF00'\n\
+    scene_set_clear_color 0.2 0.1 0.2\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_bounding_box(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_bounding_box");
+  sg::bbox_action action(a_gv.out());
+  a_gv.scene().bbox(action);
+  if(!action.end()) {
+    a_insh.warn(s_cmd+": bbox_action.end() failed.");
+    return;
+  }
+  const box3f& _box = action.box();
+  if(_box.is_empty()) {
+    a_insh.out("empty");
+    return;
+  }
+  vec3f center;
+  if(!_box.center(center)) {}
+  float dx,dy,dz;
+  if(!_box.get_size(dx,dy,dz)) {}
+
+  std::vector<std::string> ss;
+ {std::string _s;
+  numas(center.x(),_s);
+  _s += " ";
+  numas(center.y(),_s);
+  _s += " ";
+  numas(center.z(),_s);
+  ss.push_back(_s);}
+
+ {std::string _s;
+  numas(dx,_s);
+  _s += " ";
+  numas(dy,_s);
+  _s += " ";
+  numas(dz,_s);
+  ss.push_back(_s);}
+
+  a_insh.out_begin();
+  a_insh.out(ss);
+}
+
+inline const std::string& insh_scene_bounding_box_help() {
+  static const std::string s_help("\
+scene_bounding_box: scene_bounding_box\n\
+  Print the center and size of the scene bounding box.\n\
+  Example:\n\
+    scene_bounding_box\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_remove_nodes(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_remove_nodes");
+  args _args(a_args);
+  std::string sclass;
+  if(_args.find("-class",sclass)) {
+    sg::search_action sa(a_gv.out());
+    const sg::paths_t& paths = find_paths(sa,a_gv.scene(),sclass);
+    sg::paths_t::const_iterator it;
+    for(it=paths.begin();it!=paths.end();++it) {
+      const sg::path_t& p = *it;
+      sg::group* grp = sg::container<sg::group>(p);
+      if(!grp) {
+        a_insh.warn(s_cmd+": node parent group not found.");
+      } else {
+        sg::node* _node = p.size()?p[p.size()-1]:0;
+        if(!_node) {
+          a_insh.warn(s_cmd+": node path with bad tail.");
+        } else {
+          if(!grp->remove(_node)) {
+            a_insh.warn(s_cmd+": remove in group failed");
+            return;
+          }
+          //::printf("debug : delete node of class %s\n",sclass.c_str());
+          delete _node;
+        }
+      }
+    }
+    return;
+  }
+}
+
+inline const std::string& insh_scene_remove_nodes_help() {
+  static const std::string s_help("\
+scene_remove_nodes: scene_remove_nodes [-class]\n\
+  If -class=string, remove nodes of the given class name in the scene.\n\
+  Example:\n\
+    scene_remove_nodes -class=inlib::sg::cube\n\
+");
+  return s_help;
+}
+
+inline void insh_style_print_colormaps(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("style_print_colormaps");
+// first round trip to get item string sizes :
+  size_t sindex_size = 0;
+  size_t sname_size = 0;
+//size_t scolor_size = 0;
+  std::string _s;
+ {inlib_mforcit(std::string,sg::style_colormap,a_gv.styles().cmaps(),it) {
+    inlib_mforcit(unsigned int,sg::style_color,(*it).second,itc) {
+      unsigned int index = (*itc).first;
+      num2s(index,_s);
+      sindex_size = mx(sindex_size,_s.size());
+
+      const std::string& name = (*itc).second.first;
+      sname_size = mx(sname_size,name.size());
+    //const colorf& _color = (*itc).second.second;
+    //_s .clear();
+    //numas(_color.r(),_s);
+    //_s += " ";
+    //numas(_color.g(),_s);
+    //_s += " ";
+    //numas(_color.b(),_s);
+    //_s += " ";
+    //numas(_color.a(),_s);
+    //scolor_size = mx(scolor_size,_s.size());
+    }
+  }}
+  // print :
+  a_insh.out_begin();
+ {inlib_mforcit(std::string,sg::style_colormap,a_gv.styles().cmaps(),it) {
+    a_insh.out((*it).first+" :",true);
+    inlib_mforcit(unsigned int,sg::style_color,(*it).second,itc) {
+      unsigned int index = (*itc).first;
+      num2s(index,_s);
+      justify(_s,sindex_size,side_left);
+      a_insh.out("  "+_s,true,false);
+
+      std::string name = (*itc).second.first;
+      justify(name,sname_size,side_left);
+      a_insh.out(" "+name,true,false);
+
+      const colorf& _color = (*itc).second.second;
+      _s .clear();
+      numas(_color.r(),_s);
+      _s += " ";
+      numas(_color.g(),_s);
+      _s += " ";
+      numas(_color.b(),_s);
+      _s += " ";
+      numas(_color.a(),_s);
+      a_insh.out(" "+_s,true,true);
+    }
+  }}
+}
+
+inline const std::string& insh_style_print_colormaps_help() {
+  static const std::string s_help("\
+style_print_colormaps: style_print_colormaps\n\
+  Print the known colormaps.\n\
+");
+  return s_help;
+}
+
+inline void insh_app_open(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("app_open");
+  args _args(a_args);
+  std::string path;
+  if(!insh_args_file(a_insh,a_gv,_args,s_cmd,path)) return;
+  bool done;
+  if(!a_gv.opener().open(path,file::s_format_guessed(),_args,done)) {
+    a_insh.warn(s_cmd+": opener.open() failed for "+sout(path)+".");
+    return;
+  }
+  if(!done) {
+    //gui_text(const std::vector<std::string>& a_data);
+    a_insh.warn(s_cmd+": app opener can't open "+sout(path)+".");
+    return;
+  }
+}
+
+inline const std::string& insh_app_open_help() {
+  static const std::string s_help("\
+app_open: app_open [-doc,-res,-doc_res] path\n\
+  Attempt to open a file. The known file types depend of the \"openers\" declared to the app.\n\
+  If no directory is given in path, the -doc_res option permits to search a file first\n\
+  in the document directory declared to the app, and then in the app (internal) resource directory.\n\
+  -res for the resource directory only, -doc for the document directory only.\n\
+  See also:\n\
+    app_res_dir\n\
+    app_doc_dir\n\
+");
+    return s_help;
+}
+
+inline void insh_app_openers(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  args _args(a_args);
+  std::vector<std::string> vs;
+  if(_args.is_arg("-exts")) {
+    inlib_vforcit(std::string,a_gv.opener().exts(),it) {vs.push_back(*it);}
+  } else {
+    inlib_vforcit(opener::named_opener_t,a_gv.opener().openers(),it) {vs.push_back((*it).first);}
+  }
+  a_insh.out_begin();
+  a_insh.out(vs,true);
+}
+
+inline const std::string& insh_app_openers_help() {
+  static const std::string s_help("\
+app_openers: app_openers [-exts]\n\
+  List operners known by the application. -exts permits to list the known file extensions.\n\
+");
+    return s_help;
+}
+
+inline void insh_camera_yaw(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("camera_yaw");
+  if((a_args.size()!=1)&&(a_args.size()!=2)) {
+    a_insh.warn(s_cmd+": one or two argument expected");
+    return;
+  }
+  float angle;
+  if((a_args.size()==1)) {
+    INLIB_ISHELL_ARG_FLOAT(a_args[0],angle)
+  } else { //two args.
+    if((a_args[0]!="-deg")&&(a_args[0]!="-degree")) {
+      a_insh.warn("camera_yaw : -deg or -degree exepected for first argument.");
+      return;
+    }
+    INLIB_ISHELL_ARG_FLOAT(a_args[1],angle)
+    angle *= fdeg2rad();
+  }
+  if(!a_gv.scene_camera()) return;
+  a_gv.scene_camera()->rotate_around_up(angle);
+  a_gv.set_params_camera();
+//a_gv.scene_camera()->rotate_around_x(da);
+//a_gv.scene_camera()->translate_along_side(dx);
+//a_gv.scene_camera()->translate_along_up(dx);
+//a_gv.scene_camera()->translate_along_dir(dx);
+//a_gv.scene_camera()->rotate_around_y_at_focal(-da);
+//a_gv.scene_camera()->rotate_around_x_at_focal(-da);
+}
+
+inline void insh_camera_pitch(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("camera_pitch");
+  if((a_args.size()!=1)&&(a_args.size()!=2)) {
+    a_insh.warn(s_cmd+": one or two argument expected");
+    return;
+  }
+  float angle;
+  if((a_args.size()==1)) {
+    INLIB_ISHELL_ARG_FLOAT(a_args[0],angle)
+  } else { //two args.
+    if((a_args[0]!="-deg")&&(a_args[0]!="-degree")) {
+      a_insh.warn(s_cmd+": -deg or -degree exepected for first argument.");
+      return;
+    }
+    INLIB_ISHELL_ARG_FLOAT(a_args[1],angle)
+    angle *= fdeg2rad();
+  }
+  if(!a_gv.scene_camera()) return;
+  a_gv.scene_camera()->rotate_around_x(angle);
+  a_gv.set_params_camera();
+}
+
+inline void insh_camera_roll(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("camera_roll");
+  if((a_args.size()!=1)&&(a_args.size()!=2)) {
+    a_insh.warn(s_cmd+" one or two argument expected");
+    return;
+  }
+  float angle;
+  if((a_args.size()==1)) {
+    INLIB_ISHELL_ARG_FLOAT(a_args[0],angle)
+  } else { //two args.
+    if((a_args[0]!="-deg")&&(a_args[0]!="-degree")) {
+      a_insh.warn(s_cmd+" -deg or -degree exepected for first argument.");
+      return;
+    }
+    INLIB_ISHELL_ARG_FLOAT(a_args[1],angle)
+    angle *= fdeg2rad();
+  }
+  if(!a_gv.scene_camera()) return;
+  a_gv.scene_camera()->rotate_around_direction(-angle);
+  a_gv.set_params_camera();
+}
+
+inline void insh_camera_rotate(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  sg::base_camera* _cam = a_gv.scene_camera();
+  if(!_cam) return;
+  args args(a_args);
+  float angle;
+  args.find("-angle",angle,0.0f);
+  if(args.is_arg("-deg")||args.is_arg("-degree")) angle *= fdeg2rad();
+  bool at_focal = args.is_arg("-at_focal");
+  if(args.is_arg("-x")) {
+    if(at_focal) {
+      _cam->rotate_around_x_at_focal(angle);
+    } else {
+      _cam->rotate_around_x(angle);
+    }
+  } else if(args.is_arg("-y")) {
+    if(at_focal) {
+      _cam->rotate_around_y_at_focal(angle);
+    } else {
+      _cam->rotate_around_up(angle);
+    }
+  } else if(args.is_arg("-z")) {
+    if(at_focal) {
+      _cam->rotate_around_z_at_focal(angle);
+    } else {
+      _cam->rotate_around_z(angle);
+    }
+  } else {
+    a_insh.warn("camera_rotate : -x or -y or -z expected.");
+    return;
+  }
+  a_gv.set_scene_camera(_cam);
+}
+
+inline const std::string& insh_camera_rotate_help() {
+  static const std::string s_help("\
+camera_rotate: camera_rotate [-x,-y,-z] [-at_focal] [-deg,-degree] [-angle=angle]\n\
+  Rotate the camera around an axis of the given angle.\n\
+  If -deg or -degree is specified, the angle is in degree (default is then radian).\n\
+  If -at_focal is given, the center of rotation if the focal point, else\n\
+  it is the current camera position.\n\
+  -x or -y or -z specifies the axis of rotation (one must be specified).\n\
+  The frame follows the usual OpenGL convention : x axis points to the right,\n\
+  y axis points to the up direction and the z axis is pointing off the screen.\n\
+  Example:\n\
+    camera_rotate -z -deg -angle=-20  # to roll by -20 degrees.\n\
+");
+  return s_help;
+}
+
+inline void insh_count_points(ishell& a_insh,const std::vector<std::string>&,sg::gui_viewer& a_gv) {
+  sg::count_action ca(a_gv.out());
+  a_gv.scene().bbox(ca);
+  a_insh.out_begin();
+  std::string _s;
+  num2s(ca.number_of_points(),_s);
+  a_insh.out(_s);
+}
+
+#define INLIB_INSH_CAMERA_SET(a__field)\
+inline void insh_camera_set_##a__field(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {\
+  static const std::string s_cmd("camera_set_"+std::string(#a__field));\
+  if(a_args.size()!=1) {\
+    a_insh.warn(s_cmd+": one argument expected");\
+    return;\
+  }\
+  float _value;\
+  INLIB_ISHELL_ARG_FLOAT(a_args[0],_value)\
+  sg::base_camera* _cam = a_gv.scene_camera();\
+  if(!_cam) return;\
+  _cam->a__field = _value;\
+  a_gv.set_scene_camera(_cam);\
+}
+
+INLIB_INSH_CAMERA_SET(znear)
+INLIB_INSH_CAMERA_SET(zfar)
+INLIB_INSH_CAMERA_SET(focal)
+INLIB_INSH_CAMERA_SET(da)
+INLIB_INSH_CAMERA_SET(dx)
+INLIB_INSH_CAMERA_SET(ds)
+
+#undef INLIB_INSH_CAMERA_SET
+
+inline bool char_is_axis(char a_c) {
+  if(a_c=='x') return true;
+  if(a_c=='y') return true;
+  if(a_c=='z') return true;
+  return false;
+}
+inline bool char2vec3f(char a_c,vec3f& a_v) {
+  if(a_c=='x') {a_v = vec3f(1,0,0);return true;}
+  if(a_c=='y') {a_v = vec3f(0,1,0);return true;}
+  if(a_c=='z') {a_v = vec3f(0,0,1);return true;}
+  a_v = vec3f(0,0,0);
+  return false;
+}
+
+inline bool get_arg_float(ishell& a_insh,const std::string& a_cmd,const std::string& a_arg,float& a_value) {
+  if(!to<float>(a_arg,a_value)) {
+    a_insh.warn(a_cmd+": argument \""+a_arg+"\" is not a float.");
+    return false;
+  }
+  return true;
+}
+
+inline void insh_camera_set_orientation(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("camera_set_orientation");
+  sg::base_camera* _cam = a_gv.scene_camera();
+  if(!_cam) return;
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  bool degree;
+  INLIB_ISHELL_IS_ARG(degree)
+  bool multiply;
+  INLIB_ISHELL_IS_ARG(multiply)
+
+  std::string saxes;
+ {std::string to_rm;
+  inlib_vforcit(args::arg,_args.get_args(),it) {
+    const std::string& skey = (*it).first;
+    const std::string& svalue = (*it).second;
+    if(svalue.empty() && skey.size() && (skey[0]=='-')) {
+      saxes = skey.substr(1,skey.size()-1);
+      if((saxes.size()==3) && char_is_axis(saxes[0]) && char_is_axis(saxes[1]) && char_is_axis(saxes[2]) ) {
+        to_rm = skey;
+        break;
+      }
+      saxes.clear();
+    }
+  }
+  if(to_rm.size()) _args.remove(to_rm);}
+
+  std::vector<std::string> vs;
+  _args.to_vector(vs);
+  _args.clear();
+
+  std::vector<float> fs;
+ {float value;
+  inlib_vforcit(std::string,vs,it) {
+    if(!to<float>(*it,value)) {
+      a_insh.warn(s_cmd+": "+(*it)+" is not a float.");
+      return;
+    }
+    fs.push_back(value);
+  }}
+  
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  if(saxes.empty() && (fs.size()==6)) {
+    rotf r(vec3f(fs[0],fs[1],fs[2]),vec3f(fs[3],fs[4],fs[5]));
+    if(multiply) {
+      _cam->orientation.value(_cam->orientation.value()*r);
+    } else {
+      _cam->orientation = r;
+    }
+    a_gv.set_scene_camera(_cam);
+    return;
+  }
+  if((saxes.size()==3) && (fs.size()==3)) {
+    float a1 = fs[0];
+    float a2 = fs[1];
+    float a3 = fs[2];
+    if(degree) {
+      a1 *= fdeg2rad();
+      a2 *= fdeg2rad();
+      a3 *= fdeg2rad();
+    }
+    vec3f v1,v2,v3;
+    if( char2vec3f(saxes[0],v1) &&
+        char2vec3f(saxes[1],v2) &&
+        char2vec3f(saxes[2],v3) ){
+      rotf r(v1,a1);
+      r *= rotf(v2,a2);
+      r *= rotf(v3,a3);
+      if(multiply) {
+        _cam->orientation.value(_cam->orientation.value()*r);
+      } else {
+        _cam->orientation = r;
+      }
+      a_gv.set_scene_camera(_cam);
+      return;
+    }
+  }
+  if(saxes.empty() && (fs.size()==4)) {
+    float x = fs[0];
+    float y = fs[1];
+    float z = fs[2];
+    float angle = fs[3];
+    if(degree) angle *= fdeg2rad();
+    rotf r(vec3f(x,y,z),angle);
+    if(multiply) {
+      _cam->orientation.value(_cam->orientation.value()*r);
+    } else {
+      _cam->orientation = r;
+    }
+    a_gv.set_scene_camera(_cam);
+    return;
+  }
+ {a_insh.warn(s_cmd+": unknown argument configuration:");
+  args _args(a_args);
+  _args.dump(a_insh.out());
+  a_insh.out() << "found saxes: " << inlib::sout(saxes) << std::endl;}
+}
+
+inline const std::string& insh_camera_set_orientation_help() {
+  static const std::string s_help("\
+camera_set_orientation: camera_set_orientation [-degree] [schema]\n\
+  If schema 'x y z angle' is given, set camera.orientation to:\n\
+    rotf(vec3f(x,y,z),angle).\n\
+  If schema '-[xyz][xyz][xyz] angle_1 angle_2 angle 3' is given,\n\
+  set camera.orientation with a rotf built with:\n\
+     rotf r = rotf(<first axis>,<first angle>);\n\
+     r *= rotf(<second axis>,<second angle>);\n\
+     r *= rotf(<third axis>,<third angle>);\n\
+  If first specifying -degree, the angles are taken in degrees.\n\
+  Examples:\n\
+    # 2*pi/3=2.094 along vec3f(-1,-1,-1):\n\
+    camera_set_orientation -1 -1 -1 2.094\n\
+    # 30 degrees along z:\n\
+    camera_set_orientation -degree 0 0 1 30\n\
+    # -2.35 radian along y, then 0.2 along x and then -0.2 along z:\n\
+    camera_set_orientation -yxz -2.35 0.2 -0.2\n\
+");
+  return s_help;
+}
+
+inline void insh_camera_set_position(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("camera_set_position");
+  if(a_args.size()!=3) {
+    a_insh.warn(s_cmd+": three argument expected");
+    return;
+  }
+  float tx,ty,tz;
+  INLIB_ISHELL_ARG_FLOAT(a_args[0],tx)
+  INLIB_ISHELL_ARG_FLOAT(a_args[1],ty)
+  INLIB_ISHELL_ARG_FLOAT(a_args[2],tz)
+  sg::base_camera* _cam = a_gv.scene_camera();
+  if(!_cam) return;
+  _cam->position = vec3f(tx,ty,tz);
+  a_gv.set_scene_camera(_cam);
+}
+
+inline const std::string& insh_camera_set_position_help() {
+  static const std::string s_help("\
+camera_set_position: camera_set_position x y z\n\
+  Set camera.position to be x,y,z.\n\
+  Example:\n\
+    camera_set_position 0 0 10\n\
+");
+  return s_help;
+}
+
+inline void insh_camera_translate_position(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("camera_translate_position");
+  if(a_args.size()!=3) {
+    a_insh.warn(s_cmd+": three argument expected");
+    return;
+  }
+  float tx,ty,tz;
+  INLIB_ISHELL_ARG_FLOAT(a_args[0],tx)
+  INLIB_ISHELL_ARG_FLOAT(a_args[1],ty)
+  INLIB_ISHELL_ARG_FLOAT(a_args[2],tz)
+  sg::base_camera* _cam = a_gv.scene_camera();
+  if(!_cam) return;
+  _cam->position += vec3f(tx,ty,tz);
+  a_gv.set_scene_camera(_cam);
+}
+
+inline const std::string& insh_camera_translate_position_help() {
+  static const std::string s_help("\
+camera_translate_position: camera_translate_position x y z\n\
+  Translate the camera.position by x,y,z.\n\
+  Example:\n\
+    camera_translate_position 10 20 30\n\
+");
+  return s_help;
+}
+
+inline void insh_camera_zoom(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("camera_zoom");
+  if(a_args.size()!=1) {
+    a_insh.warn(s_cmd+": one argument expected");
+    return;
+  }
+  float factor;
+  INLIB_ISHELL_ARG_FLOAT(a_args[0],factor)
+  if(factor<=0) {
+    a_insh.warn(s_cmd+": first argument "+sout(a_args[0])+" must be >0.");
+    return;
+  }
+  //  factor = 0.99f is a zoom in
+  //  factor = 1.01f is a zoom out
+  sg::base_camera* _cam = a_gv.scene_camera();
+  if(!_cam) return;
+  _cam->zoom(factor);
+  a_gv.set_scene_camera(_cam);
+}
+
+inline const std::string& insh_camera_zoom_help() {
+  static const std::string s_help("\
+camera_zoom: camera_zoom factor\n\
+  Zoom in or out camera.\n\
+  Example:\n\
+    camera_zoom 0.99  # is a zoom in.\n\
+    camera_zoom 1.01  # is a zoom out.\n\
+");
+  return s_help;
+}
+
+inline void insh_camera_start_anim(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("camera_start_anim");
+  if((a_args.size()!=1)&&(a_args.size()!=2)) {
+    a_insh.warn(s_cmd+": one or two argument expected");
+    return;
+  }
+  std::string smove = a_args[0];
+  if(a_args.size()==2) smove = a_args[1];
+  sg::move_type _move;
+  if(!smove_type(smove,_move)) {
+    a_insh.warn(s_cmd+": "+sout(smove)+" is not a move_type.");
+    return;
+  }
+  unsigned int cycle_secs = 10; //idem m_params.m_cycle_secs default.
+  if(a_args.size()==2) {
+    std::string opt,value;
+    if(!cmd_arg(a_args[0],opt,value)) {
+      a_insh.warn(s_cmd+": "+sout(a_args[0])+" is not -<string>=<string>.");
+      return;
+    }
+    if(opt!="cycle_secs") {
+      a_insh.warn(s_cmd+": "+sout(opt)+" is an unknown option.");
+      return;
+    }
+    INLIB_ISHELL_ARG_UINT(value,cycle_secs)
+  }
+  a_gv.start_cam_move(_move,cycle_secs);
+}
+
+inline const std::string& insh_camera_start_anim_help() {
+    static const std::string s_help("\
+camera_start_anim: camera_start_anim [-cycle_secs=secs] anim\n\
+  Start a camera animation. The anim argument could be :\n\
+    move_rotate_right\n\
+    move_rotate_left\n\
+    move_rotate_up\n\
+    move_rotate_down\n\
+    move_roll_plus\n\
+    move_roll_minus\n\
+    move_translate_right\n\
+    move_translate_left\n\
+    move_up\n\
+    move_down\n\
+    move_forward\n\
+    move_backward\n\
+    move_zoom_in\n\
+    move_zoom_out\n\
+    move_rotate_around_focal_right\n\
+    move_rotate_around_focal_left\n\
+    move_rotate_around_focal_up\n\
+    move_rotate_around_focal_down\n\
+    move_roll_around_focal_plus\n\
+    move_roll_around_focal_minus\n\
+    move_zoom_in_out\n\
+    move_zoom_in_out_rot\n\
+    move_curve\n\
+  For move_zoom_in_out, move_zoom_in_out_rot and move_curve, the -cycle_secs option\n\
+  permits to set the cycle time in seconds (it is 10 secs by default).\n\
+  Use camera_stop_anim to stop the animation.\n\
+");
+  return s_help;
+}
+
+inline void insh_gui_show_console(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  std::string sa;
+  conc(a_args," ",sa);
+  a_gv.show_console(sa);
+}
+
+inline void insh_gui_set_console_layout(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  if(a_args.empty()) {
+    a_gv.set_console_size();
+    return;
+  }
+  args _args(a_args);
+  bool changed = false;
+ {float value;
+  if(_args.find("-width",value)) {
+    if(value!=a_gv.m_params.m_console_width) {
+      a_gv.m_params.m_console_width = value;
+      if(a_gv.m_params.m_console_width<=0) a_gv.m_params.m_console_width = 0.3F;
+      changed = true;
+    }
+  }}
+ {float value;
+  if(_args.find("-height",value)) {
+    if(value!=a_gv.m_params.m_console_height) {
+      a_gv.m_params.m_console_height = value;
+      if(a_gv.m_params.m_console_height<=0) a_gv.m_params.m_console_height = 0.05F;
+      changed = true;
+    }
+  }}
+ {float value;
+  if(_args.find("-scale",value)) {
+    if(value!=a_gv.m_params.m_console_scale) {
+      a_gv.m_params.m_console_scale = value;
+      if(a_gv.m_params.m_console_scale<=0) a_gv.m_params.m_console_scale = 1;
+      changed = true;
+    }
+  }}
+  if(changed) a_gv.set_console_layout();
+}
+
+inline void insh_style_complete(sg::gui_viewer& a_gv,const std::string& a_begin,std::vector<std::string>& a_names) {
+  a_names.clear();
+  if(a_begin.empty()) {
+    inlib_vforcit(xml::styles::named_style_t,a_gv.styles().named_styles(),it) {
+      a_names.push_back((*it).first);
+    }
+  } else {
+    inlib_vforcit(xml::styles::named_style_t,a_gv.styles().named_styles(),it) {
+      if(is_beg((*it).first,a_begin)) a_names.push_back((*it).first);
+    }
+  }
+  sort::sort(a_names);
+}
+
+inline void insh_style_create(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("style_create");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+" no name given.");
+    return;
+  }
+  _args.remove(fnh);
+  a_gv.styles().remove(fnh);
+  typedef xml::styles::style_item_t item_t;
+  xml::styles::style_t sty;
+  inlib_vforcit(args::arg,_args.get_args(),it) {
+    const std::string& skey = (*it).first;
+    const std::string& svalue = (*it).second;
+    if(skey.size()&&(skey[0]=='-')) {
+      std::string sfield = skey.substr(1,skey.size()-1);
+      sty.push_back(item_t(sfield,svalue));
+    }
+  }
+  a_gv.styles().add_style(fnh,sty);
+}
+
+inline void insh_style_remove(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  args _args(a_args);
+//if(_args.is_arg("-all")) {
+//  a_mgr.clear();
+//  return;
+//}
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn("style_remove : no name given.");
+    return;
+  }
+  a_gv.styles().remove(fnh);
+}
+
+inline void insh_style_ls(ishell& a_insh,const std::vector<std::string>&,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("style_ls");
+  std::vector<std::string> vs;
+  inlib_vforcit(xml::styles::named_style_t,a_gv.styles().named_styles(),it) {
+    vs.push_back((*it).first);
+  }
+  sort::sort(vs);
+  if(a_insh.in_backquote()) {
+    a_insh.out_begin();
+    inlib_vforcit(std::string,vs,it) a_insh.out(*it,true);
+  } else {
+    a_insh.unix_print(vs);
+  }
+}
+
+inline void insh_style_append(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("style_append");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+" no name given.");
+    return;
+  }
+  _args.remove(fnh);
+  inlib::xml::styles::style_t* _sty = a_gv.styles().find_style_not_const(fnh);
+  if(!_sty) {
+    a_insh.warn(s_cmd+" style not "+sout(fnh)+" not found.");
+    return;
+  }
+  typedef xml::styles::style_item_t item_t;
+  xml::styles::style_t sty;
+  inlib_vforcit(args::arg,_args.get_args(),it) {
+    const std::string& skey = (*it).first;
+    const std::string& svalue = (*it).second;
+    if(skey.size()&&(skey[0]=='-')) {
+      std::string sfield = skey.substr(1,skey.size()-1);
+      _sty->push_back(item_t(sfield,svalue));
+    }
+  }
+}
+
+inline void insh_style_print(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("style_print");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+" no name given.");
+    return;
+  }
+  _args.remove(fnh);
+  std::string ssep = "=";
+  INLIB_ISHELL_GET_ARG_STRING(sep)
+  if(ssep.empty()) ssep = "=";
+  const inlib::xml::styles::style_t* _sty = a_gv.styles().find_style(fnh);
+  if(!_sty) {
+    a_insh.warn(s_cmd+" style not "+sout(fnh)+" not found.");
+    return;
+  }
+  typedef xml::styles::style_item_t item_t;
+  xml::styles::style_t sty;
+  a_insh.out_begin();
+  inlib_vforcit(item_t,*_sty,it) {
+    a_insh.out((*it).first+ssep+(*it).second,true);
+  }
+}
+
+inline void insh_app_dir(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("app_dir");
+  if(a_args.empty()) {
+    a_insh.out_begin();
+    a_insh.out(a_gv.res_dir(),true);
+    a_insh.out(a_gv.doc_dir(),true);
+    a_insh.out(a_gv.out_dir(),true);
+    a_insh.out(a_gv.start_dir(),true);
+    a_insh.out(a_gv.tmp_dir(),true);
+    return;
+  }
+  const std::string& arg0 = a_args[0];
+  if(arg0=="-res") {
+    a_insh.out(a_gv.res_dir());
+    return;
+  }
+  if(arg0=="-doc") {
+    a_insh.out(a_gv.doc_dir());
+    return;
+  }
+  if(arg0=="-out") {
+    a_insh.out(a_gv.out_dir());
+    return;
+  }
+  if(arg0=="-start") {
+    a_insh.out(a_gv.start_dir());
+    return;
+  }
+  if(arg0=="-tmp") {
+    a_insh.out(a_gv.tmp_dir());
+    return;
+  }
+  a_insh.warn(s_cmd+": unknown option "+sout(arg0)+".");
+}
+
+inline void insh_app_res_dir(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  a_insh.out(a_gv.res_dir());
+}
+inline void insh_app_doc_dir(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  a_insh.out(a_gv.doc_dir());
+}
+inline void insh_app_out_dir(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  a_insh.out(a_gv.out_dir());
+}
+inline void insh_app_start_dir(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  a_insh.out(a_gv.start_dir());
+}
+inline void insh_app_tmp_dir(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  a_insh.out(a_gv.tmp_dir());
+}
+
+inline void insh_app_color_value(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("app_color_value");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no color given.");
+    return;
+  }
+  colorf _value;
+  if(!find_color(a_gv.styles().cmaps(),fnh,_value)) {
+    a_insh.warn(s_cmd+": "+sout(fnh)+" is not a color.");
+    return;
+  }
+  if(_args.is_arg("-r")) {
+    std::string _s;
+    num2s(_value.r(),_s);
+    a_insh.out(_s);
+    return;
+  }
+  if(_args.is_arg("-g")) {
+    std::string _s;
+    num2s(_value.g(),_s);
+    a_insh.out(_s);
+    return;
+  }
+  if(_args.is_arg("-b")) {
+    std::string _s;
+    num2s(_value.b(),_s);
+    a_insh.out(_s);
+    return;
+  }
+  if(_args.is_arg("-a")) {
+    std::string _s;
+    num2s(_value.a(),_s);
+    a_insh.out(_s);
+    return;
+  }
+  if(_args.is_arg("-rgb")) {
+    std::string _s;
+    numas(_value.r(),_s);
+    _s += " ";
+    numas(_value.g(),_s);
+    _s += " ";
+    numas(_value.b(),_s);
+    a_insh.out(_s);
+    return;
+  }
+  std::string _s;
+  numas(_value.r(),_s);
+  _s += " ";
+  numas(_value.g(),_s);
+  _s += " ";
+  numas(_value.b(),_s);
+  _s += " ";
+  numas(_value.a(),_s);
+  a_insh.out(_s);
+}
+
+inline const std::string& insh_app_color_value_help() {
+  static const std::string s_help("\
+app_color_value: app_color_value [-r,-g,-b,-a,-rgba] colorname\n\
+  Print the rgba of a color given its name.\n\
+  -r to print only the red value (in [0,1]).\n\
+  -g to print only the green value (in [0,1]).\n\
+  -b to print only the blue value (in [0,1]).\n\
+  -a to print only the alpha value (in [0,1]).\n\
+  -rgb to print only red, green, blue.\n\
+  Example:\n\
+    app_color_value red\n\
+    app_color_value -r red\n\
+    app_color_value -rgb red\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_write_to_paper(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_write_to_paper");
+  args _args(a_args);
+  std::string path;
+  if(_args.is_arg("-out_dir")) {
+    if(a_gv.out_dir().empty()) {
+      a_insh.warn(s_cmd+": out_dir() is empty.");
+      return;
+    }
+    if(!check_dir(a_gv.out(),a_gv.out_dir())) {
+      a_insh.warn(s_cmd+": can't get out_dir.");
+      return;
+    }
+    path = a_gv.out_dir()+sep();
+  }
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no output file given.");
+    return;
+  }
+  path += fnh;
+  std::string format;
+  _args.find("-format",format,"guessed");
+  if(format=="guessed") {
+    if(!file::extension_paper_format(path,format)) {
+      a_insh.warn(s_cmd+": can't guess format from extension of "+sout(path)+".");
+      return;
+    }
+  } else {
+    if(!file::is_paper_format(format)) {
+      a_insh.warn(s_cmd+": unknown format "+sout(format)+".");
+      return;
+    }
+  }
+  unsigned int old_width = a_gv.width();
+  unsigned int old_height = a_gv.height();
+  unsigned int width;
+  _args.find<unsigned int>("-width",width,a_gv.width());
+  unsigned int height;
+  _args.find<unsigned int>("-height",height,a_gv.height());
+  a_gv.set_size(width,height);
+  bool status = a_gv.write_scene_to_paper(path,format,width,height);
+  a_gv.set_size(old_width,old_height);
+  if(!status) {
+    a_insh.warn(s_cmd+": write_scene_to_paper() failed for format "+sout(format)+".");
+    return;
+  }
+  if(_args.is_arg("-show_console")) a_gv.show_console(path+" produced.");
+}
+
+inline const std::string& insh_scene_write_to_paper_help() {
+  static const std::string s_help("\
+scene_write_to_paper: scene_write_to_paper [-out_dir,-width,-height,-format,-show_console] file\n\
+  Produce an output file from the current scene.\n\
+  -out_dir permits to write the file in the output directory of the application.\n\
+  -width=uint set width of the viewport (default is viewer width).\n\
+  -height=uint set height of the viewport (default is viewer height).\n\
+  -show_console prints the name of the output file in the console.\n\
+  -format permits to choose the output format and the tool to produce the file.\n\
+  If 'guessed', which is the default, the format is choosen/deduced from the file extension.\n\
+  For example for out.png, the format will be inzb_png.\n\
+  The known formats are:\n\
+    inzb_[ps,png,jpeg] : pixmap of the scene is put in a PostScript, png or jpeg file\n\
+  by using the inlib::sg::zb_action.\n\
+    gl2ps_[eps,ps,pdf,svg,tex,pdg] : primitives of the scene (vector graphices) is put in an\n\
+  encapsulated PostScript, PostScript, PDF, SVG, LaTeX or PDG file by using gl2ps.\n\
+  If 'guessed' is used as format, then according to the file extension, the tool used is:\n\
+    .ps, .eps: inzb_ps\n\
+    .png : inzb_png\n\
+    .jpg, .jpeg: inzb_jpeg\n\
+    .pdf, .svg, .pgf, .tex: gl2ps_[pdf,svg,pgf,tex]\n\
+  Example:\n\
+    scene_write_to_paper out.jpeg  # produce a out.jpeg file in current directory by using inzb_jpeg.\n\
+    scene_write_to_paper -out_dir -format=inzb_png -scale=2 out.png\n\
+    scene_write_to_paper -format=gl2ps_pdf out.pdf\n\
+    scene_write_to_paper -format=guessed -show_console out.pgf\n\
+  See also:\n\
+    app_out_dir\n\
+");
+  return s_help;
+}
+
+inline const std::string& insh_scene_write_to_bsg_help() {
+    static const std::string s_help("\
+scene_write_to_bsg: scene_write_to_bsg [-out_dir] file\n\
+  Write the scene scene graph to a bsg (binary file format) file.\n\
+  If no directory is given in file, the -out_dir option permits to prepend the\n\
+  application output directory to file.\n\
+  Example:\n\
+    scene_write_to_bsg -out_dir my_scene.bsg\n\
+  See also:\n\
+    app_out_dir\n\
+");
+    return s_help;
+}
+
+/*
+  static void setup_anims(std::ostream& a_out,node& a_from,float a_time_min,float a_time_max,float a_delay,bool a_end_begin) {
+    search_action sa(a_out);
+    typedef sg::search_action::path_t path_t;
+    const std::vector<path_t>& paths = find_paths(sa,a_from,slice_anim::s_class());
+    inlib_vforcit(path_t,paths,it) {
+      const path_t& p = *it;
+      sg::node* _node = p.size()?p[p.size()-1]:0;
+      if(!_node) continue;
+      slice_anim* _anim = safe_cast<node,slice_anim>(*_node);
+      if(!_anim) continue;
+      _anim->time_min = a_time_min;
+      _anim->time_max = a_time_max;
+      _anim->delay = a_delay;
+      _anim->end_begin = a_end_begin;
+      _anim->set_start(atime::now());
+      //::printf("debug : start anim %lu\n",_anim);
+    }
+  }
+*/
+
+inline void insh_scene_start_anim(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_start_anim");
+  args _args(a_args);
+  float time_min = 0;
+  INLIB_ISHELL_GET_ARG_FLOAT(time_min)
+  float time_max = FLT_MIN;
+  INLIB_ISHELL_GET_ARG_FLOAT(time_max)
+  float delay = 10;
+  INLIB_ISHELL_GET_ARG_FLOAT(delay)
+  bool end_begin = false;
+  INLIB_ISHELL_GET_ARG_BOOL(end_begin)
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  a_gv.setup_anims(a_gv.out(),a_gv.scene(),time_min,time_max,delay,end_begin);
+  a_gv.enable_anim();
+}
+
+inline const std::string& insh_scene_start_anim_help() {
+  static const std::string s_help("\
+scene_start_anim: scene_start_anim [-tim_min,-time_max,-delay,-end_begin]\n\
+  Start scene animation. It operates on all nodes in the scene inheriting sg::slice_anim\n\
+  as xyzt_anim, cone_anim, show_time_anim.\n\
+  -time_min=real event time start (in app specific unit) (default is 0).\n\
+  -time_max=real event time end (in app specific unit) (default is FLT_MIN).\n\
+  -delay=real user elapsed time of the anim in secs (default is 10).\n\
+  -end_begin=bool if true, start again at end (default is false).\n\
+  Example:\n\
+    scene_start_anim -tim_min=0 -time_max=20 -delay=10\n\
+    scene_start_anim -time_max=20\n\
+");
+    return s_help;
+}
+
+inline const std::string& insh_scene_write_static_to_bsg_help() {
+  static const std::string s_help("\
+scene_write_static_to_bsg: scene_write_static_to_bsg [-out_dir] file\n\
+  Write the static scene graph to a bsg (binary file format) file.\n\
+  If no directory is given in file, the -out_dir option permits to prepend the\n\
+  application output directory to file.\n\
+  Example:\n\
+    scene_write_static_to_bsg -out_dir my_scene.bsg\n\
+  See also:\n\
+    app_out_dir\n\
+");
+  return s_help;
+}
+
+inline const std::string& insh_scene_write_dynamic_to_bsg_help() {
+  static const std::string s_help("\
+scene_write_dynamic_to_bsg: scene_write_dynamic_to_bsg [-out_dir] file\n\
+  Write the dynamic scene graph to a bsg (binary file format) file.\n\
+  If no directory is given in file, the -out_dir option permits to prepend the\n\
+  application output directory to file.\n\
+  Example:\n\
+    scene_write_dynamic_to_bsg -out_dir my_scene.bsg\n\
+  See also:\n\
+    app_out_dir\n\
+");
+  return s_help;
+}
+
+}
+
+#include "node_to_bsg"
+
+namespace inlib {
+inline void insh_scene_write_to_bsg(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv){
+  insh_node_to_bsg(a_insh,a_args,a_gv,a_gv.scene());
+}
+}
+
+#include "ls"
+#include "console" //windows.h
+#include "sys"
+#include "compiler"
+
+#include "ishell_args_gui_viewer_cmd"
+#include "ishell_args_cmd"
+#include "gui_viewer_cmd"
+
+#define INLIB_INSH_GUI_VIEWER_ADDS(a__insh,a__gv)\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,sys_home_dir,\
+    inlib::insh_sys_home_dir,\
+"sys_home_dir: sys_home_dir\n\
+  Print the home directory.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,sys_file_sep,\
+    inlib::insh_sys_file_sep,\
+"sys_file_sep: sys_file_sep\n\
+  Print the file separator. It is / on UNIX and \\ on Windows.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,sys_path_sep,\
+    inlib::insh_sys_path_sep,\
+"sys_path_sep: sys_path_sep\n\
+  Print the path separator. It is : on UNIX and ; on Windows.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD_COMPLETE(a__insh,ls,inlib::insh_ls,inlib::insh_ls_help(),inlib::file::complete)\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,tput,inlib::insh_tput,inlib::insh_tput_help())\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,cpp_sizeof_void_star,\
+    inlib::insh_cpp_sizeof_void_star,\
+"cpp_sizeof_void_star: cpp_sizeof_void_star\n\
+  Print sizeof(void*).\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,cpp_sizeof_long_long,\
+    inlib::insh_cpp_sizeof_long_long,\
+"cpp_sizeof_long_long: cpp_sizeof_long_long\n\
+  Print sizeof(long long).\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,cpp_sizeof_off_t,\
+    inlib::insh_cpp_sizeof_off_t,\
+"cpp_sizeof_off_t: cpp_sizeof_off_t\n\
+  Print sizeof(off_t).\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,cpp_sizeof_long,\
+    inlib::insh_cpp_sizeof_long,\
+"cpp_sizeof_long: cpp_sizeof_long\n\
+  Print sizeof(long).\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_CMD(a__insh,sys_is_little_endian,\
+    inlib::insh_sys_is_little_endian,\
+"sys_is_little_endian: sys_is_little_endian\n\
+  Print 1 is system is little endian, 0 if not.\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_rotate,\
+    inlib::insh_camera_rotate,inlib::insh_camera_rotate_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_start_anim,\
+    inlib::insh_camera_start_anim,inlib::insh_camera_start_anim_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_set_console_layout,\
+    inlib::insh_gui_set_console_layout,\
+"gui_set_console_layout: gui_set_console_layout [width] [height] [scale]\n\
+  Set the console width and/or height. -scale can set an extra scaling factor.\n\
+  Width and height are in normal window coordinates (in [0,1]).\n\
+  Example:\n\
+    gui_set_console_layout -width=0.5 -height=0.06 -scale=1.2\n\
+    gui_set_console_layout -width=0.5  # half window width.\n\
+    gui_set_console_layout -scale=2\n\
+    gui_set_console_layout  # reset default layout (width=0.3, height=0.05, scale=1) \n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_yaw,\
+    inlib::insh_camera_yaw,\
+"camera_yaw: camera_yaw [-deg,-degree] value\n\
+  Rotate the camera around the up axis.\n\
+  If specifying -deg or -degree, the value is taken in degrees.\n\
+  Example:\n\
+    camera_yaw 0.52\n\
+    camera_yaw -deg 30\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_pitch,\
+    inlib::insh_camera_pitch,\
+"camera_pitch: camera_pitch [-deg,-degree] value\n\
+  Rotate the camera around the left-right/x axis.\n\
+  If specifying -deg or -degree, the value is taken in degrees.\n\
+  Example:\n\
+    camera_pitch 0.52\n\
+    camera_pitch -deg 30\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_roll,\
+    inlib::insh_camera_roll,\
+"camera_roll: camera_roll [-deg,-degree] value\n\
+  Rotate the camera around the direction of view axis.\n\
+  If specifying -deg or -degree, the value is taken in degrees.\n\
+  Example:\n\
+    camera_roll 0.52\n\
+    camera_roll -deg 30\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_translate_position,\
+    inlib::insh_camera_translate_position,inlib::insh_camera_translate_position_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_set_position,\
+    inlib::insh_camera_set_position,inlib::insh_camera_set_position_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_set_orientation,\
+    inlib::insh_camera_set_orientation,inlib::insh_camera_set_orientation_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_zoom,\
+    inlib::insh_camera_zoom,inlib::insh_camera_zoom_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_set_znear,\
+    inlib::insh_camera_set_znear,\
+"camera_set_znear: camera_set_znear value\n\
+  Set the camera znear (default 1).\n\
+  znear is the distance toward the forward cut plan.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_set_zfar,\
+    inlib::insh_camera_set_zfar,\
+"camera_set_zfar: camera_set_zfar value\n\
+  Set the camera zfar (default 10).\n\
+  zfar is the distance toward the backward cut plan.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_set_focal,\
+    inlib::insh_camera_set_focal,\
+    "camera_set_focal: camera_set_focal value\n  Set the camera focal length (default 1).\n")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_set_da,\
+    inlib::insh_camera_set_da,\
+    "camera_set_da: camera_set_da value\n  Set the rotation step factor in radians (default 0.017).\n")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_set_dx,\
+    inlib::insh_camera_set_dx,\
+    "camera_set_dx: camera_set_dx value\n  Set the translation step factor (default 0.01).\n")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,camera_set_ds,\
+    inlib::insh_camera_set_ds,\
+    "camera_set_ds: camera_set_ds value\n  Set the zoom step factor (default 0.99).\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,camera_view_all,\
+    &inlib::sg::gui_viewer::view_all,\
+    "camera_view_all: camera_view_all\n  Arrange the camera so that all the scene elements are viewed.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,camera_reset,\
+    &inlib::sg::gui_viewer::reset_camera,\
+    "camera_reset: camera_reset\n  Reset camera parameters.\n  It is usefull if being lost in space.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,camera_swap_kind,\
+    &inlib::sg::gui_viewer::swap_kind_of_camera,\
+    "camera_swap_kind: camera_swap_kind\n  Swap camera between ortho and perspective.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,camera_stop_anim,\
+    &inlib::sg::gui_viewer::stop_cam_anim,\
+"camera_stop_anim: camera_stop_anim,\n\
+  If any on, stop a camera animation.\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_write_to_paper,\
+    inlib::insh_scene_write_to_paper,inlib::insh_scene_write_to_paper_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_write_to_bsg,\
+    inlib::insh_scene_write_to_bsg,inlib::insh_scene_write_to_bsg_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_count_points,\
+    inlib::insh_count_points,"scene_count_points: scene_count_points\n Count number of points in the scene.\n")\
+\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,event_stop_anim,\
+    &inlib::sg::gui_viewer::stop_event_anim,\
+"event_stop_anim: event_stop_anim\n\
+  Stop the looping on events animation.\n\
+")\
+\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,scene_light_on,\
+    &inlib::sg::gui_viewer::enable_scene_light,\
+    "scene_light_on: scene_light_on\n  Switch on the overall light.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,scene_light_off,\
+    &inlib::sg::gui_viewer::disable_scene_light,\
+    "scene_light_off: scene_light_off\n  Switch off the overall light.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,scene_blend_on,\
+    &inlib::sg::gui_viewer::enable_scene_blend,\
+    "scene_blend_on: scene_blend_on\n  Switch on the overall blending (and then transparency).\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,scene_blend_off,\
+    &inlib::sg::gui_viewer::disable_scene_blend,\
+    "scene_blend_off: scene_blend_off\n  Switch off the overall blending (and then transparency).\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,scene_smooth_on,\
+    &inlib::sg::gui_viewer::enable_scene_smooth,\
+    "scene_smooth_on: scene_smooth_on\n  Switch the overall shade model to smooth.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,scene_smooth_off,\
+    &inlib::sg::gui_viewer::disable_scene_smooth,\
+    "scene_smooth_off: scene_smooth_off\n  Switch the overall shade model to flat.\n")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_start_anim,\
+    inlib::insh_scene_start_anim,inlib::insh_scene_start_anim_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_set_clear_color,\
+    inlib::insh_scene_set_clear_color,inlib::insh_scene_set_clear_color_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_bounding_box,\
+    inlib::insh_scene_bounding_box,inlib::insh_scene_bounding_box_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_remove_nodes,\
+    inlib::insh_scene_remove_nodes,inlib::insh_scene_remove_nodes_help())\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,render_manager_infos,\
+    inlib::insh_render_manager_infos,\
+"render_manager_infos: render_manager_infos [name]\n\
+  Print render_manager informations about 'name'.\n\
+  If no arguments provided, print the available names.\n\
+  Example:\n\
+    render_manager_infos GL_VERSION\n\
+")\
+\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,window_render,\
+    &inlib::sg::gui_viewer::render_window,\
+    "window_render: window_render\n  Enforce an immediate rendering of the window.\n")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,window_to_png,\
+    inlib::insh_window_to_png,inlib::insh_window_to_png_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,window_to_jpeg,\
+    inlib::insh_window_to_jpeg,inlib::insh_window_to_jpeg_help())\
+/*INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,window_set_size,inlib::insh_window_set_size,inlib::insh_window_set_size_help())*/\
+\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_hide_console,\
+    &inlib::sg::gui_viewer::hide_console,\
+    "gui_hide_console: gui_hide_console\n  Hide the upper left console text.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_hide_main_menu,\
+    &inlib::sg::gui_viewer::hide_main_menu,\
+    "gui_hide_main_menu: gui_hide_main_menu\n  Hide the main menu and show the scene.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_show_main_menu,\
+    &inlib::sg::gui_viewer::show_main_menu,\
+    "gui_show_main_menu: gui_show_main_menu\n  Show the main menu.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_hide_camera_menu,\
+    &inlib::sg::gui_viewer::hide_camera_menu,\
+    "gui_hide_camera_menu: gui_hide_camera_menu\n  Hide the camera menu items.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_show_camera_menu,\
+    &inlib::sg::gui_viewer::show_camera_menu,\
+    "gui_show_camera_menu: gui_show_camera_menu\n  Show the camera menu items.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_push_home,\
+    &inlib::sg::gui_viewer::push_home,\
+    "gui_push_home: gui_push_home\n  Show the top list items in the main menu.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_push_back_item,\
+    &inlib::sg::gui_viewer::push_back_item,\
+"gui_push_back_item: gui_push_back_item\n\
+  If being in a submenu of the main menu, return to the parent menu.\n\
+")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_hide_meta_zone,\
+    &inlib::sg::gui_viewer::hide_meta_zone,\
+"gui_hide_meta_zone: gui_hide_meta_zone\n\
+  Hide the light blue area at the bottom of the window that permits\n\
+  to switch between scene mode and main menu mode. Note that this\n\
+  area is anyway still active.\n\
+")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_set_viewing_mode,\
+    &inlib::sg::gui_viewer::enable_param_viewing,\
+"gui_set_viewing_mode: gui_set_viewing_mode\n\
+  When in scene mode, pass the cursor/touching in viewing mode.\n\
+  It permits to move the camera with the mouse/touches.\n\
+")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_set_picking_mode,\
+    &inlib::sg::gui_viewer::disable_param_viewing,\
+"gui_set_picking_mode: gui_set_picking_mode\n\
+  When in scene mode, pass the cursor/touching in picking mode.\n\
+  It permits to pick an object and have a contextual popup on it.\n\
+")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_set_to_exit,\
+    &inlib::sg::gui_viewer::set_to_exit,\
+"gui_set_to_exit: gui_set_to_exit\n\
+  Raise the application exit flag.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_text,\
+    inlib::insh_gui_text,\
+"gui_text: gui_text [strings]\n\
+  Show strings in a text widget.\n\
+  Example:\n\
+    gui_text line_1 line_2 line_3\n\
+    gui_show_main_menu\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_scroll_text,\
+    inlib::insh_gui_scroll_text,\
+"gui_scroll_text: gui_scroll_text [strings]\n\
+  Show strings in a scrolling text widget.\n\
+  Example:\n\
+    gui_scroll_text line_1 line_2 line_3 line_4 line_5 line_6\n\
+    gui_show_main_menu\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_show_console,\
+    inlib::insh_gui_show_console,\
+"gui_show_console: gui_show_console\n\
+  Show the upper left console text.\n\
+")\
+\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_enable_anim,\
+    &inlib::sg::gui_viewer::enable_anim,\
+    "gui_enable_anim: gui_enable_anim\n  Enable animations.\n")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,gui_disable_anim,\
+    &inlib::sg::gui_viewer::disable_anim,\
+    "gui_disable_anim: gui_disable_anim\n  Disable animations.\n")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_exec_main_menu_item,\
+    inlib::insh_gui_exec_main_menu_item,inlib::insh_gui_exec_main_menu_item_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_push_list,\
+    inlib::insh_gui_push_list,\
+"gui_push_list: gui_push_list [label script]\n\
+  Show a list menu.\n\
+  A list of pairs (label,script) must be provided.\n\
+  Example:\n\
+    gui_push_list 'item 1' 'echo item 1' 'item 2' 'echo item 2'\n\
+    gui_show_main_menu\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_push_list_items,\
+    inlib::insh_gui_push_list_items,\
+"gui_push_list_items: gui_push_list_items [-item]\n\
+  Show a list menu.\n\
+  A list of items, with -item='label:image_file:script', must be provided.\n\
+  Example:\n\
+    gui_push_list_items -item='about:icon.jpg:about.insh' -item='exit:application_exit.jpg:gui_set_to_exit'\n\
+    gui_show_main_menu\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_push_entries,\
+    inlib::insh_gui_push_entries,\
+"gui_push_entries: gui_push_entries [-script,-string,-bool,-uint,-int,-double,-opts,-not_editable,-combo_string]\n\
+  Show a entries widget.\n\
+  -string=string of the form -string='label' or -string='label:default' to set a string entry.\n\
+  -bool=string of the form -bool='label:[false,true]' to set a boolean entry.\n\
+  -uint=string of the form -uint='label:default not signed number' to set a unsigned int entry.\n\
+  -int=string of the form -int='label:default number' to set a int entry.\n\
+  -double=string of the form -double='label:default real' to set a double entry.\n\
+  -opts=string of the form -opts='label:default:[items:]' to set an option strings entry.\n\
+  -combo_string=string of the form -combo_string='label:default:[items:]' to set an option strings entry,\n\
+  but without enforcing the default to be in the item list.\n\
+  -not_editable=string of the form -not_editable='label:value' to set a not editable entry.\n\
+  -script=string permits to set a 'ok' insh callback. Within the ok script,\n\
+  you can use the 'inlib_sg_entries_value_[num]' insh variables to retrieve each value\n\
+  of the entries.\n\
+  Example:\n\
+    gui_push_entries -script='echo ${inlib_sg_entries_value_2}' -string='entry 0' -string='entry 1:hello' -opts='items:item 2:item 1:item 2' -uint='cols:1' -double='mean:-1' -bool='clear:true'\n\
+    gui_show_main_menu\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_push_keyboard,\
+    inlib::insh_gui_push_keyboard,\
+"gui_push_keyboard: gui_push_keyboard [-script]\n\
+  Show a keyboard widget.\n\
+  Example:\n\
+    gui_push_keyboard -script='echo ${inlib_sg_keyboard_value}'\n\
+    gui_show_main_menu\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_push_scroll_infos,\
+    inlib::insh_gui_push_scroll_infos,\
+"gui_push_scroll_infos: gui_push_scroll_infos [left right]\n\
+  Show a scroll infos widget.\n\
+  A list of pairs (left,right) strings must be provided.\n\
+  Example:\n\
+    gui_push_scroll_infos 'left 1' 'right 1' 'left 2' 'right 2'\n\
+    gui_show_main_menu\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_warn,\
+    inlib::insh_gui_warn,\
+"gui_warn: gui_warn [-warn] [message]\n\
+  Show a message.\n\
+  -warn to have a red background.\n\
+  Example:\n\
+    gui_warn 'hello insh'\n\
+    gui_warn -warn 'critical situation'\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_show_colors,\
+    inlib::insh_gui_show_colors,\
+"gui_show_colors: gui_show_colors\n\
+  Show default colors.\n\
+  Example:\n\
+    gui_show_colors\n\
+    gui_show_main_menu\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_show_styles,\
+    inlib::insh_gui_show_styles,\
+"gui_show_styles: gui_show_styles\n\
+  Show styles.\n\
+  Example:\n\
+    gui_show_styles\n\
+    gui_show_main_menu\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_has_mail_panel,\
+    inlib::insh_gui_has_mail_panel,\
+"gui_has_mail_panel: gui_has_mail_panel\n\
+  Print true if GUI has a mail panel, false if not.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_mail_file,\
+    inlib::insh_gui_mail_file,\
+"gui_mail_file: gui_mail_file [-subject,-message] file\n\
+  If supported, open a mail panel to send a file.\n\
+  -subject=string mail subject. (default is 'app_name export')\n\
+  -message=string mail message. (default is 'sent from app_name app')\n\
+  Example:\n\
+    doc_dir=`app_dir -doc`\n\
+    gui_mail_file ${doc_dir}/out.png\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_has_open_panel,\
+    inlib::insh_gui_has_open_panel,\
+"gui_has_open_panel: gui_has_open_panel\n\
+  Print true if GUI has an open file panel, false if not.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_open_panel,\
+    inlib::insh_gui_open_panel,\
+"gui_open_panel: gui_open_panel\n\
+  If supported, open a modal file chooser panel and get a file path.\n\
+  Example:\n\
+    echo `gui_open_panel`\n\
+")\
+  \
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,gui_menu_files,\
+    inlib::insh_gui_menu_files,\
+"gui_menu_files: gui_menu_files\n\
+  Open a inlib::sg::file_chooser and 'app_open' the choosen file.\n\
+  Example:\n\
+    gui_menu_files\n\
+")\
+  \
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,style_print_colormaps,\
+    inlib::insh_style_print_colormaps,inlib::insh_style_print_colormaps_help())\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD_COMPLETE(a__insh,a__gv,app_open,\
+    inlib::insh_app_open,inlib::insh_app_open_help(),inlib::file::complete)\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,app_openers,\
+    inlib::insh_app_openers,inlib::insh_app_openers_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,app_dir,\
+    inlib::insh_app_dir,\
+"app_dir: app_dir [-res,-doc,-out,-tmp,-start]\n\
+  Print the application [resource,document,output,startup,temporary] directory.\n\
+  If no option given, print all of them in this order.\n\
+  Example:\n\
+    app_dir\n\
+    app_dir -res.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,app_res_dir,\
+    inlib::insh_app_res_dir,\
+"app_res_dir: app_res_dir\n\
+  Print the application resource directory.\n\
+  Example:\n\
+    app_res_dir\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,app_doc_dir,\
+    inlib::insh_app_doc_dir,\
+"app_doc_dir: app_doc_dir\n\
+  Print the application document directory.\n\
+  Example:\n\
+    app_doc_dir\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,app_out_dir,\
+    inlib::insh_app_out_dir,\
+"app_out_dir: app_out_dir\n\
+  Print the application output directory.\n\
+  Example:\n\
+    app_out_dir\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,app_start_dir,\
+    inlib::insh_app_start_dir,\
+"app_start_dir: app_start_dir\n\
+  Print the application startup directory.\n\
+  Example:\n\
+    app_start_dir\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,app_tmp_dir,\
+    inlib::insh_app_tmp_dir,\
+"app_tmp_dir: app_tmp_dir\n\
+  Print the application temporary directory.\n\
+  Example:\n\
+    app_tmp_dir\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,app_color_value,\
+    inlib::insh_app_color_value,inlib::insh_app_color_value_help())\
+\
+  /* For gui_utils.insh: */\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,scene_clear,\
+    &inlib::sg::gui_viewer::clear_scene,\
+"scene_clear: scene_clear\n\
+  Clear the gui_viewer overall scene.\n\
+")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,scene_clear_tmp,\
+    &inlib::sg::gui_viewer::clear_caches,\
+"scene_clear_tmp: scene_clear_tmp\n\
+  Clear tmp nodes of the gui_viewer.\n\
+")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,scene_remove_manips,\
+    &inlib::sg::gui_viewer::remove_manips,\
+"scene_remove_manips: scene_remove_manips\n\
+  A node can be instrumented with a 'manip' permitting, for example,\n\
+  to displace it. This command remove 'manips' found in the scene.\n\
+")\
+  INLIB_INSH_ADD_GUI_VIEWER_CMD(a__insh,a__gv,app_clear_doc_dir,\
+    &inlib::sg::gui_viewer::clear_doc_dir,\
+"app_clear_doc_dir: app_clear_doc_dir\n\
+  Clear the document directory of the app.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,style_create,\
+    inlib::insh_style_create,\
+"style_create: style_create [-key=value] name\n\
+  Create a named style. If one already exist, it is overwritten.\n\
+  A style is a list of string pairs (key,value).\n\
+  Given arguments of the form [-key=value] are added to the create style as pairs of (key,value)\n\
+  Example:\n\
+    style_create -color=white -show_name=true -text_scale=5 -at_end=false primary.default\n\
+    style_create -color=red    trajectory.default\n\
+    style_create -color=yellow trajectory.e+\n\
+    style_create -color=yellow trajectory.e-\n\
+    style_create -color=blue   trajectory.gamma\n\
+    style_ls\n\
+  See also:\n\
+    style_remove\n\
+    style_ls\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,style_ls,\
+    inlib::insh_style_ls,\
+"style_ls: style_ls\n\
+  List styles.\n\
+  Example:\n\
+    style_create -color=white my_style\n\
+    style_ls\n\
+  See also:\n\
+    style_create\n\
+    style_remote\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD_COMPLETE(a__insh,a__gv,style_remove,\
+    inlib::insh_style_remove,\
+"style_remove: style_remove name\n\
+  Remove a named style.\n\
+  Example:\n\
+    style_create -color=white my_style\n\
+    style_ls\n\
+    style_remove my_style\n\
+    style_ls\n\
+  See also:\n\
+    style_create\n\
+    style_ls\n\
+",inlib::insh_style_complete)\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD_COMPLETE(a__insh,a__gv,style_append,\
+    inlib::insh_style_append,\
+"style_append: style_append [-key=value] name\n\
+  Append arguments of the form [-key=value] to an existing named style.\n\
+  Example:\n\
+    style_create -color=white  my_style\n\
+    style_append -show_name=true -text_scale=5 -at_end=false my_style\n\
+    style_print my_style\n\
+  See also:\n\
+    style_create\n\
+",inlib::insh_style_complete)\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD_COMPLETE(a__insh,a__gv,style_print,\
+    inlib::insh_style_print,\
+"style_print: style_print [-sep] name\n\
+  Print a named style. (key,value) are print with the form 'key=value'.\n\
+  -sep=string to change the separator (default is '=').\n\
+  Example:\n\
+    style_create -color=white  my_style\n\
+    style_print my_style\n\
+  See also:\n\
+    style_create\n\
+",inlib::insh_style_complete)
+
+//inlib_build_use kernel
+
+#endif

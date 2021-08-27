@@ -1,0 +1,976 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_rroot
+#define inlib_insh_rroot
+
+#include "ishell"
+#include "../args"
+#include "../omanager"
+
+#include "../sys/dir"
+#include "../path"
+
+#include "../rroot/file"
+#include "../rroot/ls"
+#include "../rroot/fac"
+#include "../rroot/tree"
+
+#include <fstream>
+
+namespace inlib {
+
+inline rroot::TDirectory* key_TDirectory(ishell& a_insh,rroot::ifile& a_file,rroot::key& a_key) {
+  uint32 sz;
+  char* buf = a_key.get_object_buffer(a_file,sz); //we don't have ownership of buf.
+  if(!buf) {
+    a_insh.warn("inlib::rroot::key_TDirectory : can't get directory data buffer.");
+    return 0;
+  }
+  rroot::buffer b(a_insh.out(),a_file.byte_swap(),sz,buf,a_key.key_length(),false);
+  rroot::TDirectory* tdir = new rroot::TDirectory(a_file);
+  if(!tdir->stream(b)) {
+    a_insh.warn("inlib::rroot::key_TDirectory : can't stream TDirectory.");
+    delete tdir;
+    return 0;
+  }
+  return tdir;
+}
+
+inline bool _to_fs(ishell& a_insh,rroot::ifile& a_file,rroot::directory& a_dir) {
+  inlib_vforcit(rroot::key*,a_dir.keys(),itk) {
+    rroot::key& k = *(*itk);
+    if(k.object_class()==rroot::TDirectory_cls()) {
+      if(!dir::mkcd(k.object_name())) {
+        a_insh.warn("inlib::rroot::_to_fs : mkcd() failed for "+sout(k.object_name())+".");
+        return false;
+      }
+      rroot::TDirectory* tdir = key_TDirectory(a_insh,a_file,k);
+      if(!tdir) {
+        a_insh.warn("inlib::rroot::_to_fs : key_TDirectory() failed for "+sout(k.object_name())+".");
+        if(!dir::cd_up()) a_insh.warn("inlib::rroot::_to_fs : cd_up() failed.");
+        return false;
+      }
+      bool status = _to_fs(a_insh,a_file,*tdir);
+      delete tdir;
+      if(!dir::cd_up()) a_insh.warn("inlib::rroot::_to_fs : cd_up() failed.");
+      if(!status) return false;
+
+    } else if(k.object_class()==rroot::TTree_cls()) {
+      unsigned int sz;
+      char* buf = k.get_object_buffer(a_file,sz);//we don't have ownership of buf.
+      if(!buf) {
+        a_insh.warn("inlib::rroot::_to_fs : can't get data buffer for "+k.object_name()+".");
+        return false;
+      }
+      rroot::buffer b(a_insh.out(),a_file.byte_swap(),sz,buf,k.key_length(),false);
+      rroot::fac* _fac = new rroot::fac(a_insh.out());
+      rroot::tree* _tree = new rroot::tree(a_file,*_fac);
+      if(!_tree->stream(b)) {
+        a_insh.warn("inlib::rroot::_to_fs : TTree streaming failed.");
+        delete _tree;
+        delete _fac;
+        return false;
+      }
+      const std::string& file_name = k.object_name();
+      std::ofstream _fout(file_name.c_str());
+      if(_fout.fail()) {
+        a_insh.warn("inlib::rroot::_to_fs : can't open "+file_name+".");
+        delete _tree;
+        delete _fac;
+        return false;
+      }
+      _fout << "size: " << k.object_size() << std::endl;
+      _fout << "class: " << k.object_class() << std::endl;
+      _fout << "title: " << k.object_title() << std::endl;
+      _tree->dump(_fout,""," ");
+      _fout.close();
+      delete _tree;
+      delete _fac;
+    } else {
+      const std::string& file_name = k.object_name();
+      FILE* _FILE = ::fopen(file_name.c_str(),"wb");
+      if(!_FILE) {
+        a_insh.warn("inlib::rroot::_to_fs : fopen(wb) failed for "+sout(file_name)+".");
+        return false;
+      }
+      if(::fprintf(_FILE,"size: %u\n",k.object_size())<0)          {::fclose(_FILE);return false;}
+      if(::fprintf(_FILE,"class: %s\n",k.object_class().c_str())<0) {::fclose(_FILE);return false;}
+      if(::fprintf(_FILE,"title: %s\n",k.object_title().c_str())<0) {::fclose(_FILE);return false;}
+      ::fclose(_FILE);
+    }
+  }
+  return true;
+}
+
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+inline void insh_rroot_open(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("rroot_open");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no path given.");
+    return;
+  }
+  _args.remove(fnh);
+  std::string smanaged_name;
+  INLIB_ISHELL_GET_ARG_STRING(managed_name)
+  INLIB_ISHELL_ARGS_UNEXPECTED
+
+  bool verbose = false;
+  rroot::file* rfile = new rroot::file(a_insh.out(),fnh,verbose);
+  if(a_insh.get_decompress_func()) rfile->add_unziper('Z',a_insh.get_decompress_func());
+
+  if(smanaged_name.empty()) smanaged_name = base_name(fnh);
+  
+  if(!a_mgr.manage_object(rfile,smanaged_name,true,true,true)) {
+    a_insh.warn(s_cmd+": can't manage object.");
+    delete rfile;
+    return;
+  }
+}
+
+inline const std::string& insh_rroot_open_help() {
+  static const std::string s_help("\
+rroot_open: rroot_open [-managed_name] path\n\
+  Open a CERN-ROOT file. The file is managed in the default object manager.\n\
+  -managed_name=string managed name. If none is given, the base_name of path is taken.\n\
+  Example:\n\
+    # if pawdemo.root is in the res dir of the app:\n\
+    rroot_open -managed_name=pawdemo `app_dir -res`/pawdemo.root\n\
+    omanager_ls\n\
+    rroot_ls -file=pawdemo\n\
+");
+  return s_help;
+}
+
+inline void insh_rroot_mount(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("rroot_mount");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no path given.");
+    return;
+  }
+  _args.remove(fnh);
+  std::string smanaged_name;
+  INLIB_ISHELL_GET_ARG_STRING(managed_name)
+  INLIB_ISHELL_ARGS_UNEXPECTED
+
+  bool verbose = false;
+  rroot::file* rfile = new rroot::file(a_insh.out(),fnh,verbose);
+  if(a_insh.get_decompress_func()) rfile->add_unziper('Z',a_insh.get_decompress_func());
+  
+  if(smanaged_name.empty()) smanaged_name = base_name(fnh);
+  
+  if(!a_mgr.manage_object(rfile,smanaged_name,true,true,true)) {
+    a_insh.warn(s_cmd+": can't manage object.");
+    delete rfile;
+    return;
+  }
+  if(!dir::mkcd("mount")) {
+    a_insh.warn(s_cmd+": mkcd() failed for \"mount\".");
+    return;
+  }
+  if(!dir::mkcd(smanaged_name)) {
+    a_insh.warn(s_cmd+": mkcd() failed for "+sout(smanaged_name)+".");
+    return;
+  }
+  if(!_to_fs(a_insh,*rfile,rfile->dir())) {}
+  if(!dir::cd_up()) {a_insh.warn(s_cmd+": cd_up() failed.");return;}
+  if(!dir::cd_up()) {a_insh.warn(s_cmd+": cd_up() failed.");return;}
+}
+
+inline const std::string& insh_rroot_mount_help() {
+  static const std::string s_help("\
+rroot_mount: rroot_mount [-managed_name] path\n\
+  Mount a CERN-ROOT file on the local file system. The file is also opened and\n\
+  managed in the default object manager.\n\
+  -managed_name=string managed name. If none is given, the base_name of path is taken.\n\
+  The managed name is taken as the mounting point under the 'mount' directory. Note that\n\
+  the wanted mounting directory must be in a writable place.\n\
+  For each object in the file, a file with the same name is created\n\
+  containing its (size,class,title).\n\
+  Example:\n\
+    # if pawdemo.root is in the res dir of the app:\n\
+    rroot_mount `app_dir -res`/pawdemo.root\n\
+    omanager_ls  # pawdemo.root should be in the list.\n\
+    ls mount/pawdemo.root\n\
+    cd mount/pawdemo.root/NICE/NEVSKI\n\
+    ls\n\
+    cat h13  # to see h13 size,class,title.\n\
+    rroot_fs_read h13\n\
+    omanager_ls  # h13 should be in the list.\n\
+    # if having plotting commands:\n\
+    histo_plot h13\n\
+    plotter_set_style ROOT_default\n\
+");
+  return s_help;
+}
+
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+inline rroot::TDirectory* path_TDirectory(ishell& a_insh,rroot::ifile& a_file,rroot::directory& a_dir,const std::string& a_path) {
+  if(a_path.empty()) return 0;
+  std::vector<rroot::TDirectory*> tmps;
+  rroot::directory* cur_dir = &a_dir;
+  std::vector<std::string> sdirs;
+  words(a_path,"/",false,sdirs);
+  inlib_vforcit(std::string,sdirs,itd) {
+    rroot::key* dir_key = 0;
+    inlib_vforcit(rroot::key*,cur_dir->keys(),itk) {
+      rroot::key& k = *(*itk);
+      if((k.object_class()==rroot::TDirectory_cls())&&((*itd)==k.object_name())) {
+        dir_key = *itk;
+        break;
+      }
+    }
+    if(!dir_key) {
+      a_insh.warn("inlib::rroot::path_TDirectory : directory "+sout(*itd)+" not found.");
+      safe_clear(tmps);
+      return 0;
+    }
+    rroot::TDirectory* tdir = key_TDirectory(a_insh,a_file,*dir_key);
+    if(!tdir) {
+      safe_clear(tmps);
+      return 0;
+    }
+    tmps.push_back(tdir);
+    cur_dir = tdir;
+  }
+  rroot::TDirectory* ret = tmps.back();
+  tmps.pop_back();
+  safe_clear(tmps);
+  return ret;
+}
+
+inline void insh_rroot_ls(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("rroot_ls");
+  args _args(a_args);
+  std::string fnh;
+  _args.first_not_hyphen(fnh);
+  _args.remove(fnh);
+  std::string sfile;
+  INLIB_ISHELL_GET_ARG_STRING(file)
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  if(sfile.empty()) {
+    a_insh.warn(s_cmd+": no managed file name given with -file=string.");
+    return;
+  }
+  rroot::file* rfile = a_mgr.find_object<rroot::file>(sfile);
+  if(!rfile) {
+    a_insh.warn(s_cmd+": managed root file "+sout(sfile)+" not found.");
+    return;
+  }
+  if(fnh.empty()) {
+    ls(a_insh.out(),rfile->dir().keys());
+  } else {
+    rroot::TDirectory* tdir = path_TDirectory(a_insh,*rfile,rfile->dir(),fnh);
+    if(!tdir) return;
+    ls(a_insh.out(),tdir->keys());
+    delete tdir;
+  }
+  //sort::sort(vs);
+  //a_insh.unix_print(vs);
+}
+
+inline const std::string& insh_rroot_ls_help() {
+  static const std::string s_help("\
+rroot_ls: rroot_ls -file [path]\n\
+  List content of a CERN-ROOT file managed in the default object manager.\n\
+  -file=string file managed name.\n\
+  Example:\n\
+    # if pawdemo.root is in the res dir of the app:\n\
+    rroot_open -managed_name=pawdemo `app_dir -res`/pawdemo.root\n\
+    omanager_ls\n\
+    rroot_ls -file=pawdemo\n\
+");
+  return s_help;
+}
+
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+}
+
+#include "../rroot/streamers"
+#include "../rroot/geo_manager"
+#include "../rroot/ntuple"
+#include "../rroot/fac"
+
+namespace inlib {
+
+inline bool read_key(ishell& a_insh,rroot::ifile& a_file,rroot::key& a_key,omanager& a_mgr,const std::string& a_name) {
+  unsigned int sz;
+  char* buf = a_key.get_object_buffer(a_file,sz);//we don't have ownership of buf.
+  if(!buf) {
+    a_insh.warn(std::string("inlib::rroot::read_key : can't get data buffer for ")+a_key.object_name()+".");
+    return false;
+  }
+
+  rroot::buffer b(a_insh.out(),a_file.byte_swap(),sz,buf,a_key.key_length(),false);
+
+  std::string managed_name = a_name.size()?a_name:a_key.object_name();
+
+  if(a_key.object_class()==rroot::TH1F_cls()) {
+    histo::h1d* h = TH1F_stream(b); //we get ownership.
+    if(!h) {
+      a_insh.warn("inlib::rroot::read_key : TH1F streaming failed.");
+      return false;
+    }
+    if(!a_mgr.manage_object(h,managed_name,true,true,true)) {
+      a_insh.warn("inlib::rroot::read_key : can't manage object.");
+      delete h;
+      return false;
+    }
+  } else if(a_key.object_class()==rroot::TH1D_cls()) {
+    histo::h1d* h = TH1D_stream(b); //we get ownership.
+    if(!h) {
+      a_insh.warn("inlib::rroot::read_key : TH1D streaming failed.");
+      return false;
+    }
+    if(!a_mgr.manage_object(h,managed_name,true,true,true)) {
+      a_insh.warn("inlib::rroot::read_key : can't manage object.");
+      delete h;
+      return false;
+    }
+  } else if(a_key.object_class()==rroot::TH2F_cls()) {
+    histo::h2d* h = TH2F_stream(b); //we get ownership.
+    if(!h) {
+      a_insh.warn("inlib::rroot::read_key : TH2F streaming failed.");
+      return false;
+    }
+    if(!a_mgr.manage_object(h,managed_name,true,true,true)) {
+      a_insh.warn("inlib::rroot::read_key : can't manage object.");
+      delete h;
+      return false;
+    }
+  } else if(a_key.object_class()==rroot::TH2D_cls()) {
+    histo::h2d* h = TH2D_stream(b); //we get ownership.
+    if(!h) {
+      a_insh.warn("inlib::rroot::read_key : TH2D streaming failed.");
+      return false;
+    }
+    if(!a_mgr.manage_object(h,managed_name,true,true,true)) {
+      a_insh.warn("inlib::rroot::read_key : can't manage object.");
+      delete h;
+      return false;
+    }
+  } else if(a_key.object_class()==rroot::TProfile_cls()) {
+    histo::p1d* h = TProfile_stream(b); //we get ownership.
+    if(!h) {
+      a_insh.warn("inlib::rroot::read_key : TProfile streaming failed.");
+      return false;
+    }
+    if(!a_mgr.manage_object(h,managed_name,true,true,true)) {
+      a_insh.warn("inlib::rroot::read_key : can't manage object.");
+      delete h;
+      return false;
+    }
+  } else if(a_key.object_class()==rroot::TProfile2D_cls()) {
+    histo::p2d* h = TProfile2D_stream(b); //we get ownership.
+    if(!h) {
+      a_insh.warn("inlib::rroot::read_key : TProfile2D streaming failed.");
+      return false;
+    }
+    if(!a_mgr.manage_object(h,managed_name,true,true,true)) {
+      a_insh.warn("inlib::rroot::read_key : can't manage object.");
+      delete h;
+      return false;
+    }
+
+  } else if(a_key.object_class()==rroot::TGeoManager_cls()) {
+    //b.set_map_objs(true);
+
+    rroot::geo_manager* geo_mgr = new rroot::geo_manager(a_insh.out());
+
+    if(!geo_mgr->stream(b)) {
+      a_insh.warn("inlib::rroot::read_key : TGeoManager streaming failed.");
+      delete geo_mgr;
+      return false;
+    }
+    const rroot::geo_volume* master = geo_mgr->master();
+    if(!master) {
+      a_insh.warn("inlib::rroot::read_key : TGeoManager has no master volume.");
+      delete geo_mgr;
+      return false;
+    }
+/*
+    std::vector< std::pair<std::string,unsigned int> > vds;
+   {std::string svds = nosuffix(m_file.path());
+    svds += ".vds";
+    if(svds.size()) {
+      std::vector<std::string> dirs;
+      dirs.push_back(m_gv.doc_dir());
+      std::string _path;
+      if(!find_with_dirs(out,dirs,svds,_path)){
+        //not fatal, arrange without a .vds file.
+        //out << "cbk::root_obj::action :"
+        //    << " vds file " << svds << " not found."
+        //    << std::endl;
+      } else {
+        //out << "cbk::root_obj::action :"
+        //    << " vds file " << svds << " found. Read it..."
+        //    << std::endl;
+        if(!read_vds(_path,vds)){
+          m_gv.pop_warn(m_popup,m_ex,m_ey,"can't read vds file "+_path+".");
+          delete mgr;
+          return;
+        }
+      }
+      mgr->set_vds(vds);
+      //out << "cbk::root_obj::action :"
+      //    << " vds file " << svds << " found and loaded."
+      //    << std::endl;
+    }}
+*/
+    if(!a_mgr.manage_object(geo_mgr,managed_name,true,true,true)) {
+      a_insh.warn("inlib::rroot::read_key : can't manage object.");
+      delete geo_mgr;
+      return false;
+    }
+    
+  } else if(a_key.object_class()==rroot::TTree_cls()) {
+    rroot::fac* _fac = new rroot::fac(a_insh.out());
+    rroot::tree* _tree = new rroot::tree(a_file,*_fac);
+
+    if(!_tree->stream(b)) {
+      a_insh.warn("inlib::rroot::read_key : TTree streaming failed.");
+      delete _tree;
+      delete _fac;
+      return false;
+    }
+    
+  //_tree->dump(a_insh.out(),"","  ");
+
+    rroot::fac_tree_ntuple* ntu = new rroot::fac_tree_ntuple(_fac,_tree); //give ownerhsip of fac,tree.
+
+    if(!ntu->initialize(a_insh.out())) {
+      a_insh.warn("inlib::rroot::read_key : ntuple::initialize() failed.");
+      delete ntu;
+      return false;
+    }
+    
+    if(ntu->columns().empty()) {
+      a_insh.warn("inlib::rroot::read_key : ntuple has no columns.");
+      delete ntu;
+      return false;
+    }
+
+ //{inlib_vforcit(read::icol*,ntu->columns(),it) {
+ //   a_insh.out((*it)->name());
+ // }}
+  
+    if(!a_mgr.manage_object(ntu,managed_name,true,true,true)) {
+      a_insh.warn("inlib::rroot::read_key : can't manage fac_tree_ntuple object.");
+      delete ntu;
+      return false;
+    }
+
+  } else {
+    a_insh.warn("inlib::rroot::read_key : can't read object of class "+sout(a_key.object_class())+".");
+    return false;
+  }
+  
+  return true;
+}
+
+inline void _read(ishell& a_insh,rroot::file& a_file,const std::string& a_path,
+                  omanager& a_mgr,const std::string& a_managed_name) {
+  std::string dname = dir_name(a_path);
+  std::string oname = base_name(a_path);
+
+ {std::string::size_type pos = oname.find('.');
+  if(pos!=std::string::npos) oname = oname.substr(0,pos);}
+
+  if(dname.empty()) {
+    inlib_vforcit(rroot::key*,a_file.dir().keys(),it) {
+      rroot::key& k = *(*it);
+      if(k.object_name()==oname) {
+        if(!read_key(a_insh,a_file,k,a_mgr,a_managed_name)) {}
+        return;
+      }
+    }
+  } else {
+    rroot::TDirectory* tdir = path_TDirectory(a_insh,a_file,a_file.dir(),dname);
+    if(!tdir) return;
+    inlib_vforcit(rroot::key*,tdir->keys(),it) {
+      rroot::key& k = *(*it);
+      if(k.object_name()==oname) {
+        if(!read_key(a_insh,a_file,k,a_mgr,a_managed_name)) {}
+        delete tdir;
+        return;
+      }
+    }
+    delete tdir;
+  }
+  a_insh.warn("inlib::rroot::_read : object "+sout(oname)+" not found.");
+}
+
+inline void insh_rroot_fs_read(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("rroot_fs_read");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  _args.remove(fnh);
+  std::string smanaged_name;
+  INLIB_ISHELL_GET_ARG_STRING(managed_name)
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  
+  std::string pwd;
+  if(!dir::pwd(pwd)) {
+    a_insh.warn(s_cmd+": pwd() failed.");
+    return;
+  }
+
+  //::printf("debug : 000 : pwd \"%s\"\n",pwd.c_str());
+  
+ {std::string::size_type pos = pwd.rfind("mount/");
+  if(pos==std::string::npos) {
+    a_insh.warn(s_cmd+": pwd.rfind('mount/') not found.");
+    return;
+  }
+  pwd = pwd.substr(pos+6,pwd.size()-1);}
+  
+  //::printf("debug : 001 : pwd \"%s\"\n",pwd.c_str());
+  
+  std::string::size_type pos = pwd.find("/");
+  if(pos==std::string::npos) {
+    a_insh.warn(s_cmd+": pwd.find('/') not found.");
+    return;
+  }
+  std::string managed_file = pwd.substr(0,pos);
+  std::string path = pwd.substr(pos+1,pwd.size()-1);
+
+  //::printf("debug : 002 : managed_file \"%s\"\n",managed_file.c_str());
+  //::printf("debug : 003 : path \"%s\"\n",path.c_str());
+  
+  rroot::file* rfile = a_mgr.find_object<rroot::file>(managed_file);
+  if(!rfile) {
+    a_insh.warn(s_cmd+": managed root file "+sout(managed_file)+" not found.");
+    return;
+  }
+  
+  _read(a_insh,*rfile,path+"/"+fnh,a_mgr,smanaged_name);
+}
+
+inline const std::string& insh_rroot_fs_read_help() {
+  static const std::string s_help("\
+rroot_fs_read: rroot_fs_read -file [-managed_name] path\n\
+  Read an object in a CERN-ROOT file mounted on the file system.\n\
+  If successful, the object is managed in the default object manager.\n\
+  -file=string file managed name.\n\
+  -managed_name=string the managed name in the default object manager of the read object.\n\
+  If none is given, the key name of the object in file is taken.\n\
+  Example:\n\
+    # if pawdemo.root is in the res dir of the app:\n\
+    rroot_mount `app_dir -res`/pawdemo.root\n\
+    omanager_ls  # pawdemo.root should be in the list.\n\
+    ls mount/pawdemo.root\n\
+    cd mount/pawdemo.root/NICE/NEVSKI\n\
+    ls\n\
+    cat h13  # to see h13 size,class,title.\n\
+    rroot_fs_read h13\n\
+    omanager_ls  # h13 should be in the list.\n\
+    # if having plotting commands:\n\
+    histo_plot h13\n\
+    plotter_set_style ROOT_default\n\
+");
+  return s_help;
+}
+
+inline void insh_rroot_read(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("rroot_read");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no path given.");
+    return;
+  }
+  _args.remove(fnh);
+  std::string sfile;
+  INLIB_ISHELL_GET_ARG_STRING(file)
+  std::string smanaged_name;
+  INLIB_ISHELL_GET_ARG_STRING(managed_name)
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  if(sfile.empty()) {
+    a_insh.warn(s_cmd+": no managed file name given with -file=string.");
+    return;
+  }
+  rroot::file* rfile = a_mgr.find_object<rroot::file>(sfile);
+  if(!rfile) {
+    a_insh.warn(s_cmd+": managed root file "+sout(sfile)+" not found.");
+    return;
+  }  
+  _read(a_insh,*rfile,fnh,a_mgr,smanaged_name);
+}
+
+inline const std::string& insh_rroot_read_help() {
+  static const std::string s_help("\
+rroot_read: rroot_read -file [-managed_name,path]\n\
+  Read an object in a CERN-ROOT file managed in the default object manager.\n\
+  If successful, the object is managed in the default object manager.\n\
+  -file=string file managed name.\n\
+  -managed_name=string the managed name in the default object manager of the read object.\n\
+  If none is given, the key name of the object in file is taken.\n\
+  Example:\n\
+    # if pawdemo.root is in the res dir of the app:\n\
+    rroot_open -managed_name=pawdemo `app_dir -res`/pawdemo.root\n\
+    rroot_ls -file=pawdemo NICE\n\
+    rroot_read -file=pawdemo NICE/h101\n\
+    omanager_ls  # h101 should be in the list.\n\
+    # if having plotting commands:\n\
+    histo_plot h101\n\
+    plotter_set_style ROOT_default\n\
+");
+  return s_help;
+}
+
+}
+
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+#include "../rroot/geo_tools"
+#include "../lina/mat4d"
+
+namespace inlib {
+
+inline void insh_rroot_geo_print(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_omgr) {
+  static const std::string s_cmd("rroot_geo_print");
+  args _args(a_args);
+  std::string managed_geo_manager;
+  if(_args.find("-geo",managed_geo_manager,"")) _args.remove("-geo");
+  if(managed_geo_manager.empty()) {
+    a_insh.warn(s_cmd+": no managed geo_manager name given with -geo=string.");
+    return;
+  }
+  rroot::geo_manager* geo_mgr = a_omgr.find_object<rroot::geo_manager>(managed_geo_manager);
+  if(!geo_mgr) {
+    a_insh.warn(s_cmd+": managed geo_manager "+sout(managed_geo_manager)+" not found.");
+    return;
+  }
+  if(_args.is_empty()) {
+    a_insh.out() << "manager name : " << sout(geo_mgr->name()) << std::endl;
+    a_insh.out() << "manager title : " << sout(geo_mgr->title()) << std::endl;
+    geo_mgr->dump_volumes(a_insh.out());
+    return;
+  }
+  const rroot::geo_volume* master = geo_mgr->master();
+  if(!master) {
+    a_insh.warn(s_cmd+": geo_manager "+sout(geo_mgr->name())+" has no master volume.");
+    return;
+  }
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  if(!find_and_dump_volume(a_insh.out(),*master,fnh)) {
+    a_insh.set_to_stop();
+    return;
+  }
+  bool found = false;
+  mat4d mtx;mtx.set_identity();
+  if(!volume_get_matrix(a_insh.out(),*master,fnh,mtx,found)) {
+    a_insh.set_to_stop();
+    return;
+  }
+  if(!found) {
+    a_insh.warn(s_cmd+": can't get matrix.");
+    return;
+  }
+  a_insh.out() << "world matrix :" << std::endl;
+  a_insh.out() << mtx << std::endl;
+}
+
+inline const std::string& insh_rroot_geo_print_help() {
+  static const std::string s_help("\
+rroot_geo_print: rroot_geo_print -geo [name]\n\
+  Without arguments, print the geo_volume names with their shape of the geo_manager.\n\
+  -geo=string name of the managed geo_manager in the default object manager.\n\
+  Else, print a named geo_volume informations.\n\
+  Example:\n\
+    # if aleph.root is in the res dir of the app:\n\
+    rroot_open -managed_name=_aleph `app_dir -res`/aleph.root\n\
+    rroot_ls   -file=_aleph\n\
+    rroot_read -file=_aleph aleph  #read the TGeoManager aleph object.\n\
+    omanager_ls  #you must see _aleph and aleph.\n\
+    rroot_geo_print -geo=aleph\n\
+    rroot_geo_print -geo=aleph BTUB\n\
+    rroot_geo_print -geo=aleph HCMA\n\
+");
+  return s_help;
+}
+
+inline void insh_rroot_geo_tree(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_omgr) {
+  static const std::string s_cmd("rroot_geo_tree");
+  args _args(a_args);
+  std::string managed_geo_manager;
+  if(_args.find("-geo",managed_geo_manager,"")) _args.remove("-geo");
+  if(managed_geo_manager.empty()) {
+    a_insh.warn(s_cmd+": no managed geo_manager name given with -geo=string.");
+    return;
+  }
+  rroot::geo_manager* geo_mgr = a_omgr.find_object<rroot::geo_manager>(managed_geo_manager);
+  if(!geo_mgr) {
+    a_insh.warn(s_cmd+": managed geo_manager "+sout(managed_geo_manager)+" not found.");
+    return;
+  }
+  const rroot::geo_volume* master = geo_mgr->master();
+  if(!master) {
+    a_insh.warn(s_cmd+": geo_manager "+sout(geo_mgr->name())+" has no master volume.");
+    return;
+  }
+  volume_tree(a_insh.out(),*master);
+}
+
+inline const std::string& insh_rroot_geo_tree_help() {
+  static const std::string s_help("\
+rroot_geo_tree: rroot_geo_tree -geo\n\
+  Print the geoemtry tree infos.\n\
+  -geo=string name of the managed geo_manager in the default object manager.\n\
+  Example:\n\
+    # if aleph.root is in the res dir of the app:\n\
+    rroot_open -managed_name=_aleph `app_dir -res`/aleph.root\n\
+    rroot_read -file=_aleph aleph  #read the TGeoManager aleph object.\n\
+    rroot_geo_tree -geo=aleph\n\
+");
+  return s_help;
+}
+
+inline void insh_rroot_geo_field(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_omgr) {
+  static const std::string s_cmd("rroot_geo_field");
+  args _args(a_args);
+  std::string managed_geo_manager;
+  if(_args.find("-geo",managed_geo_manager,"")) _args.remove("-geo");
+  if(managed_geo_manager.empty()) {
+    a_insh.warn(s_cmd+": no managed geo_manager name given with -geo=string.");
+    return;
+  }
+  rroot::geo_manager* geo_mgr = a_omgr.find_object<rroot::geo_manager>(managed_geo_manager);
+  if(!geo_mgr) {
+    a_insh.warn(s_cmd+": managed geo_manager "+sout(managed_geo_manager)+" not found.");
+    return;
+  }
+  const rroot::geo_volume* master = geo_mgr->master();
+  if(!master) {
+    a_insh.warn(s_cmd+": geo_manager "+sout(geo_mgr->name())+" has no master volume.");
+    return;
+  }
+  std::vector<std::string> ws;
+  _args.not_hyphens(ws);
+  if(ws.size()!=2) {
+    a_insh.warn(s_cmd+": two arguments expected.");
+    return;
+  }
+  const std::string& volname = ws[0];
+  const rroot::geo_volume* vol = find_by_name(*master,volname);
+  if(!vol) {
+    a_insh.warn(s_cmd+": volume "+sout(volname)+" not found under.");
+    return;
+  }
+  const rroot::geo_shape* shape = vol->shape();
+  if(!shape) {
+    a_insh.warn(s_cmd+": volume "+sout(volname)+" has no geo_shape.");
+    return;
+  }
+  const std::string& field = ws[1];
+
+ {if(const rroot::geo_tube* _shape = rroot::cast_shape<rroot::geo_tube>(*shape)) {
+    if(field=="o_x") {a_insh.out_num(_shape->origin_x());return;}
+    if(field=="o_y") {a_insh.out_num(_shape->origin_y());return;}
+    if(field=="o_z") {a_insh.out_num(_shape->origin_z());return;}
+    if(field=="d_x") {a_insh.out_num(_shape->d_x());return;}
+    if(field=="d_y") {a_insh.out_num(_shape->d_y());return;}
+    if(field=="d_z") {a_insh.out_num(_shape->d_z());return;}
+    if(field=="rmin") {a_insh.out_num(_shape->rmin());return;}
+    if(field=="rmax") {a_insh.out_num(_shape->rmax());return;}
+    if(field=="dz") {a_insh.out_num(_shape->dz());return;}
+    a_insh.warn(s_cmd+": unknown field "+sout(field)+" for volume "+sout(volname)+".");
+    return;
+  }}
+
+ {if(const rroot::geo_trd1* _shape = rroot::cast_shape<rroot::geo_trd1>(*shape)) {
+    if(field=="o_x") {a_insh.out_num(_shape->origin_x());return;}
+    if(field=="o_y") {a_insh.out_num(_shape->origin_y());return;}
+    if(field=="o_z") {a_insh.out_num(_shape->origin_z());return;}
+    if(field=="d_x") {a_insh.out_num(_shape->d_x());return;}
+    if(field=="d_y") {a_insh.out_num(_shape->d_y());return;}
+    if(field=="d_z") {a_insh.out_num(_shape->d_z());return;}
+    if(field=="dx1") {a_insh.out_num(_shape->dx1());return;}
+    if(field=="dx2") {a_insh.out_num(_shape->dx2());return;}
+    if(field=="dy") {a_insh.out_num(_shape->dy());return;}
+    if(field=="dz") {a_insh.out_num(_shape->dz());return;}
+    a_insh.warn(s_cmd+": unknown field "+sout(field)+" for volume "+sout(volname)+".");
+    return;
+  }}
+
+ {if(const rroot::geo_trd2* _shape = rroot::cast_shape<rroot::geo_trd2>(*shape)) {
+    if(field=="o_x") {a_insh.out_num(_shape->origin_x());return;}
+    if(field=="o_y") {a_insh.out_num(_shape->origin_y());return;}
+    if(field=="o_z") {a_insh.out_num(_shape->origin_z());return;}
+    if(field=="d_x") {a_insh.out_num(_shape->d_x());return;}
+    if(field=="d_y") {a_insh.out_num(_shape->d_y());return;}
+    if(field=="d_z") {a_insh.out_num(_shape->d_z());return;}
+    if(field=="dx1") {a_insh.out_num(_shape->dx1());return;}
+    if(field=="dx2") {a_insh.out_num(_shape->dx2());return;}
+    if(field=="dy1") {a_insh.out_num(_shape->dy1());return;}
+    if(field=="dy2") {a_insh.out_num(_shape->dy2());return;}
+    if(field=="dz") {a_insh.out_num(_shape->dz());return;}
+    a_insh.warn(s_cmd+": unknown field "+sout(field)+" for volume "+sout(volname)+".");
+    return;
+  }}
+
+  // bbox should be last, since it is inherited by most of shapes.
+ {if(const rroot::geo_bbox* _shape = rroot::cast_shape<rroot::geo_bbox>(*shape)) {
+    if(field=="o_x") {a_insh.out_num(_shape->origin_x());return;}
+    if(field=="o_y") {a_insh.out_num(_shape->origin_y());return;}
+    if(field=="o_z") {a_insh.out_num(_shape->origin_z());return;}
+    if(field=="d_x") {a_insh.out_num(_shape->d_x());return;}
+    if(field=="d_y") {a_insh.out_num(_shape->d_y());return;}
+    if(field=="d_z") {a_insh.out_num(_shape->d_z());return;}
+    a_insh.warn(s_cmd+": unknown field "+sout(field)+" for volume "+sout(volname)+".");
+    return;
+  }}
+
+  a_insh.out() << s_cmd << ": this shape class " << sout(shape->s_cls()) << " not treated." << std::endl;
+}
+
+inline const std::string& insh_rroot_geo_field_help() {
+  static const std::string s_help("\
+rroot_geo_field: rroot_geo_field -geo volume field\n\
+  Get field value of a volume.\n\
+  -geo=string name of the managed geo_manager in the default object manager.\n\
+  Example:\n\
+    rroot_geo_field -geo=geo_manager wc rmax\n\
+");
+  return s_help;
+}
+
+}
+
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+
+#include "../evaluator"
+
+#include "../histo/h1d"
+#include "../project"
+
+namespace inlib {
+
+inline void insh_rroot_ntuple_project(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("rroot_ntuple_project");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no path given.");
+    return;
+  }
+  rroot::fac_tree_ntuple* ntu = a_mgr.find_object<rroot::fac_tree_ntuple>(fnh);
+  if(!ntu) {
+    a_insh.warn(s_cmd+": managed root ntuple "+sout(fnh)+" not found.");
+    return;
+  }
+  std::string managed_histo;
+  _args.find("-histo",managed_histo,"");
+  if(managed_histo.empty()) {
+    a_insh.warn(s_cmd+": no managed histogram name given with -histogram=string.");
+    return;
+  }
+  std::string sfilter;
+  _args.find("-filter",sfilter,"");
+  std::string sx;
+  _args.find("-x",sx,"");
+  std::string sy;
+  _args.find("-y",sy,"");
+  if(sx.size() && sy.empty()) {
+    histo::h1d* histogram = a_mgr.find_object<histo::h1d>(managed_histo);
+    if(!histogram) {
+      a_insh.warn(s_cmd+": managed h1d "+sout(managed_histo)+" not found.");
+      return;
+    }
+    read::evaluator filter(a_insh.out(),*ntu,sfilter); //WARNING : does not handle mix column types !
+    read::evaluator evalX(a_insh.out(),*ntu,sx); //true=case sensitive
+    if(!project(a_insh.out(),*ntu,*histogram,evalX,filter)){
+      a_insh.warn(s_cmd+": project() failed.");
+      return;
+    }
+  } else if(sx.size() && sy.size()) {
+    histo::h2d* histogram = a_mgr.find_object<histo::h2d>(managed_histo);
+    if(!histogram) {
+      a_insh.warn(s_cmd+": managed h2d "+sout(managed_histo)+" not found.");
+      return;
+    }
+    read::evaluator filter(a_insh.out(),*ntu,sfilter); //WARNING : does not handle mix column types !
+    read::evaluator evalX(a_insh.out(),*ntu,sx); //true=case sensitive
+    read::evaluator evalY(a_insh.out(),*ntu,sy); //true=case sensitive
+    if(!project(a_insh.out(),*ntu,*histogram,evalX,evalY,filter)){
+      a_insh.warn(s_cmd+": project() failed.");
+      return;
+    }
+  } else {    
+    a_insh.warn(s_cmd+": no -x or -x,-y given ");
+    return;
+  }
+}
+
+inline const std::string& insh_rroot_ntuple_project_help() {
+  static const std::string s_help("\
+rroot_ntuple_project: rroot_ntuple_project [-histo] managed_name\n\
+  Project a managed named ntuple on a managed named histogram.\n\
+  Example:\n\
+    # if pawdemo.root is in the res dir of the app:\n\
+    rroot_open -managed_name=pawdemo `app_dir -res`/pawdemo.root\n\
+    rroot_read -file=pawdemo STAFF/h10\n\
+    histo_create -class=h1d -title='CERN/Age' -xbins=80 -xmin=20 -xmax=100 h_age\n\
+    omanager_ls  # pawdemo, h10 and h_age should be in the list.\n\
+    rroot_ntuple_project -histo=h_age -x=Age h10\n\
+    # plotting:\n\
+    plots_create\n\
+    histo_plot h_age\n\
+");
+  return s_help;
+}
+
+}
+
+
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+#include "ishell_args_omanager_cmd"
+
+
+#define INLIB_INSH_RROOT_ADDS(a__insh,a__omanager)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD_COMPLETE(a__insh,a__omanager,rroot_open,\
+    inlib::insh_rroot_open,inlib::insh_rroot_open_help(),inlib::file::complete)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD_COMPLETE(a__insh,a__omanager,rroot_mount,\
+    inlib::insh_rroot_mount,inlib::insh_rroot_mount_help(),inlib::file::complete)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,rroot_ls,\
+    inlib::insh_rroot_ls,inlib::insh_rroot_ls_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,rroot_read,\
+    inlib::insh_rroot_read,inlib::insh_rroot_read_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD_COMPLETE(a__insh,a__omanager,rroot_fs_read,\
+    inlib::insh_rroot_fs_read,inlib::insh_rroot_fs_read_help(),inlib::file::complete)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,rroot_geo_print,\
+    inlib::insh_rroot_geo_print,inlib::insh_rroot_geo_print_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,rroot_geo_tree,\
+    inlib::insh_rroot_geo_tree,inlib::insh_rroot_geo_tree_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,rroot_geo_field,\
+    inlib::insh_rroot_geo_field,inlib::insh_rroot_geo_field_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,rroot_ntuple_project,\
+    inlib::insh_rroot_ntuple_project,inlib::insh_rroot_ntuple_project_help())
+
+#endif

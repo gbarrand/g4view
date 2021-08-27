@@ -1,0 +1,171 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_ls
+#define inlib_insh_ls
+
+#include "ishell"
+
+#include "../fsize"
+#include "../platform"
+#include "../num2s"
+#include "../sort"
+#include "../sjust"
+#include "../args"
+#include "../path"
+#include "../no_dots"
+#include "../smatch"
+
+#include "../sys/files" //windows.h
+
+namespace inlib {
+
+inline void insh_ls_dir(ishell& a_insh,const std::string& a_dir,const std::string& a_pattern,bool a_opt_a,bool a_opt_l) {
+  if(a_opt_l) {
+    std::vector<std::string> ls;
+    if(!dir::entries(a_dir,ls,true)){ //true = full path.
+      a_insh.warn("ls : can't get entries of directory "+sout(a_dir)+".");
+      return;
+    }
+    filter(ls,a_pattern);
+    sort::sort(ls);
+    std::vector<std::string> col0s;
+    std::vector<std::string> col1s;
+    std::vector<std::string> col2s;
+    std::string _s,_base;
+    size_t total = 0;
+    inlib_vforcit(std::string,ls,it) {
+      const std::string& item = *it;
+      base_name(item,_base);
+      if(a_opt_a) {
+      } else {
+        if(_base==".") continue;
+        if(_base=="..") continue;
+        if(_base.size()&&(_base[0]=='.')) continue;
+      }
+      bool is_dir;
+      if(!dir::is_a(item,is_dir)) {
+        a_insh.warn("ls : dir::is_a("+sout(item)+") failed.");
+        return;
+      }
+      col0s.push_back(is_dir?"d":"-");
+      if(is_dir && _WIN32_defined()) {
+        col1s.push_back(" ");
+      } else {
+        long sz;
+        if(!file::size(item,sz)) {
+          a_insh.warn("ls : file::size("+sout(item)+") failed.");
+          return;
+        }
+        num2s(uint64(sz),_s);
+        col1s.push_back(_s);
+        total += sz;
+      }
+      col2s.push_back(_base);
+    }
+    size_t mx0 = 0;
+   {inlib_vforcit(std::string,col0s,it) mx0 = mx(mx0,(*it).size());}
+    size_t mx1 = 0;
+   {inlib_vforcit(std::string,col1s,it) mx1 = mx(mx1,(*it).size());}
+    size_t mx2 = 0;
+   {inlib_vforcit(std::string,col2s,it) mx2 = mx(mx2,(*it).size());}
+
+    size_t2s(total,_s);
+    a_insh.out() << "total " << _s << " bytes" << std::endl;
+   {size_t number = col0s.size();
+    for(size_t index=0;index<number;index++) {
+      justify(col0s[index],mx0,side_left);
+      justify(col1s[index],mx1,side_left);
+      justify(col2s[index],mx2,side_left);
+      a_insh.out() << col0s[index] << " " << col1s[index] << " " << col2s[index] << std::endl;
+    }}
+    return;
+  }
+  std::vector<std::string> ls;
+  if(!dir::entries(a_dir,ls,false)){
+    a_insh.warn("ls : can't get entries of directory "+sout(a_dir)+".");
+    return;
+  }
+  filter(ls,a_pattern);
+  if(!a_opt_a) no_dots(ls);
+  sort::sort(ls);
+  if(a_insh.in_backquote()) {
+    a_insh.out_begin();
+    inlib_vforcit(std::string,ls,it) a_insh.out(*it,true);
+  } else {
+    a_insh.unix_print(ls);
+  }
+}
+
+inline void insh_ls(ishell& a_insh,const std::vector<std::string>& a_args) {
+  args _args(a_args);
+ {std::vector<std::string> kopts;
+  kopts.push_back("-a");
+  kopts.push_back("-l");
+  kopts.push_back("-la");
+  kopts.push_back("-al");
+  if(!_args.known_options(kopts)) {
+    a_insh.warn("ls : some options are not known. See help.");
+    return;
+  }}
+  bool opt_a = _args.is_arg("-a")||_args.is_arg("-al")||_args.is_arg("-la");
+  bool opt_l = _args.is_arg("-l")||_args.is_arg("-la")||_args.is_arg("-al");
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) fnh = ".";
+  bool is_dir;
+  if(dir::is_a(fnh,is_dir)&&is_dir) {
+    insh_ls_dir(a_insh,fnh,"*",opt_a,opt_l);
+    return;
+  }
+  //wildcards ?
+  std::string dir  = dir_name(fnh);
+  if(dir.empty()) dir = ".";
+  if(dir.find('*')!=std::string::npos) {
+    a_insh.warn("ls: "+dir+": directory with wildcards not yet handled");
+    return;
+  }
+  std::string name = base_name(fnh);
+  if(name.find('*')!=std::string::npos) {
+    insh_ls_dir(a_insh,dir,name,opt_a,opt_l);
+    return;
+  }
+  a_insh.warn("ls: "+fnh+": no such file or directory");
+}
+
+inline const std::string& insh_ls_help() {
+  static const std::string s_help("\
+ls: ls [option] directory\n\
+  list directory contents.\n\
+  If no directory is given, the current directory is listed.\n\
+  By default the dotted files are not listed, use -a to list all files.\n\
+  Use -l to list with a long format.\n\
+");
+  return s_help;
+}
+
+/*
+inline void insh_ls_complete(const std::string& a_begin,std::vector<std::string>& a_names) {
+  if(a_begin.empty()) {
+    if(!dir::entries(".",a_names,false)) return;
+    no_dots(a_names);
+  } else {
+    a_names.clear();
+    std::vector<std::string> ls;
+    std::string dir = dir_name(a_begin);
+    if(dir.size()) {
+      if(!dir::entries(dir,ls,true)) return;
+    } else {
+      if(!dir::entries(".",ls,false)) return;
+      no_dots(ls);
+    }
+    inlib_vforcit(std::string,ls,it) {
+      if(is_beg(*it,a_begin)) a_names.push_back(*it);
+    }
+  }
+  sort::sort(a_names);
+}
+*/
+
+}
+
+#endif

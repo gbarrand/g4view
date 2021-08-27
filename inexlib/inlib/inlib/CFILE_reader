@@ -1,0 +1,56 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_CFILE_reader
+#define inlib_CFILE_reader
+
+#include "file_reader"
+
+#include <cstdio>
+
+namespace inlib {
+
+class FILE_reader : public virtual file::reader {
+public: //file_reader
+  virtual bool open(const std::string& a_file) {
+    if(m_FILE) return false;
+    m_FILE = ::fopen(a_file.c_str(),"rb");
+    if(!m_FILE) return false;
+    return true;
+  }
+  virtual void close() {
+    if(!m_FILE) return;
+    ::fclose(m_FILE);
+    m_FILE = 0;
+  }
+  virtual bool is_open() const {return m_FILE?true:false;}
+  virtual bool read(char* a_buff,unsigned int a_lbuf,size_t& a_length) {
+    a_length = ::fread(a_buff,1,a_lbuf,m_FILE);
+    return true;
+  }
+  virtual bool get_line(char* a_buff,unsigned int a_lbuf) {
+    return ::fgets(a_buff,a_lbuf,m_FILE)==NULL?false:true;
+  }
+  virtual bool eof() const {
+#if defined(_MSC_VER) && _MSC_VER <= 1400
+    return feof(m_FILE)?true:false;
+#else
+    return ::feof(m_FILE)?true:false;
+#endif
+  }
+public:
+  FILE_reader():m_FILE(0){}
+  virtual ~FILE_reader() {if(m_FILE) ::fclose(m_FILE);}
+protected:
+  FILE_reader(const FILE_reader& a_from)
+  :file::reader(a_from)
+  ,m_FILE(0)
+  {}
+  FILE_reader& operator=(const FILE_reader&){return *this;}
+protected:
+  FILE* m_FILE;
+};
+
+}
+
+#endif

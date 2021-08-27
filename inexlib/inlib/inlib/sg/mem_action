@@ -1,0 +1,492 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_mem_action
+#define inlib_sg_mem_action
+
+#include "mem_manager"
+
+#include "render_action"
+#include "primitive_visitor"
+
+#include "atb_vertices"
+
+namespace inlib {
+namespace sg {
+
+class mem_action : public render_action {
+  INLIB_ACTION(mem_action,inlib::sg::mem_action,render_action)
+  mem_action& get_me() {return *this;}
+public:
+  virtual void draw_vertex_array(gl::mode_t a_mode,size_t a_floatn,const float* a_xyzs){
+    m_pv.add_primitive(a_mode,a_floatn,a_xyzs);
+  }
+
+  virtual void draw_vertex_array_xy(gl::mode_t a_mode,size_t a_floatn,const float* a_xys){
+    m_pv.add_primitive_xy(a_mode,a_floatn,a_xys);
+  }
+
+  virtual void draw_vertex_color_array(gl::mode_t a_mode,size_t a_floatn,const float* a_xyzs,const float* a_rgbas){
+    m_pv.add_primitive_rgba(a_mode,a_floatn,a_xyzs,a_rgbas);
+  }
+
+  virtual void draw_vertex_normal_array(gl::mode_t a_mode,size_t a_floatn,const float* a_xyzs,const float* a_nms){
+    m_pv.add_primitive_normal(a_mode,a_floatn,a_xyzs,a_nms);
+  }
+
+  virtual void draw_vertex_color_normal_array(gl::mode_t a_mode,size_t a_floatn,const float* a_xyzs,const float* a_rgbas,const float* a_nms){
+    // We expect a_nms of size : 3*(a_floatn/3)
+    // (then one normal per 3D point).
+    m_pv.add_primitive_normal_rgba(a_mode,a_floatn,a_xyzs,a_nms,a_rgbas);
+  }
+
+  virtual void clear_color(float,float,float,float){}
+  virtual void color4f(float a_r,float a_g,float a_b,float a_a){
+    m_color.set_value(a_r,a_g,a_b,a_a);
+  }
+  virtual void line_width(float){}
+  virtual void point_size(float) {}
+  virtual void set_polygon_offset(bool) {}
+  virtual void normal(float a_x,float a_y,float a_z) {
+    m_normal.set_value(a_x,a_y,a_z);
+  }
+
+  virtual void set_winding(winding_type a_v) {
+    m_ccw = (a_v==winding_ccw?true:false);
+  }
+  virtual void set_shade_model(shade_type) {}
+
+  virtual void set_depth_test(bool) {}
+  virtual void set_cull_face(bool) {}
+  virtual void set_point_smooth(bool) {}
+  virtual void set_line_smooth(bool) {}
+
+  virtual void load_proj_matrix(const mat4f& a_mtx) {m_proj = a_mtx;}
+  virtual void load_model_matrix(const mat4f& a_mtx) {
+    m_model = a_mtx;
+    set_normal_matrix();
+  }
+
+  virtual unsigned int max_lights() {return 1000;}
+
+  virtual void enable_light(unsigned int,
+                            float,float,float,
+                            float,float,float,float){}
+
+  virtual void set_lighting(bool) {}
+  virtual void set_blend(bool) {}
+
+  virtual void restore_state(unsigned int /*a_ret_num_light*/) {
+    const sg::state& _state = state();
+    m_ccw = (_state.m_winding==winding_ccw?true:false);
+    m_proj = _state.m_proj;
+    m_model = _state.m_model;
+    set_normal_matrix();
+    m_color = _state.m_color;
+  }
+
+  /////////////////////////////////////////////////////////////////
+  /// texture /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////
+  virtual void draw_vertex_array_texture(gl::mode_t,
+                                         size_t,
+                                         const float*,
+                                         gstoid,
+                                         const float*) {
+    m_out << "mem_action::draw_vertex_array_texture : dummy." << std::endl;
+  }
+
+  virtual void draw_vertex_normal_array_texture(gl::mode_t /*a_mode*/,
+                                         size_t /*a_xyzn*/,
+                                         const float* /*a_xyzs*/,
+                                         const float* /*a_nms*/,
+                                         gstoid /*a_id*/,
+                                         const float* /*a_tcs*/) {
+    m_out << "mem_action::draw_vertex_normal_array_texture : dummy." << std::endl;
+  }
+
+  /////////////////////////////////////////////////////////////////
+  /// VBO /////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////
+  virtual void begin_gsto(gstoid) {}
+  virtual void draw_gsto_v(gl::mode_t,size_t,bufpos){}
+  virtual void draw_gsto_vc(gl::mode_t,size_t,bufpos,bufpos) {}
+  virtual void draw_gsto_vn(gl::mode_t,size_t,bufpos,bufpos) {}
+  virtual void draw_gsto_vcn(gl::mode_t,size_t,bufpos,bufpos,bufpos) {}
+  virtual void end_gsto() {}
+  /////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////
+  virtual sg::render_manager& render_manager() {return m_mgr;}
+public:
+  mem_action(mem_manager& a_mgr,std::ostream& a_out,atb_vertices& a_points,atb_vertices& a_lines,atb_vertices& a_triangles)
+  :parent(a_out,0,0)
+  ,m_mgr(a_mgr)
+
+  ,m_points(a_points)
+  ,m_lines(a_lines)
+  ,m_triangles(a_triangles)
+
+  ,m_pv(get_me())
+
+  ,m_ccw(true)
+  ,m_normal(0,0,1)
+  {
+    m_points.clear();
+    m_points.mode = gl::points();
+    m_lines.clear();
+    m_lines.mode = gl::lines();
+    m_triangles.clear();
+    m_triangles.mode = gl::triangles();
+    m_proj.set_identity();
+    m_model.set_identity();
+    m_normal_matrix.set_identity();
+  }
+  virtual ~mem_action(){}
+protected:
+  mem_action(const mem_action& a_from)
+  :parent(a_from)
+  ,m_mgr(a_from.m_mgr)
+
+  ,m_points(a_from.m_points)
+  ,m_lines(a_from.m_lines)
+  ,m_triangles(a_from.m_triangles)
+
+  ,m_pv(a_from.m_pv)
+
+  ,m_proj(a_from.m_proj)
+  ,m_model(a_from.m_model)
+  ,m_normal_matrix(a_from.m_normal_matrix)
+  ,m_color(a_from.m_color)
+  ,m_ccw(a_from.m_ccw)
+  ,m_normal(a_from.m_normal)
+  {}
+  mem_action& operator=(const mem_action& a_from){
+    parent::operator=(a_from);
+    if(&a_from==this) return *this;
+
+    m_points = a_from.m_points;
+    m_lines = a_from.m_lines;
+    m_triangles = a_from.m_triangles;
+
+    m_pv = a_from.m_pv;
+
+    m_proj = a_from.m_proj;
+    m_model = a_from.m_model;
+    m_normal_matrix = a_from.m_normal_matrix;
+    m_color = a_from.m_color;
+    m_ccw = a_from.m_ccw;
+    m_normal = a_from.m_normal;
+
+    return *this;
+  }
+protected:
+  void set_normal_matrix() {
+    mat4f tmp(m_model);
+    tmp.no_translate();
+    if(!tmp.invert(m_normal_matrix)) {
+      m_out << "mem_action::set_normal_matrix : can't invert model matrix." << std::endl;
+    }
+    m_normal_matrix.transpose();
+  }
+
+  bool project_point(float& a_x,float& a_y,float& a_z,float& a_w) {
+    a_w = 1;
+    m_model.mul_4f(a_x,a_y,a_z,a_w);
+    if(a_w==0) return false;
+    a_x /= a_w;
+    a_y /= a_w;
+    a_z /= a_w;
+    return true;
+  }
+
+  bool project_normal(float& a_x,float& a_y,float& a_z) {
+    m_normal_matrix.mul_dir_3f(a_x,a_y,a_z);
+    return true;
+  }
+
+  class primvis : public primitive_visitor {
+  protected:
+    virtual bool project(float& a_x,float& a_y,float& a_z,float& a_w) {
+      return m_this.project_point(a_x,a_y,a_z,a_w);
+    }
+    virtual bool add_point(float a_x,float a_y,float a_z,float) {
+      float r = m_this.m_color[0];
+      float g = m_this.m_color[1];
+      float b = m_this.m_color[2];
+      float a = m_this.m_color[3];
+
+      m_this.m_points.add_rgba(r,g,b,a);
+      m_this.m_points.add(a_x,a_y,a_z);
+
+      return true;
+    }
+
+    virtual bool add_point(float a_x,float a_y,float a_z,float,
+                           float a_r,float a_g,float a_b,float a_a) {
+      m_this.m_points.add_rgba(a_r,a_g,a_b,a_a);
+      m_this.m_points.add(a_x,a_y,a_z);
+      return true;
+    }
+
+    virtual bool add_line(float a_bx,float a_by,float a_bz,float,
+                          float a_ex,float a_ey,float a_ez,float) {
+      float r = m_this.m_color[0];
+      float g = m_this.m_color[1];
+      float b = m_this.m_color[2];
+      float a = m_this.m_color[3];
+
+      m_this.m_lines.add_rgba(r,g,b,a);
+      m_this.m_lines.add(a_bx,a_by,a_bz);
+
+      m_this.m_lines.add_rgba(r,g,b,a);
+      m_this.m_lines.add(a_ex,a_ey,a_ez);
+
+      return true;
+    }
+
+    virtual bool add_line(float a_bx,float a_by,float a_bz,float,
+                          float a_br,float a_bg,float a_bb,float a_ba,
+                          float a_ex,float a_ey,float a_ez,float,
+                          float a_er,float a_eg,float a_eb,float a_ea){
+
+      m_this.m_lines.add_rgba(a_br,a_bg,a_bb,a_ba);
+      m_this.m_lines.add(a_bx,a_by,a_bz);
+
+      m_this.m_lines.add_rgba(a_er,a_eg,a_eb,a_ea);
+      m_this.m_lines.add(a_ex,a_ey,a_ez);
+      return true;
+    }
+
+    virtual bool add_triangle(float a_p1x,float a_p1y,float a_p1z,float,
+                              float a_p2x,float a_p2y,float a_p2z,float,
+                              float a_p3x,float a_p3y,float a_p3z,float){
+      float r = m_this.m_color[0];
+      float g = m_this.m_color[1];
+      float b = m_this.m_color[2];
+      float a = m_this.m_color[3];
+
+      float nx = m_this.m_normal[0];
+      float ny = m_this.m_normal[1];
+      float nz = m_this.m_normal[2];
+
+      if(m_this.m_ccw) {
+        m_this.m_triangles.add(a_p1x,a_p1y,a_p1z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+
+        m_this.m_triangles.add(a_p2x,a_p2y,a_p2z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+
+        m_this.m_triangles.add(a_p3x,a_p3y,a_p3z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+      } else {
+        m_this.m_triangles.add(a_p1x,a_p1y,a_p1z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+
+        m_this.m_triangles.add(a_p3x,a_p3y,a_p3z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+
+        m_this.m_triangles.add(a_p2x,a_p2y,a_p2z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+      }
+
+      return true;
+    }
+
+    virtual bool add_triangle(
+      float a_p1x,float a_p1y,float a_p1z,float,
+      float a_r1,float a_g1,float a_b1,float a_a1,
+      float a_p2x,float a_p2y,float a_p2z,float,
+      float a_r2,float a_g2,float a_b2,float a_a2,
+      float a_p3x,float a_p3y,float a_p3z,float,
+      float a_r3,float a_g3,float a_b3,float a_a3){
+
+      float nx = m_this.m_normal.x();
+      float ny = m_this.m_normal.y();
+      float nz = m_this.m_normal.z();
+      
+      if(m_this.m_ccw) {
+        m_this.m_triangles.add(a_p1x,a_p1y,a_p1z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(a_r1,a_g1,a_b1,a_a1);
+
+        m_this.m_triangles.add(a_p2x,a_p2y,a_p2z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(a_r2,a_g2,a_b2,a_a2);
+
+        m_this.m_triangles.add(a_p3x,a_p3y,a_p3z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(a_r3,a_g3,a_b3,a_a3);
+      } else {
+        m_this.m_triangles.add(a_p1x,a_p1y,a_p1z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(a_r1,a_g1,a_b1,a_a1);
+
+        m_this.m_triangles.add(a_p3x,a_p3y,a_p3z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(a_r3,a_g3,a_b3,a_a3);
+
+        m_this.m_triangles.add(a_p2x,a_p2y,a_p2z);
+        m_this.m_triangles.add_normal(nx,ny,nz);
+        m_this.m_triangles.add_rgba(a_r2,a_g2,a_b2,a_a2);
+      }
+
+      return true;
+    }
+
+    virtual bool project_normal(float& a_x,float& a_y,float& a_z) {
+      return m_this.project_normal(a_x,a_y,a_z);
+    }
+    virtual bool add_point_normal(float a_x,float a_y,float a_z,float a_w,
+                                  float a_nx,float a_ny,float a_nz) {
+      primvis::add_point(a_x,a_y,a_z,a_w);
+      m_this.m_points.add_normal(a_nx,a_ny,a_nz);
+      return true;
+    }
+    virtual bool add_point_normal(float a_x,float a_y,float a_z,float a_w,
+                                  float a_nx,float a_ny,float a_nz,
+                                  float a_r,float a_g,float a_b,float a_a) {
+      primvis::add_point(a_x,a_y,a_z,a_w,a_r,a_g,a_b,a_a);
+      m_this.m_points.add_normal(a_nx,a_ny,a_nz);
+      return true;
+    }
+    virtual bool add_line_normal(float a_bx,float a_by,float a_bz,float a_bw,
+                                 float a_bnx,float a_bny,float a_bnz,
+                                 float a_ex,float a_ey,float a_ez,float a_ew,
+                                 float a_enx,float a_eny,float a_enz) {
+      primvis::add_line(a_bx,a_by,a_bz,a_bw, a_ex,a_ey,a_ez,a_ew);
+      m_this.m_lines.add_normal(a_bnx,a_bny,a_bnz);
+      m_this.m_lines.add_normal(a_enx,a_eny,a_enz);
+      return true;
+    }
+    virtual bool add_line_normal(float a_bx,float a_by,float a_bz,float a_bw,
+                                 float a_bnx,float a_bny,float a_bnz,
+                                 float a_br,float a_bg,float a_bb,float a_ba,
+                                 float a_ex,float a_ey,float a_ez,float a_ew,
+                                 float a_enx,float a_eny,float a_enz,
+                                 float a_er,float a_eg,float a_eb,float a_ea){
+      primvis::add_line(a_bx,a_by,a_bz,a_bw, a_br,a_bg,a_bb,a_ba, a_ex,a_ey,a_ez,a_ew, a_er,a_eg,a_eb,a_ea);
+      m_this.m_lines.add_normal(a_bnx,a_bny,a_bnz);
+      m_this.m_lines.add_normal(a_enx,a_eny,a_enz);
+      return true;
+    }
+    virtual bool add_triangle_normal(
+      float a_p1x,float a_p1y,float a_p1z,float /*a_p1w*/,
+      float a_n1x,float a_n1y,float a_n1z,
+      float a_p2x,float a_p2y,float a_p2z,float /*a_p2w*/,
+      float a_n2x,float a_n2y,float a_n2z,
+      float a_p3x,float a_p3y,float a_p3z,float /*a_p3w*/,
+      float a_n3x,float a_n3y,float a_n3z) {
+
+      float r = m_this.m_color[0];
+      float g = m_this.m_color[1];
+      float b = m_this.m_color[2];
+      float a = m_this.m_color[3];
+      
+      if(m_this.m_ccw) {
+        m_this.m_triangles.add(a_p1x,a_p1y,a_p1z);
+        m_this.m_triangles.add_normal(a_n1x,a_n1y,a_n1z);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+
+        m_this.m_triangles.add(a_p2x,a_p2y,a_p2z);
+        m_this.m_triangles.add_normal(a_n2x,a_n2y,a_n2z);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+
+        m_this.m_triangles.add(a_p3x,a_p3y,a_p3z);
+        m_this.m_triangles.add_normal(a_n3x,a_n3y,a_n3z);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+      } else {
+        m_this.m_triangles.add(a_p1x,a_p1y,a_p1z);
+        m_this.m_triangles.add_normal(a_n1x,a_n1y,a_n1z);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+
+        m_this.m_triangles.add(a_p3x,a_p3y,a_p3z);
+        m_this.m_triangles.add_normal(a_n3x,a_n3y,a_n3z);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+
+        m_this.m_triangles.add(a_p2x,a_p2y,a_p2z);
+        m_this.m_triangles.add_normal(a_n2x,a_n2y,a_n2z);
+        m_this.m_triangles.add_rgba(r,g,b,a);
+      }
+      return true;
+    }
+    virtual bool add_triangle_normal(
+      float a_p1x,float a_p1y,float a_p1z,float /*a_p1w*/,
+      float a_n1x,float a_n1y,float a_n1z,
+      float a_r1,float a_g1,float a_b1,float a_a1,
+      float a_p2x,float a_p2y,float a_p2z,float /*a_p2w*/,
+      float a_n2x,float a_n2y,float a_n2z,
+      float a_r2,float a_g2,float a_b2,float a_a2,
+      float a_p3x,float a_p3y,float a_p3z,float /*a_p3w*/,
+      float a_n3x,float a_n3y,float a_n3z,
+      float a_r3,float a_g3,float a_b3,float a_a3){
+      if(m_this.m_ccw) {
+        m_this.m_triangles.add(a_p1x,a_p1y,a_p1z);
+        m_this.m_triangles.add_normal(a_n1x,a_n1y,a_n1z);
+        m_this.m_triangles.add_rgba(a_r1,a_g1,a_b1,a_a1);
+
+        m_this.m_triangles.add(a_p2x,a_p2y,a_p2z);
+        m_this.m_triangles.add_normal(a_n2x,a_n2y,a_n2z);
+        m_this.m_triangles.add_rgba(a_r2,a_g2,a_b2,a_a2);
+
+        m_this.m_triangles.add(a_p3x,a_p3y,a_p3z);
+        m_this.m_triangles.add_normal(a_n3x,a_n3y,a_n3z);
+        m_this.m_triangles.add_rgba(a_r3,a_g3,a_b3,a_a3);
+      } else {
+        m_this.m_triangles.add(a_p1x,a_p1y,a_p1z);
+        m_this.m_triangles.add_normal(a_n1x,a_n1y,a_n1z);
+        m_this.m_triangles.add_rgba(a_r1,a_g1,a_b1,a_a1);
+
+        m_this.m_triangles.add(a_p3x,a_p3y,a_p3z);
+        m_this.m_triangles.add_normal(a_n3x,a_n3y,a_n3z);
+        m_this.m_triangles.add_rgba(a_r3,a_g3,a_b3,a_a3);
+
+        m_this.m_triangles.add(a_p2x,a_p2y,a_p2z);
+        m_this.m_triangles.add_normal(a_n2x,a_n2y,a_n2z);
+        m_this.m_triangles.add_rgba(a_r2,a_g2,a_b2,a_a2);
+      }
+      return true;
+    }
+  public:
+    primvis(mem_action& a_this):m_this(a_this){}
+    virtual ~primvis(){}
+  public:
+    primvis(const primvis& a_from)
+    :primitive_visitor(a_from)
+    ,m_this(a_from.m_this)
+    {}
+    primvis& operator=(const primvis& a_from){
+      primitive_visitor::operator=(a_from);
+      return *this;
+    }
+  protected:
+    mem_action& m_this;
+  };
+
+protected:
+  mem_manager& m_mgr;
+
+  atb_vertices& m_points;
+  atb_vertices& m_lines;
+  atb_vertices& m_triangles;
+  primvis m_pv;
+
+  // to be restored in restore_state() :
+  mat4f m_proj;
+  mat4f m_model;
+  mat4f m_normal_matrix;
+  colorf m_color;
+
+  bool m_ccw;
+  vec3f m_normal;
+};
+
+}}
+
+#endif

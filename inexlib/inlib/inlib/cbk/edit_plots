@@ -1,0 +1,511 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_edit_plots
+#define inlib_sg_edit_plots
+
+#include "../sg/gui_viewer"
+#include "../sg/plots"
+#include "../sg/plotter_style"
+
+namespace inlib {
+namespace cbk {
+
+/////////////////////////////////////////////////////////////////////////////
+/// actions : ///////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+
+class plots_data : public sg::pos_data {
+  typedef sg::pos_data parent;
+public:
+  plots_data(sg::plots& a_plots,bool a_popup,int a_ex,int a_ey)
+  :parent(a_popup,a_ex,a_ey)
+  ,m_plots(a_plots)
+  ,m_index(0)
+  {}
+  virtual ~plots_data(){}
+public:
+  plots_data(const plots_data& a_from)
+  :parent(a_from)
+  ,m_plots(a_from.m_plots)
+  ,m_index(a_from.m_index)
+  {}
+  plots_data& operator=(const plots_data& a_from){
+    parent::operator=(a_from);
+    m_index = a_from.m_index;
+    return *this;
+  }
+public:
+  sg::plots& m_plots;
+  int m_index;
+};
+
+inline sg::return_action action_set_current(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  a_data.m_plots.set_current_plotter(a_data.m_index);
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_current(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  sg::list* _list = new sg::list(a_gv.ttf());
+  a_gv.set_style(*_list);
+
+  std::string stmp;
+  unsigned int num = a_data.m_plots.rows * a_data.m_plots.cols;
+  for(unsigned int index=0;index<num;index++) {
+    if(!num2s(index,stmp)) {}
+    plots_data data(a_data);
+    data.m_index = index;
+    add_item(a_gv,*_list,stmp,action_set_current,data);
+  }
+
+  a_gv.show_widget(a_data,_list);
+
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_current_to_one(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  a_data.m_plots.current_to_one();
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_toggle_border(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  a_data.m_plots.border_visible = a_data.m_plots.border_visible?false:true;
+  if(a_data.m_plots.border_visible.value()) {
+    if(a_data.m_plots.border_width.value()<=0) a_data.m_plots.border_width = 0.05f;
+    if(a_data.m_plots.border_height.value()<=0) a_data.m_plots.border_height = 0.05f;
+  }
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_toggle_view_border(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  a_data.m_plots.view_border = a_data.m_plots.view_border?false:true;
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_clear_bins(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  sg::plotter& plotter = a_data.m_plots.current_plotter();
+  plotter.remove_plottables<sg::bins1D>();
+  plotter.remove_plottables<sg::bins2D>();
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_clear_points(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  sg::plotter& plotter = a_data.m_plots.current_plotter();
+  plotter.remove_plottables<sg::points2D>();
+  plotter.remove_plottables<sg::points3D>();
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_clear_functions(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  sg::plotter& plotter = a_data.m_plots.current_plotter();
+  plotter.remove_plottables<sg::func1D>();
+  plotter.remove_plottables<sg::func2D>();
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_clear(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  sg::plotter& plotter = a_data.m_plots.current_plotter();
+  plotter.clear();
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_clear_plots(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  a_data.m_plots.clear();
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+
+/* problem (with the camera ?) with EsbRootView plotarea :
+inline sg::return_action action_adjust_size(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  view_evd* _evd = cast_view_evd(a_gv);
+  if(_evd) {
+    a_data.m_plots.adjust_size(a_gv.width(),a_gv.height());
+    base_camera* cam = a_gv.create_2D_camera(a_data.m_plots.height.value());
+    if(cam) _evd->replace_camera(cam);
+  }
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+*/
+
+inline sg::return_action action_ok_regions(sg::gui_viewer& a_gv,sg::entries& a_widget,const plots_data& a_data) {
+  unsigned int index_cols = 0;
+  unsigned int index_rows = 1;
+  unsigned int index_clear = 2;
+  std::vector<std::string>& vals = a_widget.values.values();
+
+  unsigned int cols;
+  if(!to(vals[index_cols],cols)) {
+    a_gv.pop_warn(a_data,"not an uint");
+    return sg::return_to_render;
+  }
+  if(!cols) {
+    a_gv.pop_warn(a_data,"number of cols must be >=1");
+    return sg::return_to_render;
+  }
+
+  unsigned int rows;
+  if(!to(vals[index_rows],rows)) {
+    a_gv.pop_warn(a_data,"not an uint");
+    return sg::return_to_render;
+  }
+  if(!rows) {
+    a_gv.pop_warn(a_data,"number of rows must be >=1");
+    return sg::return_to_render;
+  }
+
+  bool clear;
+  if(!to(vals[index_clear],clear)) {
+    a_gv.pop_warn(a_data,"not a bool");
+    return sg::return_to_render;
+  }
+
+  a_data.m_plots.set_regions(cols,rows,clear?false:true);
+
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_regions(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  sg::entries* node = new sg::entries(a_gv.ttf());
+  a_gv.set_style(*node);
+
+  node->add_uint("cols",1);
+  node->add_uint("rows",1);
+  node->add_bool("clear",false);
+
+  add_callback(a_gv,*node,action_ok_regions,a_data);
+
+  a_gv.show_widget(a_data,node);
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_menu_plots_layout(sg::gui_viewer& a_gv,const sg::pos_data& a_data) {
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+
+  if(!_plots) {
+    a_gv.pop_warn(a_data,"no plots given");
+    return sg::return_to_render;
+  }
+
+  sg::list* _list = new sg::list(a_gv.ttf());
+  a_gv.set_style(*_list);
+
+  plots_data data(*_plots,a_data.m_popup,a_data.m_ex,a_data.m_ey);
+
+  add_item(a_gv,*_list,"set regions",action_regions,data);
+  add_item(a_gv,*_list,"set current plotter",action_current,data);
+  add_item(a_gv,*_list,"plotter to one",action_current_to_one,data);
+  add_item(a_gv,*_list,"plotter border",action_toggle_view_border,data);
+  add_item(a_gv,*_list,"clear bins",action_clear_bins,data);
+  add_item(a_gv,*_list,"clear points",action_clear_points,data);
+  add_item(a_gv,*_list,"clear functions",action_clear_functions,data);
+  add_item(a_gv,*_list,"plotter clear",action_clear,data);
+  add_item(a_gv,*_list,"clear all plotters",action_clear_plots,data);
+  add_item(a_gv,*_list,"toggle border",action_toggle_border,data);
+//add_item(a_gv,*_list,"adjust size",action_adjust_size,data);
+
+  a_gv.show_widget(a_data,_list);
+
+  return sg::return_to_render;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+/// resedit actions : ///////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+
+inline void get_styles(const sg::gui_viewer& a_gv,std::vector<std::string>& a_opts){
+  a_opts.clear();
+  a_opts.push_back(sg::s_none());
+  std::vector<std::string> plotter_styles;
+  a_gv.styles().find_plotter_styles(plotter_styles);
+  std::vector<std::string>::const_iterator it;
+  for(it=plotter_styles.begin();it!=plotter_styles.end();++it) a_opts.push_back(*it);
+}
+
+inline void add_plotter_entries(sg::plotter& a_plotter,sg::entries& a_entries){
+
+    a_entries.add_bool ("grid.visible"   ,a_plotter.grid_style().visible);
+    a_entries.add_color("grid.color"     ,a_plotter.grid_style().color.value());
+    a_entries.add_float("grid.line_width",a_plotter.grid_style().line_width);
+
+    a_entries.add_bool ("inner_frame.visible"   ,a_plotter.inner_frame_style().visible);
+    a_entries.add_color("inner_frame.color"     ,a_plotter.inner_frame_style().color.value());
+    a_entries.add_float("inner_frame.line_width",a_plotter.inner_frame_style().line_width);
+
+    a_entries.add_bool("title.visible",a_plotter.title_style().visible);
+    a_entries.add_bool("title_box.visible",a_plotter.title_box_style().visible);
+    a_entries.add_bool("infos.visible",a_plotter.infos_style().visible);
+    a_entries.add_bool("background.visible",a_plotter.background_style().visible);
+    a_entries.add_color("background.back_color",a_plotter.background_style().back_color.value());
+
+    /////////////////////////////////////////////////
+    /// bins[0] /////////////////////////////////////
+    /////////////////////////////////////////////////
+   {std::vector<std::string> opts;
+    a_plotter.bins_modelings(0,opts);
+    a_entries.add_opts("bins[0].modeling",opts.size()?opts[0]:"",opts);}
+
+    a_entries.add_color("bins[0].color",a_plotter.bins_style(0).color.value());
+
+    a_entries.add_float("bins[0].line_width",a_plotter.bins_style(0).line_width.value());
+
+   {std::vector<std::string> opts;
+    sg::spainting_policies(opts);
+    //opts.push_back(sg::s_none());
+    const char* s = sg::spainting_policy(a_plotter.bins_style(0).painting);
+    if(s) a_entries.add_opts("bins[0].painting",s,opts);
+    else  a_entries.add_opts("bins[0].painting",sg::s_none(),opts);}
+
+    /////////////////////////////////////////////////
+    /// func[0] /////////////////////////////////////
+    /////////////////////////////////////////////////
+    a_entries.add_color("func[0].color",a_plotter.func_style(0).color.value());
+
+    a_entries.add_float("func[0].line_width",a_plotter.func_style(0).line_width.value());
+    //a_entries.add_enum
+    //  ("func[0].line_pattern",a_plotter.func_style(0).line_pattern.value());
+
+   {std::vector<std::string> opts;
+    sg::spainting_policies(opts);
+    //opts.push_back(sg::s_none());
+    const char* s = sg::spainting_policy(a_plotter.func_style(0).painting);
+    if(s) a_entries.add_opts("func[0].painting",s,opts);
+    else  a_entries.add_opts("func[0].painting",sg::s_none(),opts);}
+
+}
+
+inline sg::return_action action_set_style(sg::gui_viewer& a_gv,sg::entries& a_widget,const plots_data& a_data) {
+  sg::plotter& plotter = a_data.m_plots.current_plotter();
+
+  unsigned int index_count = 0;
+  unsigned int index_reset_style            = index_count;index_count++;
+  unsigned int index_style                  = index_count;index_count++;
+
+  unsigned int index_grid_visible           = index_count;index_count++;
+  unsigned int index_grid_color             = index_count;index_count++;
+  unsigned int index_grid_line_width        = index_count;index_count++;
+
+  unsigned int index_inner_frame_visible    = index_count;index_count++;
+  unsigned int index_inner_frame_color      = index_count;index_count++;
+  unsigned int index_inner_frame_line_width = index_count;index_count++;
+
+  unsigned int index_title_visible          = index_count;index_count++;
+  unsigned int index_title_box_visible      = index_count;index_count++;
+  unsigned int index_infos_visible          = index_count;index_count++;
+  unsigned int index_background_visible     = index_count;index_count++;
+  unsigned int index_background_back_color  = index_count;index_count++;
+
+  unsigned int index_bins_0_modeling   = index_count;index_count++;
+  unsigned int index_bins_0_color      = index_count;index_count++;
+  unsigned int index_bins_0_line_width = index_count;index_count++;
+  unsigned int index_bins_0_painting   = index_count;index_count++;
+
+  unsigned int index_func_0_color      = index_count;index_count++;
+  unsigned int index_func_0_line_width = index_count;index_count++;
+  unsigned int index_func_0_painting   = index_count;index_count++;
+
+  std::vector<std::string>& vals = a_widget.values.values();
+
+  /////////////////////////////////////////////////
+  /// general /////////////////////////////////////
+  /////////////////////////////////////////////////
+  bool reset_style = true;
+  if(!to(vals[index_reset_style],reset_style)) {
+    a_gv.pop_warn(a_data,"not a bool");
+    return sg::return_to_render;
+  }
+
+ {const std::string& s = vals[index_style];
+  if(s!=sg::s_none()) {
+    //bool set_exam = false;
+    if(reset_style) plotter.reset_style(); //it should be optional.
+    style_from_res(a_gv.styles(),s,plotter,true);
+    plotter.touch();
+
+    // update menu :
+   {sg::entries* node = new sg::entries(a_gv.ttf());
+    a_gv.set_style(*node);
+    node->add_bool("overall->reset",reset_style);
+   {std::vector<std::string> opts;
+    get_styles(a_gv,opts);
+    node->add_opts("overall style",s,opts);}
+    add_plotter_entries(plotter,*node);
+    add_callback(a_gv,*node,action_set_style,a_data);
+    a_gv.show_widget(a_data,node);}
+
+    return sg::return_to_render; //change style override the rest.
+  }}
+
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+ {bool v;
+  if(!to(vals[index_grid_visible],v)) {a_gv.pop_warn(a_data,"not a bool");return sg::return_to_render;}
+  plotter.grid_style().visible = v;
+  plotter.touch();}
+
+ {float r,g,b,a;
+  if(!a_widget.get_color(index_grid_color,r,g,b,a)) {
+    a_gv.pop_warn(a_data,"get color failed");
+    return sg::return_to_render;
+  }
+  plotter.grid_style().color.value().set_value(r,g,b,a);
+  plotter.touch();}
+
+ {float v;
+  if(!to(vals[index_grid_line_width],v)) {a_gv.pop_warn(a_data,"not a number");return sg::return_to_render;}
+  plotter.grid_style().line_width = v;
+  plotter.touch();}
+
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+ {bool v;
+  if(!to(vals[index_inner_frame_visible],v)) {a_gv.pop_warn(a_data,"not a bool");return sg::return_to_render;}
+  plotter.inner_frame_style().visible = v;
+  plotter.touch();}
+
+ {float r,g,b,a;
+  if(!a_widget.get_color(index_inner_frame_color,r,g,b,a)) {
+    a_gv.pop_warn(a_data,"get color failed");
+    return sg::return_to_render;
+  }
+  plotter.inner_frame_style().color.value().set_value(r,g,b,a);
+  plotter.touch();}
+
+ {float v;
+  if(!to(vals[index_inner_frame_line_width],v)) {a_gv.pop_warn(a_data,"not a number");return sg::return_to_render;}
+  plotter.inner_frame_style().line_width = v;
+  plotter.touch();}
+
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+ {bool v;
+  if(!to(vals[index_title_visible],v)) {a_gv.pop_warn(a_data,"not a bool");return sg::return_to_render;}
+  plotter.title_style().visible = v;
+  plotter.touch();}
+
+ {bool v;
+  if(!to(vals[index_title_box_visible],v)) {a_gv.pop_warn(a_data,"not a bool");return sg::return_to_render;}
+  plotter.title_box_style().visible = v;
+  plotter.touch();}
+
+ {bool v;
+  if(!to(vals[index_infos_visible],v)) {a_gv.pop_warn(a_data,"not a bool");return sg::return_to_render;}
+  plotter.infos_style().visible = v;
+  plotter.touch();}
+
+ {bool v;
+  if(!to(vals[index_background_visible],v)) {a_gv.pop_warn(a_data,"not a bool");return sg::return_to_render;}
+  plotter.background_style().visible = v;
+  plotter.touch();}
+
+ {float r,g,b,a;
+  if(!a_widget.get_color(index_background_back_color,r,g,b,a)) {
+    a_gv.pop_warn(a_data,"get color failed");
+    return sg::return_to_render;
+  }
+  plotter.background_style().back_color.value().set_value(r,g,b,a);
+  plotter.touch();}
+
+  /////////////////////////////////////////////////
+  /// bins[0] /////////////////////////////////////
+  /////////////////////////////////////////////////
+  plotter.bins_style(0).modeling = vals[index_bins_0_modeling];
+  plotter.touch();
+
+ {float r,g,b,a;
+  if(!a_widget.get_color(index_bins_0_color,r,g,b,a)) {a_gv.pop_warn(a_data,"get color failed");return sg::return_to_render;}
+  plotter.bins_style(0).color.value().set_value(r,g,b,a);
+  plotter.touch();}
+
+ {float v;
+  if(!to(vals[index_bins_0_line_width],v)) {a_gv.pop_warn(a_data,"not a number");return sg::return_to_render;}
+  plotter.bins_style(0).line_width = v;
+  plotter.touch();}
+
+ {const std::string& s = vals[index_bins_0_painting];
+  if(s!=sg::s_none()) {
+    sg::spainting_policy(s,plotter.bins_style(0).painting.value());
+  }
+  plotter.touch();}
+
+  /////////////////////////////////////////////////
+  /// func[0] /////////////////////////////////////
+  /////////////////////////////////////////////////
+ {float r,g,b,a;
+  if(!a_widget.get_color(index_func_0_color,r,g,b,a)) {a_gv.pop_warn(a_data,"get color failed");return sg::return_to_render;}
+  plotter.func_style(0).color.value().set_value(r,g,b,a);
+  plotter.touch();}
+
+ {float v;
+  if(!to(vals[index_func_0_line_width],v)) {a_gv.pop_warn(a_data,"not a number");return sg::return_to_render;}
+  plotter.func_style(0).line_width = v;
+  plotter.touch();}
+
+ {const std::string& s = vals[index_func_0_painting];
+  if(s!=sg::s_none()) {
+    sg::spainting_policy(s,plotter.func_style(0).painting.value());
+  }
+  plotter.touch();}
+
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+
+  if(!a_data.m_popup) a_gv.hide_main_menu();
+
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_resedit(sg::gui_viewer& a_gv,const plots_data& a_data) {
+  sg::plotter& plotter = a_data.m_plots.current_plotter();
+
+  sg::entries* node = new sg::entries(a_gv.ttf());
+  a_gv.set_style(*node);
+
+  node->add_bool("overall->reset",true);
+ {std::vector<std::string> opts;
+  get_styles(a_gv,opts);
+  node->add_opts("overall style",sg::s_none(),opts);}
+
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+
+  add_plotter_entries(plotter,*node);
+
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+  /////////////////////////////////////////////////
+  add_callback(a_gv,*node,action_set_style,a_data);
+
+  a_gv.show_widget(a_data,node);
+  return sg::return_to_render;
+}
+
+inline sg::return_action action_menu_edit_plot(sg::gui_viewer& a_gv,const sg::pos_data& a_data) {
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_gv.pop_warn(a_data,"no plots given");
+    return sg::return_to_render;
+  }
+  plots_data data(*_plots,a_data.m_popup,a_data.m_ex,a_data.m_ey);
+  return action_resedit(a_gv,data);
+}
+
+inline sg::return_action action_edit_plot(sg::gui_viewer& a_gv,const sg::pos_data& a_data) {return action_menu_edit_plot(a_gv,a_data);} //deprecated.
+
+}}
+
+#endif

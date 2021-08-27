@@ -1,0 +1,171 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_net_sg_serv_main
+#define inlib_net_sg_serv_main
+
+#include "inet_socket"
+#include "../sys/mutex"
+
+//#define INLIB_NET_THREAD_ACCEPT_NOT_BLOCKING
+//NOTE : we are in a special thread, being blocking is ok and
+//       take less CPU.
+
+namespace inlib {
+namespace net {
+
+class sg_serv_args {
+public:
+  typedef void(*connect_func)(sg_serv_args&);
+  typedef void(*disconnect_func)(sg_serv_args&);
+public:
+  sg_serv_args(std::ostream& a_out,
+               mutex& a_mutex,
+               net::inet_socket& a_data_server_sock,
+               net::inet_socket& a_sg_client_sock,
+               const std::string& a_host = "",unsigned int a_port = 0,
+               connect_func a_connect_func = 0,disconnect_func a_disconnect_func = 0)
+  :m_out(a_out)
+  ,m_mutex(a_mutex)
+  ,m_data_server_sock(a_data_server_sock)
+  ,m_sg_client_sock(a_sg_client_sock)
+  ,m_host(a_host)
+  ,m_port(a_port)
+  ,m_connect_func(a_connect_func),m_disconnect_func(a_disconnect_func)
+  ,m_data_1(0)
+  ,m_data_2(0)
+  ,m_num_try(3)
+  ,m_milli_secs(100)
+  ,m_verbose(false)
+
+  ,m_continue(true),m_exit(false)
+  {}
+public:
+  sg_serv_args(const sg_serv_args& a_from)
+  :m_out(a_from.m_out)
+  ,m_mutex(a_from.m_mutex)
+  ,m_data_server_sock(a_from.m_data_server_sock)
+  ,m_sg_client_sock(a_from.m_sg_client_sock)
+  ,m_host(a_from.m_host)
+  ,m_port(a_from.m_port)
+  ,m_connect_func(a_from.m_connect_func)
+  ,m_disconnect_func(a_from.m_disconnect_func)
+  ,m_data_1(a_from.m_data_1)
+  ,m_data_2(a_from.m_data_2)
+  ,m_num_try(a_from.m_num_try)
+  ,m_milli_secs(a_from.m_milli_secs)
+  ,m_verbose(a_from.m_verbose)
+  ,m_continue(a_from.m_continue)
+  ,m_exit(a_from.m_exit)
+  {}
+  sg_serv_args& operator=(const sg_serv_args& a_from){
+    m_host = a_from.m_host;
+    m_port = a_from.m_port;
+    m_connect_func = a_from.m_connect_func;
+    m_disconnect_func = a_from.m_disconnect_func;
+    m_data_1 = a_from.m_data_1;
+    m_data_2 = a_from.m_data_2;
+    m_num_try = a_from.m_num_try;
+    m_milli_secs = a_from.m_milli_secs;
+    m_verbose = a_from.m_verbose;
+    m_continue = a_from.m_continue;
+    m_exit = a_from.m_exit;
+    return *this;
+  }
+  void ask_stop() {m_continue = false;}
+  void wait_stop() {while(!m_exit){sleep_milli_secs(100);}}
+
+public:
+  std::ostream& m_out;
+  mutex& m_mutex;
+  net::inet_socket& m_data_server_sock;
+  net::inet_socket& m_sg_client_sock;
+  std::string m_host;
+  unsigned int m_port;
+  connect_func m_connect_func;
+  disconnect_func m_disconnect_func;
+  void* m_data_1;
+  void* m_data_2;
+  unsigned int m_num_try;
+  unsigned int m_milli_secs;
+  bool m_verbose;
+
+  bool m_continue;
+  bool m_exit;
+};
+
+#ifdef INLIB_NET_THREAD_ACCEPT_NOT_BLOCKING
+inline bool sg_serv_accept_func(void* a_tag) {
+  sg_serv_args* args = (sg_serv_args*)a_tag;
+
+  if(!args->m_continue) return false;
+
+  return true; //continue waiting for an accept.
+}
+#endif
+
+inline void* sg_serv_main(void* a_tag) {
+  sg_serv_args& args = *((sg_serv_args*)a_tag);
+
+  net::inet_socket& server_sock = args.m_data_server_sock;
+  net::inet_socket& client_sock = args.m_sg_client_sock;
+
+  if(server_sock.is_connected() || client_sock.is_connected()) {
+    args.m_out << "sg_serv_main : socks already connected." << std::endl;
+    return 0;
+  }
+
+  if(args.m_verbose) args.m_out << "sg_serv_main : start" << std::endl;
+
+  if(!server_sock.bind_milli(args.m_host,args.m_port,args.m_num_try,args.m_milli_secs,true)) {
+    args.m_out << "sg_serv_main : bind failed." << std::endl;
+  } else {
+    int server_sock_id = server_sock.socket();
+
+#ifdef INLIB_NET_THREAD_ACCEPT_NOT_BLOCKING
+    // wait a data client in a non blocking mode :
+    client_sock.set_accept_func(sg_serv_accept_func,a_tag);
+    if(!client_sock.accept(server_sock_id,false)) {
+      args.m_out << "sg_serv_main : accept failed." << std::endl;
+#else
+    // wait a data client in a blocking mode :
+    if(!client_sock.accept(server_sock_id,true)) {
+      if(args.m_continue) {
+        args.m_out << "sg_serv_main : accept failed (2)." << std::endl;
+      }
+#endif
+      if(args.m_continue) server_sock.disconnect();
+
+    } else {
+      if(!client_sock.is_connected()) {
+        args.m_out << "sg_serv_main : accept ok but socket not connected !" << std::endl;
+        server_sock.disconnect();
+      } else {
+        if(args.m_verbose) args.m_out << "sg_serv_main : accept : ok." << std::endl;
+      }
+    }
+  }
+
+  if(args.m_continue && server_sock.is_connected() && client_sock.is_connected()) {
+
+    args.m_mutex.lock();
+    if(args.m_connect_func) {
+      //args.m_out << "debug : sg_serv_main : call m_connect_func ..." << std::endl;
+      args.m_connect_func(args);
+    } else {
+      //args.m_out << "debug : sg_serv_main : no m_connect_func." << std::endl;
+    }
+    args.m_mutex.unlock();
+
+  }
+
+  args.m_exit = true;
+
+  //args.m_out << "debug : sg_serv_main : exit" << std::endl;
+
+  return 0;
+}
+
+}}
+
+#endif

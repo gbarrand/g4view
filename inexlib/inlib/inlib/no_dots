@@ -1,0 +1,28 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_no_dots
+#define inlib_insh_no_dots
+
+#include "forit"
+
+#include <string>
+#include <vector>
+
+namespace inlib {
+
+inline void no_dots(std::vector<std::string>& a_ss) {
+  std::vector<std::string> _ss;
+ {inlib_vforcit(std::string,a_ss,it) {
+    const std::string& item = *it;
+    if(item==".") continue;
+    if(item=="..") continue;
+    if(item.size()&&(item[0]=='.')) continue;
+    _ss.push_back(item);
+  }}
+  a_ss = _ss;
+}
+
+}
+
+#endif

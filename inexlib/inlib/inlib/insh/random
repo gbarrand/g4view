@@ -1,0 +1,211 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_random
+#define inlib_insh_random
+
+#include "ishell"
+#include "../args"
+#include "../omanager"
+
+#include "../randd"
+
+namespace inlib {
+
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+inline bool is_rgaussd(const std::string& a_s) {
+  if(a_s==rgaussd::s_class()) return true;
+  if(a_s=="rgaussd") return true;
+  return false;
+}
+inline bool is_rbwd(const std::string& a_s) {
+  if(a_s==rbwd::s_class()) return true;
+  if(a_s=="rbwd") return true;
+  return false;
+}
+inline bool is_rbinomiald(const std::string& a_s) {
+  if(a_s==rbinomiald::s_class()) return true;
+  if(a_s=="rbinomiald") return true;
+  return false;
+}
+inline bool is_rexpd(const std::string& a_s) {
+  if(a_s==rexpd::s_class()) return true;
+  if(a_s=="rexpd") return true;
+  return false;
+}
+inline bool is_rpoissd(const std::string& a_s) {
+  if(a_s==rpoissd::s_class()) return true;
+  if(a_s=="rpoissd") return true;
+  return false;
+}
+
+inline void insh_random_create(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("random_create");
+  args _args(a_args);
+
+  if(_args.is_arg("-classes")) {
+    a_insh.out_begin();
+    a_insh.out("rgaussd",true);
+    a_insh.out("rbwd",true);
+    a_insh.out("rbinomiald",true);
+    a_insh.out("rexpd",true);
+    a_insh.out("rpoissd",true);
+    return;
+  }
+
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+
+  std::string sclass;
+  _args.find("-class",sclass,rgaussd::s_class());
+
+  bool warn = _args.is_arg("-no_warn")?false:true;
+
+  uint32 seed;
+  bool found_seed = _args.find<uint32>("-seed",seed,1);
+
+  double std_dev = 1;
+  INLIB_ISHELL_GET_ARG_DOUBLE(std_dev)
+
+  uint32 n = 1;
+  INLIB_ISHELL_GET_ARG_UINT(n)
+  double p = 0.5;
+  INLIB_ISHELL_GET_ARG_DOUBLE(p)
+  double rate = 1;
+  INLIB_ISHELL_GET_ARG_DOUBLE(rate)
+  double gamma = 1;
+  INLIB_ISHELL_GET_ARG_DOUBLE(gamma)
+
+  if(is_rgaussd(sclass)) {
+    double mean = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(mean)
+    rgaussd* r = new rgaussd(mean,std_dev);
+    if(found_seed) r->set_seed(seed);
+    a_mgr.manage_object<rgaussd>(r,fnh,true,true,warn);
+
+  } else if(is_rbinomiald(sclass)) {
+    if((p<0)||(1<p)) {
+      a_insh.warn(s_cmd+": rbinomiald : p must be in [0,1].");
+      p = 1;
+      return;
+    }
+    rbinomiald* r = new rbinomiald(n,p);
+    if(found_seed) r->set_seed(seed);
+    a_mgr.manage_object<rbinomiald>(r,fnh,true,true,warn);
+
+  } else if(is_rexpd(sclass)) {
+    rexpd* r = new rexpd(rate);
+    if(found_seed) r->set_seed(seed);
+    a_mgr.manage_object<rexpd>(r,fnh,true,true,warn);
+
+  } else if(is_rbwd(sclass)) {
+    double mean = 0;
+    INLIB_ISHELL_GET_ARG_DOUBLE(mean)
+    rbwd* r = new rbwd(mean,gamma);
+    if(found_seed) r->set_seed(seed);
+    a_mgr.manage_object<rbwd>(r,fnh,true,true,warn);
+
+  } else if(is_rpoissd(sclass)) {
+    double mean = 1;
+    INLIB_ISHELL_GET_ARG_DOUBLE(mean)
+    rpoissd* r = new rpoissd(mean);
+    if(found_seed) r->set_seed(seed);
+    a_mgr.manage_object<rpoissd>(r,fnh,true,true,warn);
+
+  } else {
+    a_insh.warn(s_cmd+": unknown class "+sout(sclass)+".");
+  }
+}
+
+inline const std::string& insh_random_create_help() {
+  static const std::string s_help("\
+random_create: random_create [-classes,-class,-no_warn,] managed_name\n\
+  Create a named and managed random generator object.\n\
+  If an object with same managed name already exist it is deleted.\n\
+  -no_warn to not warn in case of overwriting an existing object.\n\
+  -class=string class of the object to create (default is rgaussd).\n\
+  -classes print the available classes.\n\
+  According to the wanted class, various arguments can be passed.\n\
+  If -class=rgaussd (random gauss):\n\
+  -mean=real mean value (default is 0).\n\
+  -std_dev=real standard deviation (default is 1).\n\
+  If -class=rbwd (random breit-wigner):\n\
+  -mean=real mean value (default is 0).\n\
+  -gamma=real gamma (default is 1).\n\
+  If -class=rbinomial:\n\
+  -n=uint (default is 1).\n\
+  -p=real (default is 0.5).\n\
+  If -class=rexpd:\n\
+  -rate=real (default is 1).\n\
+  If -class=rpoissd (random poisson):\n\
+  -mean=real (default is 1).\n\
+  Example:\n\
+    random_create -classes\n\
+    random_create r_gaussd # create a rgaussd named r_gaussd\n\
+    random_create -class=rgaussd -mean=0 -std_dev=1 r_1\n\
+");
+  return s_help;
+}
+
+inline const irandd* cast_irandd(const base_oholder& a_boh) {
+  if(const rgaussd* r = cast_oholder_object<rgaussd>(a_boh)) return r;
+  if(const rbinomiald* r = cast_oholder_object<rbinomiald>(a_boh)) return r;
+  if(const rexpd* r = cast_oholder_object<rexpd>(a_boh)) return r;
+  if(const rbwd* r = cast_oholder_object<rbwd>(a_boh)) return r;
+  if(const rpoissd* r = cast_oholder_object<rpoissd>(a_boh)) return r;
+  return 0;
+}
+
+inline void insh_random_shoot(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("random_shoot");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+" no name given.");
+    return;
+  }
+  base_oholder* _boh = a_mgr.find_base_oholder(fnh);
+  if(!_boh) {
+    a_insh.warn(s_cmd+" object "+sout(fnh)+" not found.");
+    return;
+  }
+  const irandd* _rand = cast_irandd(*_boh);
+  if(!_rand) {
+    a_insh.warn(s_cmd+" object "+sout(fnh)+" is an unknown random.");
+    return;
+  }
+  a_insh.out_num(_rand->shootd());
+}
+
+inline const std::string& insh_random_shoot_help() {
+  static const std::string s_help("\
+random_shoot: random_shoot managed_name\n\
+  Get a random number from a named managed random object.\n\
+  Example:\n\
+    random_create -class=rgaussd -mean=0 -std_dev=1 r_1\n\
+    random_shoot r_1\n\
+");
+  return s_help;
+}
+
+}
+
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+
+#include "ishell_args_omanager_cmd"
+
+#define INLIB_INSH_RANDOM_ADDS(a__insh,a__omanager)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,random_create,\
+    inlib::insh_random_create,inlib::insh_random_create_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,random_shoot,\
+    inlib::insh_random_shoot,inlib::insh_random_shoot_help())
+
+
+#endif

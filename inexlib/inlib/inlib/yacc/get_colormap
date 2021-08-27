@@ -1,0 +1,62 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_yacc_get_colormap
+#define inlib_yacc_get_colormap
+
+#include "../sg/style"
+#include "../sg/colormap"
+#include "base_evaluator"
+
+#include <cfloat> //DBL_MAX
+
+namespace inlib {
+
+template <class T>
+inline sg::base_colormap* get_colormap(std::ostream& a_out,const sg::style& a_style,const sg::cmaps_t& a_cmaps,
+                                              const std::vector<T*>& a_vec,
+                                              base_evaluator<T>& a_eval,
+                                              double& a_min,double& a_max) {
+  a_min = DBL_MAX;
+  a_max = -DBL_MAX;
+  sg::painting_policy painting = a_style.painting;
+  if(painting==sg::painting_by_value) {
+    a_min = 0;
+    a_max = 1;
+    return new sg::by_value_colormap(a_out,a_cmaps,a_style.color_mapping);
+  } else if( (painting==sg::painting_grey_scale) ||
+             (painting==sg::painting_grey_scale_inverse) ||
+             (painting==sg::painting_violet_to_red) ){
+    if(a_vec.empty()) {
+      a_out << "inlib::get_colormap : no data." << std::endl;
+      return 0;
+    }
+    if(!a_eval.evaluate_double_min_max(a_vec,a_min,a_max)) {
+      a_out << "inlib::get_colormap : min_max() failed." << std::endl;
+      a_min = DBL_MAX;
+      a_max = -DBL_MAX;
+      return 0;
+    }
+    if(a_max<=a_min) {
+      a_out << "inlib::get_colormap : bad range mx<=mn." << std::endl;
+      a_min = DBL_MAX;
+      a_max = -DBL_MAX;
+      return 0;
+    }
+    if(painting==sg::painting_grey_scale) {
+      return new sg::grey_scale_colormap();
+    } else if(painting==sg::painting_grey_scale_inverse) {
+      return new sg::grey_scale_inverse_colormap();
+    } else if(painting==sg::painting_violet_to_red) {
+      return new sg::violet_to_red_colormap();
+    }
+  } else {
+    //a_out << "inlib::get_colormap : unknown painting_policy " << painting << "." << std::endl;
+    //return new sg::const_colormap(a_style.color);
+  }
+  return 0;
+}
+
+}
+
+#endif

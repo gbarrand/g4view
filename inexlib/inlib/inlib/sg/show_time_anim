@@ -1,0 +1,56 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_show_time_anim
+#define inlib_sg_show_time_anim
+
+#include "slice_anim"
+
+#include "gui_viewer"
+
+namespace inlib {
+namespace sg {
+
+class show_time_anim : public slice_anim {
+  INLIB_NODE(show_time_anim,inlib::sg::show_time_anim,slice_anim)
+public:
+  virtual bool slice_action(std::ostream&,double a_slice_begin,double a_slice_end) {
+    std::string stime_beg;
+    num2s(a_slice_begin,stime_beg);
+    std::string stime_end;
+    num2s(a_slice_end,stime_end);
+
+    std::string stmp;
+    stmp += "time min ";
+    if(!numas<double>(time_min.value(),stmp)) {}
+    stmp += ", max ";
+    if(!numas<double>(time_max.value(),stmp)) {}
+    stmp += ", "+stime_beg;
+    stmp += "/"+stime_end;
+
+    m_gv.show_console(stmp);
+
+    return true;
+  }
+public:
+  show_time_anim(gui_viewer& a_gv)
+  :parent()
+  ,m_gv(a_gv)
+  {}
+  virtual ~show_time_anim() {}
+protected:
+  show_time_anim(const show_time_anim& a_from)
+  :parent(a_from)
+  ,m_gv(a_from.m_gv)
+  {}
+  show_time_anim& operator=(const show_time_anim& a_from){
+    parent::operator=(a_from);
+    return *this;
+  }
+protected:
+  gui_viewer& m_gv;
+};
+
+}}
+
+#endif

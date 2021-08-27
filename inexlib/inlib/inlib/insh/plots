@@ -1,0 +1,1136 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_plots
+#define inlib_insh_plots
+
+#include "ishell"
+
+#include "../sg/gui_viewer"
+
+#include "../sg/plots"
+#include "../sort"
+#include "../sg/dummy_freetype"
+#include "is_histo"
+
+#include "../sg/plotter_style"
+#include "../sg/h2plot_cp"
+#include "../sg/dps2plot"
+
+#include "../sg/f2plot"
+
+namespace inlib {
+
+////////////////////////////////////////////////////////////////////////
+/// plots: /////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+
+inline void insh_plots_touch_plotters(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plots_touch_plotters");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) return; //have no warning.
+  if(!_plots->has_data()) return;
+  _plots->touch_plotters();
+}
+
+inline void insh_plots_set_grid(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plots_set_grid");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  if((a_args.size()!=2)&&(a_args.size()!=3)) {
+    a_insh.warn(s_cmd+": two or three arguments expected.");
+    return;
+  }
+  unsigned int cols;
+  INLIB_ISHELL_ARG_UINT(a_args[0],cols)
+  unsigned int rows;
+  INLIB_ISHELL_ARG_UINT(a_args[1],rows)
+  bool transfer = false;
+  if(a_args.size()==3) {
+    INLIB_ISHELL_ARG_BOOL(a_args[2],transfer)
+  }
+  _plots->set_regions(cols,rows,transfer);
+}
+
+inline void insh_plots_clear(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plots_clear");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  _plots->clear();
+}
+
+inline void insh_plots_current_to_one(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plots_current_to_one");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  _plots->current_to_one();
+}
+
+inline void insh_plots_set_current_plotter(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plots_set_current_plotter");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  if(a_args.size()!=1) {
+    a_insh.warn(s_cmd+": one arguments expected.");
+    return;
+  }
+  unsigned int index;
+  INLIB_ISHELL_ARG_UINT(a_args[0],index)
+  _plots->set_current_plotter(index);
+}
+
+inline void insh_plots_next(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plots_next");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  _plots->next();
+}
+
+inline void insh_plots_toggle_border(ishell& a_insh,const std::vector<std::string>&,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plots_toggle_border");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  _plots->border_visible = _plots->border_visible?false:true;
+  if(_plots->border_visible.value()) {
+    if(_plots->border_width.value()<=0) _plots->border_width = 0.05f;
+    if(_plots->border_height.value()<=0) _plots->border_height = 0.05f;
+  }
+}
+
+inline void insh_plots_toggle_view_border(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plots_toggle_view_border");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  _plots->view_border = _plots->view_border?false:true;
+}
+
+inline void insh_plots_set_field(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plots_set_field");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  if(a_args.size()!=2) {
+    a_insh.warn(s_cmd+": two arguments expected.");
+    return;
+  }
+  const std::string& sfield = a_args[0];
+  const std::string& svalue = a_args[1];
+  sg::field* fd = _plots->find_field_by_name(sfield);
+  if(!fd) fd = _plots->find_field_by_name(_plots->s_cls()+"."+sfield);
+  if(!fd) {
+    a_insh.warn(s_cmd+": field "+sout(sfield)+" not found.");
+    return;
+  }
+  if(!fd->s2value(svalue)) {
+    a_insh.warn(s_cmd+": can't set value "+sout(svalue)+" for field "+sfield+".");
+    return;
+  }
+}
+
+inline void insh_plots_get_field(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plots_get_field");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  args _args(a_args);
+  if(_args.is_arg("-fields")) {
+    _plots->dump_field_descs(a_insh.out());
+    return;
+  }
+  std::string sfield;
+  if(!_args.find("-field",sfield)) {
+    if(a_args.size()!=1) {
+      a_insh.warn(s_cmd+": one arguments expected.");
+      return;
+    }
+    sfield = a_args[0];
+  }
+  sg::field* fd = _plots->find_field_by_name(sfield);
+  if(!fd) fd = _plots->find_field_by_name(_plots->s_cls()+"."+sfield);
+  if(!fd) {
+    a_insh.warn(s_cmd+": field "+sout(sfield)+" not found.");
+    return;
+  }
+  std::string s;
+  if(!fd->s_value(s)) {
+    a_insh.warn(s_cmd+": can't get value for field "+sout(sfield)+".");
+    return;
+  }
+  a_insh.out(s);
+}
+
+////////////////////////////////////////////////////////////////////////
+/// plotter: ///////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+
+inline void insh_plotter_set_field(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plotter_set_field");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  if(a_args.size()!=2) {
+    a_insh.warn(s_cmd+": two arguments expected.");
+    return;
+  }
+  const std::string& sfield = a_args[0];
+  const std::string& svalue = a_args[1];
+  sg::plotter& plotter = _plots->current_plotter();
+ {sg::field* fd = plotter.find_field_by_name(sfield);
+  if(!fd) fd = plotter.find_field_by_name(plotter.s_cls()+"."+sfield);
+  if(fd) {if(fd->s2value(svalue)) return;}}
+  // look for sf_enum for which value is given with a string, or
+  // for sf<bool> for which value given with true/false, or
+  // for a style, for example: bins_style.0.color:
+  if(!plotter.set_from_string(a_gv.out(),a_gv.styles().cmaps(),sfield,svalue)) {
+    a_insh.warn(s_cmd+": failed for field "+sout(sfield)+", and value "+sout(svalue)+".");
+    return;
+  }
+}
+
+inline void insh_plotter_get_field(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plotter_get_field");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  args _args(a_args);
+  sg::plotter& plotter = _plots->current_plotter();
+  if(_args.is_arg("-fields")) {
+    plotter.dump_field_descs(a_insh.out());
+    return;
+  }
+  std::string sfield;
+  if(!_args.find("-field",sfield)) {
+    if(a_args.size()!=1) {
+      a_insh.warn(s_cmd+": one arguments expected.");
+      return;
+    }
+    sfield = a_args[0];
+  }
+  sg::field* fd = plotter.find_field_by_name(sfield);
+  if(!fd) fd = plotter.find_field_by_name(plotter.s_cls()+"."+sfield);
+  if(!fd) {
+    a_insh.warn(s_cmd+": field "+sout(sfield)+" not found.");
+    return;
+  }
+  std::string s;
+  if(!fd->s_value(s)) {
+    a_insh.warn(s_cmd+": can't get value for field "+sout(sfield)+".");
+    return;
+  }
+  a_insh.out(s);
+}
+
+inline void insh_plotter_clear(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd(":plotter_clear");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  sg::plotter& plotter = _plots->current_plotter();
+  args _args(a_args);
+  if(_args.is_arg("-bins")) {
+    plotter.remove_plottables<sg::bins1D>();
+    plotter.remove_plottables<sg::bins2D>();
+    return;
+  }
+  if(_args.is_arg("-points")) {
+    plotter.remove_plottables<sg::points2D>();
+    plotter.remove_plottables<sg::points3D>();
+    return;
+  }
+  if(_args.is_arg("-functions")) {
+    plotter.remove_plottables<sg::func1D>();
+    plotter.remove_plottables<sg::func2D>();
+    return;
+  }
+  plotter.clear();
+}
+
+#define INLIB_ISHELL_GET_ARG_TEXT_MODE(a__variable)\
+   {std::string svalue;\
+    std::string _key = std::string("-")+#a__variable;\
+    if(_args.find(_key,svalue)) {\
+      _args.remove(_key);\
+      inlib::sg::text_mode _value;\
+      if(!inlib::sg::stext_mode(svalue,_value)) {\
+        a_insh.warn(s_cmd+" : "+svalue+" is not a text mode.");\
+        return;\
+      }\
+      a__variable  = _value;\
+    }}
+
+inline void insh_plotter_add_primitive(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plotter_add_primitive");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  sg::plotter& plotter = _plots->current_plotter();
+  args _args(a_args);
+  std::string sclass;
+  if(!_args.find("-class",sclass) || sclass.empty()) {
+    a_insh.warn(s_cmd+": no -class given.");
+    return;
+  }
+  if(sclass=="text") {
+    std::string stext;
+    INLIB_ISHELL_GET_ARG_STRING(text)
+    float x = 0;
+    INLIB_ISHELL_GET_ARG_FLOAT(x)
+    float y = 0;
+    INLIB_ISHELL_GET_ARG_FLOAT(y)
+    float size = 1;
+    INLIB_ISHELL_GET_ARG_FLOAT(size)
+    sg::text_mode text_mode = sg::text_as_is;
+    INLIB_ISHELL_GET_ARG_TEXT_MODE(text_mode)
+    
+		 
+                 //float a_ANGLE = 0,
+                 //char a_HJUST = 'L',char a_VJUST = 'B',
+                 //const std::string& a_FONT = "Hershey",const colorf& a_TXCI = colorf(0,0,0,1),
+                 //float a_SCALE = 1,bool a_SMOOTHING = false,bool a_HINTING = false,float a_line_width = 1,
+                 //font_modeling a_font_modeling = font_filled
+		 
+    float angle = 0;
+    INLIB_ISHELL_GET_ARG_FLOAT(angle)
+    char a_HJUST = 'C';
+  //sg::hjust hjust;
+  //if(!sg::shjust(const std::string& a_s,hjust& a_v)) {}    
+    char a_VJUST = 'M';
+    
+    std::string sfont = sg::font_arialbd_ttf();
+    INLIB_ISHELL_GET_ARG_STRING(font)
+    colorf color = colorf_default();
+    INLIB_ISHELL_GET_ARG_COLOR(color)
+    float scale = 1;
+    INLIB_ISHELL_GET_ARG_FLOAT(scale)
+    bool smoothing = false;
+    INLIB_ISHELL_GET_ARG_BOOL(smoothing)
+    bool hinting = false;
+    INLIB_ISHELL_GET_ARG_BOOL(hinting)
+    float line_width = 1;
+    INLIB_ISHELL_GET_ARG_FLOAT(line_width)
+    sg::font_modeling a_font_modeling = sg::font_pixmap;
+    bool back_visible = false;
+    INLIB_ISHELL_GET_ARG_BOOL(back_visible)
+    colorf back_color = colorf_white();
+    INLIB_ISHELL_GET_ARG_COLOR(back_color)
+    float back_shadow = 0;
+    INLIB_ISHELL_GET_ARG_FLOAT(back_shadow)
+
+  //::printf("debug : add text : \"%s\", x %g, y %g\n",stext.c_str(),x,y);
+  
+    plotter.add_primitive
+      (new sg::plottable_text(
+         stext,x,y,
+         size,text_mode,
+         angle,
+         a_HJUST,a_VJUST,
+         sfont,color,
+         scale,smoothing,hinting,line_width,a_font_modeling,back_visible,back_color,back_shadow));
+
+  } else {	 
+    a_insh.warn(s_cmd+": unknown class "+sout(sclass)+".");
+    return;
+  }
+}
+inline const std::string& insh_plotter_add_primitive_help() {
+  static const std::string s_help("\
+plotter_add_primitive: plotter_add_primitive\n\
+  Add a graphics primitive to the current plotter.\n\
+");
+  return s_help;
+}
+
+inline void insh_plotter_reset_style(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plotter_reset_style");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  _plots->current_plotter().reset_style(true);
+  _plots->touch(); //to apply indirectly plots::set_plotter_layout() on the plotter.
+}
+
+inline void insh_plotter_set_style(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plotter_set_style");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no inlib::sg::plots node found.");
+    return;
+  }
+  if(a_args.size()!=1) {
+    a_insh.warn(s_cmd+": one arguments expected.");
+    return;
+  }
+  style_from_res(a_gv.styles(),a_args[0],_plots->current_plotter(),false);
+}
+
+inline void insh_plotter_print_customization(ishell&,const std::vector<std::string>&,sg::gui_viewer& a_gv) {
+  sg::dummy_freetype _ttf;
+  sg::plotter _plotter(_ttf);
+  _plotter.print_available_customization(a_gv.out());
+}
+
+inline void insh_plotter_list_styles(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  a_gv.styles().list_plotter_styles(a_insh.out());
+}
+
+inline void insh_plotter_print_style(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("plotter_print_style");
+  if(a_args.size()!=1) {
+    a_insh.warn(s_cmd+": one arguments expected.");
+    return;
+  }
+  const std::string& arg0 = a_args[0];
+  if(!a_gv.styles().print_plotter_style(a_gv.out(),arg0)) {
+    a_insh.warn("style "+arg0+" not found.");
+    return;
+  }
+}
+inline const std::string& insh_plotter_print_style_help() {
+  static const std::string s_help("\
+plotter_print_style: plotter_print_style\n\
+  Print a plotter style.\n\
+  Example:\n\
+    plotter_print_style ROOT_default\n\
+  See also:\n\
+    style_load_file\n\
+");
+  return s_help;
+}
+
+inline void insh_histo_plot(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("histo_plot");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no sg::plots node found.");
+    return;
+  }
+  sg::plotter& _plotter = _plots->current_plotter();
+  
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  base_oholder* _boh = a_gv.get_omanager().find_base_oholder(fnh);
+  if(!_boh) {
+    a_insh.warn(s_cmd+": "+fnh+" not found.");
+    return;
+  }
+
+  bool ref = _args.is_arg("-ref");
+  
+  std::string sinfos_name;
+  INLIB_ISHELL_GET_ARG_STRING(infos_name)
+
+  if(histo::h1d* _h1d = cast_oholder_object<histo::h1d>(*_boh)) {
+    //setup_plotter(a_gv.out(),_plotter);
+    sg::plottable* _plottable = ref?new sg::h1d2plot(*_h1d):new sg::h1d2plot_cp(*_h1d);
+    if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+    _plotter.add_plottable(_plottable);
+  } else if(histo::h2d* _h2d = cast_oholder_object<histo::h2d>(*_boh)) {
+    sg::plottable* _plottable = ref?new sg::h2d2plot(*_h2d):new sg::h2d2plot_cp(*_h2d);
+    if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+    _plotter.add_plottable(_plottable);
+//} else if(histo::h3d* _h3d = cast_oholder_object<histo::h3d>(*_boh)) {
+//  sg::plottable* _plottable = ref?new sg::h3d2plot(*_h3d):new sg::h3d2plot_cp(*_h3d);
+//  if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+//  _plotter.add_plottable(_plottable);
+  } else if(histo::p1d* _p1d = cast_oholder_object<histo::p1d>(*_boh)) {
+    sg::plottable* _plottable = ref?new sg::p1d2plot(*_p1d):new sg::p1d2plot_cp(*_p1d);
+    if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+    _plotter.add_plottable(_plottable);
+  } else {
+    a_insh.warn(s_cmd+": "+fnh+" has an unknown object class.");
+    return;
+  }
+}
+
+}
+
+#include "../sg/cloud2plot_cp"
+#include "is_cloud"
+
+namespace inlib {
+
+inline void insh_cloud_plot(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("cloud_plot");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no sg::plots node found.");
+    return;
+  }
+  sg::plotter& _plotter = _plots->current_plotter();
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  INLIB_ISHELL_GET_ARG_FNH
+  bool ref;
+  INLIB_ISHELL_IS_ARG(ref);
+  std::string sinfos_name;
+  INLIB_ISHELL_GET_ARG_STRING(infos_name)
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  base_oholder* _boh = a_gv.get_omanager().find_base_oholder(fnh);
+  if(!_boh) {
+    a_insh.warn(s_cmd+": "+fnh+" not found.");
+    return;
+  }
+
+//if(histo::c1d* _h1d = cast_oholder_object<histo::c1d>(*_boh)) {
+//  sg::plottable* _plottable = ref?new sg::c1d2plot(*_h1d):new sg::c1d2plot_cp(*_h1d);
+//  if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+//  _plotter.add_plottable(_plottable);
+  if(histo::c2d* _c2d = cast_oholder_object<histo::c2d>(*_boh)) {
+    if(_c2d->is_converted()) {
+      const histo::h2d& _h = _c2d->histogram();
+      sg::plottable* _plottable = new sg::h2d2plot_cp(_h);
+      if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+      _plotter.add_plottable(_plottable);
+    } else {
+      sg::plottable* _plottable = ref?new sg::c2d2plot(*_c2d):new sg::c2d2plot_cp(*_c2d);
+      if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+      _plotter.add_plottable(_plottable);
+    }
+  } else if(histo::c3d* _c3d = cast_oholder_object<histo::c3d>(*_boh)) {
+    if(_c3d->is_converted()) {
+//      const histo::h3d& _h = _c3d->histogram();
+//      sg::plottable* _plottable = new sg::h3d2plot_cp(_h);
+//      if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+//      _plotter.add_plottable(_plottable);
+      a_insh.warn(s_cmd+": "+fnh+" is a converted c3d for which we have no representation yet.");
+      return;
+    } else {
+      sg::plottable* _plottable = ref?new sg::c3d2plot(*_c3d):new sg::c3d2plot_cp(*_c3d);
+      if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+      _plotter.add_plottable(_plottable);
+    }
+  } else {
+    a_insh.warn(s_cmd+": "+fnh+" has an unknown object class.");
+    return;
+  }
+}
+
+}
+
+#include "../sg/plot_func"
+#include "../val_func_scripted"
+
+namespace inlib {
+
+class plot_ival_func : public virtual sg::plot_func {
+  typedef sg::plot_func parent;
+  static const std::string& s_class() {
+    static const std::string s_v("inlib::plot_ival_func");
+    return s_v;
+  }
+public:
+  virtual bool value(double a_x,double& a_value) const {
+    if(m_ival_func.number_of_arguments()!=1) {a_value = 0;return false;}
+    plot_ival_func& self = const_cast<plot_ival_func&>(*this);
+    self.m_args[0].set(a_x);
+    if(!m_ival_func.eval(m_args,self.m_vr,self.m_serr)) {a_value = 0;return false;}
+    if(!m_vr.to_double(self.m_dr)) {a_value = 0;return false;}
+    a_value = m_dr;
+    return true;
+  }
+  virtual unsigned int xdomain_number_of_steps() const {return m_xsteps;}
+  virtual double xdomain_min() const {return m_xmin;}
+  virtual double xdomain_max() const {return m_xmax;}
+  
+  virtual bool value(double a_x,double a_y,double& a_value) const {
+    if(m_ival_func.number_of_arguments()!=2) {a_value = 0;return false;}
+    plot_ival_func& self = const_cast<plot_ival_func&>(*this);
+    self.m_args[0].set(a_x);
+    self.m_args[1].set(a_y);
+    if(!m_ival_func.eval(m_args,self.m_vr,self.m_serr)) {a_value = 0;return false;}
+    if(!m_vr.to_double(self.m_dr)) {a_value = 0;return false;}
+    a_value = m_dr;
+    return true;
+  }
+  virtual unsigned int ydomain_number_of_steps() const {return m_ysteps;}
+  virtual double ydomain_min() const {return m_ymin;}
+  virtual double ydomain_max() const {return m_ymax;}
+public:
+  plot_ival_func(ival_func& a_func,
+                 unsigned int a_xsteps,double a_xmin,double a_xmax,
+                 unsigned int a_ysteps,double a_ymin,double a_ymax)
+  :m_ival_func(a_func)
+  ,m_xsteps(a_xsteps),m_xmin(a_xmin),m_xmax(a_xmax)
+  ,m_ysteps(a_ysteps),m_ymin(a_ymin),m_ymax(a_ymax)
+  ,m_args(2)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~plot_ival_func(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  plot_ival_func(const plot_ival_func& a_from)
+  :parent(a_from)
+  ,m_ival_func(a_from.m_ival_func)
+  ,m_xsteps(a_from.m_xsteps),m_xmin(a_from.m_xmin),m_xmax(a_from.m_xmax)
+  ,m_ysteps(a_from.m_ysteps),m_ymin(a_from.m_ymin),m_ymax(a_from.m_ymax)
+  ,m_args(a_from.m_args)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  plot_ival_func& operator=(const plot_ival_func& a_from) {
+    m_xsteps = a_from.m_xsteps;
+    m_xmin = a_from.m_xmin;
+    m_xmax = a_from.m_xmax;
+    m_ysteps = a_from.m_ysteps;
+    m_ymin = a_from.m_ymin;
+    m_ymax = a_from.m_ymax;
+    m_args = a_from.m_args;
+    return *this;
+  }
+private:
+  ival_func& m_ival_func;
+  unsigned int m_xsteps;
+  double m_xmin,m_xmax;
+  unsigned int m_ysteps;
+  double m_ymin,m_ymax;
+private: //opt:
+  std::vector<inlib::value> m_args;
+  inlib::value m_vr;
+  std::string m_serr;
+  double m_dr;
+};
+
+class plot_scripted : public virtual sg::plot_func {
+  typedef sg::plot_func parent;
+  static const std::string& s_class() {
+    static const std::string s_v("inlib::plot_scripted");
+    return s_v;
+  }
+public:
+  virtual bool value(double a_x,double& a_value) const {
+    if(m_scripted.dimension()!=1) {a_value = 0;return false;}
+    plot_scripted& self = const_cast<plot_scripted&>(*this);
+    self.m_xs[0] = a_x;
+    return m_scripted.value(m_xs,a_value,self.m_serr);
+  }
+  virtual unsigned int xdomain_number_of_steps() const {return m_xsteps;}
+  virtual double xdomain_min() const {return m_xmin;}
+  virtual double xdomain_max() const {return m_xmax;}
+  
+  virtual bool value(double a_x,double a_y,double& a_value) const {
+    if(m_scripted.dimension()!=2) {a_value = 0;return false;}
+    plot_scripted& self = const_cast<plot_scripted&>(*this);
+    self.m_xs[0] = a_x;
+    self.m_xs[1] = a_y;
+    return m_scripted.value(m_xs,a_value,self.m_serr);
+  }
+  virtual unsigned int ydomain_number_of_steps() const {return m_ysteps;}
+  virtual double ydomain_min() const {return m_ymin;}
+  virtual double ydomain_max() const {return m_ymax;}
+public:
+  plot_scripted(scripted& a_func,
+                unsigned int a_xsteps,double a_xmin,double a_xmax,
+                unsigned int a_ysteps,double a_ymin,double a_ymax)
+  :m_scripted(a_func)
+  ,m_xsteps(a_xsteps),m_xmin(a_xmin),m_xmax(a_xmax)
+  ,m_ysteps(a_ysteps),m_ymin(a_ymin),m_ymax(a_ymax)
+  ,m_xs(2)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~plot_scripted(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  plot_scripted(const plot_scripted& a_from)
+  :parent(a_from)
+  ,m_scripted(a_from.m_scripted)
+  ,m_xsteps(a_from.m_xsteps),m_xmin(a_from.m_xmin),m_xmax(a_from.m_xmax)
+  ,m_ysteps(a_from.m_ysteps),m_ymin(a_from.m_ymin),m_ymax(a_from.m_ymax)
+  ,m_xs(a_from.m_xs)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  plot_scripted& operator=(const plot_scripted& a_from) {
+    m_xsteps = a_from.m_xsteps;
+    m_xmin = a_from.m_xmin;
+    m_xmax = a_from.m_xmax;
+    m_ysteps = a_from.m_ysteps;
+    m_ymin = a_from.m_ymin;
+    m_ymax = a_from.m_ymax;
+    m_xs = a_from.m_xs;
+    return *this;
+  }
+private:
+  scripted& m_scripted;
+  unsigned int m_xsteps;
+  double m_xmin,m_xmax;
+  unsigned int m_ysteps;
+  double m_ymin,m_ymax;
+private: //opt:
+  std::vector<double> m_xs;
+  std::string m_serr;
+};
+
+}
+
+#include "find_val_funcs"
+
+namespace inlib {
+
+inline void insh_function_plot(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("function_plot");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no sg::plots node found.");
+    return;
+  }
+  sg::plotter& _plotter = _plots->current_plotter();
+
+  val_funcs* funcs = find_val_funcs(a_gv.get_omanager());
+  if(!funcs) {
+    a_insh.warn(s_cmd+": can't find "+sout(s_functions())+" in object managers.");
+    return;
+  }
+
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+
+  ival_func* func = funcs->find(fnh);
+  if(!func) {
+    a_insh.warn(s_cmd+": function "+sout(fnh)+" not found.");
+    return;
+  }
+  
+  std::string sinfos_name;
+  INLIB_ISHELL_GET_ARG_STRING(infos_name)
+  
+  val_func_scripted* _scripted = safe_cast<ival_func,val_func_scripted>(*func);
+  if(_scripted) {
+    if(_scripted->dimension()==1) {
+      uint32 xsteps = 100;
+      INLIB_ISHELL_GET_ARG_UINT(xsteps)
+      double xmin = -1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(xmin)
+      double xmax = 1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(xmax)
+  
+      plot_scripted pfunc(*_scripted,xsteps,xmin,xmax,0,0,0);
+  
+      sg::plottable* _plottable = new sg::f1d2plot_cp<plot_scripted>(pfunc);
+      if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+      _plotter.add_plottable(_plottable);
+  
+      _plotter.x_axis_automated = false;
+      _plotter.x_axis_min = xmin;
+      _plotter.x_axis_max = xmax;
+  
+    } else if(_scripted->dimension()==2) {
+      uint32 xsteps = 100;
+      INLIB_ISHELL_GET_ARG_UINT(xsteps)
+      double xmin = -1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(xmin)
+      double xmax = 1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(xmax)
+  
+      uint32 ysteps = 100;
+      INLIB_ISHELL_GET_ARG_UINT(ysteps)
+      double ymin = -1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(ymin)
+      double ymax = 1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(ymax)
+  
+      plot_scripted pfunc(*_scripted,xsteps,xmin,xmax,ysteps,ymin,ymax);
+      
+      sg::plottable* _plottable = new sg::f2d2plot_cp<plot_scripted>(pfunc);
+      if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+      _plotter.add_plottable(_plottable);
+  
+      _plotter.x_axis_automated = false;
+      _plotter.x_axis_min = xmin;
+      _plotter.x_axis_max = xmax;
+  
+      _plotter.y_axis_automated = false;
+      _plotter.y_axis_min = xmin;
+      _plotter.y_axis_max = xmax;
+  
+    } else {    
+      a_insh.warn(s_cmd+": function dimension>2 not yet handled.");
+      return;
+    }
+  } else {
+    if(func->number_of_arguments()==1) {
+      uint32 xsteps = 100;
+      INLIB_ISHELL_GET_ARG_UINT(xsteps)
+      double xmin = -1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(xmin)
+      double xmax = 1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(xmax)
+  
+      plot_ival_func pfunc(*func,xsteps,xmin,xmax,0,0,0);
+  
+      sg::plottable* _plottable = new sg::f1d2plot_cp<plot_ival_func>(pfunc);
+      if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+      _plotter.add_plottable(_plottable);
+  
+      _plotter.x_axis_automated = false;
+      _plotter.x_axis_min = xmin;
+      _plotter.x_axis_max = xmax;
+  
+    } else if(func->number_of_arguments()==2) {
+      uint32 xsteps = 100;
+      INLIB_ISHELL_GET_ARG_UINT(xsteps)
+      double xmin = -1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(xmin)
+      double xmax = 1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(xmax)
+  
+      uint32 ysteps = 100;
+      INLIB_ISHELL_GET_ARG_UINT(ysteps)
+      double ymin = -1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(ymin)
+      double ymax = 1;
+      INLIB_ISHELL_GET_ARG_DOUBLE(ymax)
+  
+      plot_ival_func pfunc(*func,xsteps,xmin,xmax,ysteps,ymin,ymax);
+      
+      sg::plottable* _plottable = new sg::f2d2plot_cp<plot_ival_func>(pfunc);
+      if(sinfos_name.size()) _plottable->set_name(sinfos_name);
+      _plotter.add_plottable(_plottable);
+  
+      _plotter.x_axis_automated = false;
+      _plotter.x_axis_min = xmin;
+      _plotter.x_axis_max = xmax;
+  
+      _plotter.y_axis_automated = false;
+      _plotter.y_axis_min = xmin;
+      _plotter.y_axis_max = xmax;
+  
+    } else {    
+      a_insh.warn(s_cmd+": function dimension>2 not yet handled.");
+      return;
+    }
+  }
+   
+
+}
+
+inline const std::string& insh_function_plot_help() {
+  static const std::string s_help("\
+function_plot: function_plot [-infos_name,-xmin,-xmax,-steps,-script] name\n\
+  Plot named function.\n\
+  -infos_name=string string to be put in the 'Name' entry of the infos box.\n\
+  -xmin=real plotter x axis min value (default is -1).\n\
+  -xmax=real plotter x axis max value (default is 1).\n\
+  -steps=uint number of steps when evaluating the function (default is 100).\n\
+  You can use the completion to get the known function names.\n\
+  Example:\n\
+    function_plot cos\n\
+    function_create -script='exp(cos(10*x))' my_func\n\
+    function_plot my_func\n\
+");
+  return s_help;
+}
+
+}
+
+#include "../sg/fit2plot"
+
+namespace inlib {
+
+inline void insh_fit_result_plot(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("fit_result_plot");
+  sg::plots* _plots = sg::search_plots<sg::plots>(a_gv);
+  if(!_plots) {
+    a_insh.warn(s_cmd+": no sg::plots node found.");
+    return;
+  }
+  sg::plotter& _plotter = _plots->current_plotter();
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  sg::fit2plot* _fit_result = a_gv.get_omanager().find_object<sg::fit2plot>(fnh);
+  if(!_fit_result) {
+    a_insh.warn(s_cmd+": fit result "+sout(fnh)+" not found.");
+    return;
+  }
+  _plotter.add_plottable(new sg::fit2plot(*_fit_result));
+}
+
+inline const std::string& insh_fit_result_plot_help() {
+  static const std::string s_help("\
+fit_result_plot: fit_result_plot name\n\
+  Have a named fit result in the infos box of the current plotter.\n\
+  See the help of the histo_fit command for a full example.\n\
+");
+  return s_help;
+}
+
+}
+
+#include "ishell_args_gui_viewer_cmd"
+
+#define INLIB_INSH_PLOTS_ADDS(a__insh,a__gv)\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plots_touch_plotters,\
+    inlib::insh_plots_touch_plotters,\
+"plots_touch_plotters: plots_touch_plotters\n\
+  Touch the plotters in order that they rebuild their scene.\n\
+  For example, it is used after having done a reset of a referenced histogram.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plots_set_grid,\
+    inlib::insh_plots_set_grid,\
+"plots_set_grid: plots_set_grid cols rows [transfer]\n\
+  Set the grid of inlib::sg::plotters in the first inlib::sg::plots node found in the scene.\n\
+  The optional boolean transfer argument (false by default) says if the content of\n\
+  previous plotters are transfered in the plotter in the new grid.\n\
+  Example:\n\
+    plots_set_grid 2 2  # then four plotters are created.\n\
+    plots_set_grid 2 3 true\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plots_next,\
+    inlib::insh_plots_next,\
+"plots_next: plots_next\n\
+  Set the current plotter to be the next one in the grid.\n\
+  If at end (bottom right plotter) current plotter is set to be the upper left one.\n\
+  Example:\n\
+    plots_set_grid 2 2  # then four plotters. Current plotter is the top left one.\n\
+    plots_next  # set current to top right.\n\
+    plots_set_current_plotter 3  # set current to bottom right.\n\
+    plots_next  # set to top left.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plots_set_current_plotter,\
+    inlib::insh_plots_set_current_plotter,\
+"plots_set_current_plotter: plots_set_current_plotter index\n\
+  Set the current plotter given its index in the grid of the first sg::plots node found in the scene.\n\
+  index is in [0,number of plotters[.\n\
+  Example:\n\
+    plots_set_grid 2 2           # then four plotters.\n\
+    plots_set_current_plotter 3  # then the bottom right plotter will be the current one.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plots_clear,\
+    inlib::insh_plots_clear,\
+"plots_clear: plots_clear\n\
+  Clear all plotters.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plots_toggle_border,\
+    inlib::insh_plots_toggle_border,\
+"plots_toggle_border: plots_toggle_border\n\
+  Toggle the inlib::sg::plots border visibility.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plots_toggle_view_border,\
+    inlib::insh_plots_toggle_view_border,\
+"plots_toggle_view_border: plots_toggle_view_border\n\
+  Toggle the current plotter border visibility within the inlib::sg::plots.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plots_current_to_one,\
+    inlib::insh_plots_current_to_one,\
+"plots_current_to_one: plots_current_to_one\n\
+  Have the current plotter in a 1x1 grid.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plots_set_field,\
+    inlib::insh_plots_set_field,\
+"plots_set_field: plots_set_field field value\n\
+  Set a field in the current inlib::sg::plots node.\n\
+  Example:\n\
+    plots_set_grid 2 2           # then four plotters.\n\
+    plots_set_field border_visible true\n\
+    plots_set_field border_width 0.02\n\
+    plots_set_field border_height 0.02\n\
+  or:\n\
+    plots_set_field inlib::sg::plots.border_visible true\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plots_get_field,\
+    inlib::insh_plots_get_field,\
+"plots_get_field: plots_get_field [-fields] field\n\
+  Get value of a field of the inlib::sg::plots node.\n\
+  -fields to print only the list of fields.\n\
+  Example:\n\
+    plots_get_field -fields\n\
+    plots_get_field inlib::sg::plots.cols\n\
+    plots_get_field cols\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plotter_set_field,\
+    inlib::insh_plotter_set_field,\
+"plotter_set_field: plotter_set_field field value\n\
+  Set a field or style field in the current plotter.\n\
+  Field examples:\n\
+    title_automated, title, bins_style.0.color\n\
+    x_axis.divisions, x_axis.line_style.color\n\
+    background_style.back_color\n\
+  Example:\n\
+    plots_set_grid 2 2           # then four plotters.\n\
+    plots_set_current_plotter 3  # then the bottom right plotter will be the current one.\n\
+    plotter_set_field title_automated false\n\
+    plotter_set_field inlib::sg::plotter.title 'my title'\n\
+    plotter_set_field title 'my title'  # in case of a direct field of inlib::sg::plotter.\n\
+    plotter_set_field bins_style.0.color blue  # to set a style value.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plotter_get_field,\
+    inlib::insh_plotter_get_field,\
+"plotter_get_field: plotter_get_field [-fields] field\n\
+  Get value of a field of the current plotter node.\n\
+  -fields to print only the list of fields.\n\
+  Example:\n\
+    plotter_get_field -fields\n\
+    plotter_get_field inlib::sg::plotter.width\n\
+    plotter_get_field width  # in case of a direct (not inherited) field of inlib::sg::plotter.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plotter_clear,\
+    inlib::insh_plotter_clear,\
+"plotter_clear: plotter_clear [-bins,-points,-functions]\n\
+  Clear the current plotter.\n\
+  -bins to clear only the 'bins' plottables.\n\
+  -points to clear only the 'points' plottables.\n\
+  -functions to clear only the 'functions' plottables.\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plotter_add_primitive,\
+    inlib::insh_plotter_add_primitive,inlib::insh_plotter_add_primitive_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plotter_reset_style,\
+    inlib::insh_plotter_reset_style,\
+    "plotter_reset_style: plotter_reset_style\n  Reset the current plotter style.\n")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plotter_set_style,\
+    inlib::insh_plotter_set_style,\
+"plotter_set_style: plotter_set_style style\n\
+  Set the current plotter style.\n\
+  Example:\n\
+    plotter_set_style ROOT_default\n\
+    plotter_set_style hippodraw\n\
+  See also:\n\
+    plotter_list_styles\n\
+    style_load_file\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plotter_list_styles,\
+    inlib::insh_plotter_list_styles,\
+"plotter_list_styles: plotter_list_styles\n\
+  List available plotter styles.\n\
+  See also:\n\
+    style_load_file\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plotter_print_customization,\
+    inlib::insh_plotter_print_customization,\
+"plotter_print_customization: plotter_print_customization\n\
+  Print available plotter customization items.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,plotter_print_style,\
+    inlib::insh_plotter_print_style,inlib::insh_plotter_print_style_help())\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD_COMPLETE(a__insh,a__gv,histo_plot,\
+    inlib::insh_histo_plot,\
+"histo_plot: histo_plot [-infos_name,-ref] name\n\
+  Plot named managed histogram.\n\
+  -infos_name=string string to be put in the 'Name' entry of the infos box.\n\
+  -ref if specified, a reference (then not a copy) of the histogram is passed\n\
+  to the plotter. Must be used with care; the histogram must exist whilst the plotter\n\
+  is using it.\n\
+  Example:\n\
+    histo_create -xbins=20 -xmin=-5 -xmax=5 h_1\n\
+    histo_ls\n\
+    random_create -class=rgaussd -mean=0 -std_dev=1 r_1\n\
+    numbers=`seq 1 10000`\n\
+    for i in ${numbers} ; do\n\
+      x=`random_shoot r_1`\n\
+      histo_fill -x=${x} h_1\n\
+    done\n\
+    histo_print h_1\n\
+    histo_plot h_1\n\
+",inlib::insh_histo_complete)\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD_COMPLETE(a__insh,a__gv,cloud_plot,\
+    inlib::insh_cloud_plot,\
+"cloud_plot: cloud_plot [-infos_name,-ref] name\n\
+  Plot named managed cloud.\n\
+  -infos_name=string string to be put in the 'Name' entry of the infos box.\n\
+  -ref if specified, a reference (then not a copy) of the cloud is passed\n\
+  to the plotter. Must be used with care; the cloud must exist whilst the plotter\n\
+  is using it.\n\
+  Example:\n\
+    cloud_create -class=c2d c\n\
+    cloud_ls\n\
+    random_create -class=rgaussd -mean=0 -std_dev=1 r_1\n\
+    numbers=`seq 1 10000`\n\
+    for i in ${numbers} ; do\n\
+      x=`random_shoot r_1`\n\
+      y=`random_shoot r_1`\n\
+      cloud_fill -x=${x} -y=${y} c\n\
+    done\n\
+    cloud_fill -entries=10000 -x=r_1 -y=r_1 c\n\
+    cloud_print c\n\
+    cloud_plot c\n\
+",inlib::insh_cloud_complete)\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD_COMPLETE(a__insh,a__gv,function_plot,\
+    inlib::insh_function_plot,inlib::insh_function_plot_help(),\
+    inlib::val_funcs_complete)\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,fit_result_plot,\
+    inlib::insh_fit_result_plot,inlib::insh_fit_result_plot_help())
+
+#endif

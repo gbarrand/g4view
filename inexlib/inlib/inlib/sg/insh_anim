@@ -1,0 +1,153 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_insh_anim
+#define inlib_sg_insh_anim
+
+#include "slice_anim"
+
+#include "mf"
+#include "../insh/ishell"
+#include "../num2s"
+#include "../pointer"
+
+namespace inlib {
+namespace sg {
+
+class insh_anim : public slice_anim {
+  INLIB_NODE(insh_anim,inlib::sg::insh_anim,slice_anim)
+public:
+  INLIB_CLASS_STRING(insh_anim_time_min)
+  INLIB_CLASS_STRING(insh_anim_time_max)
+  INLIB_CLASS_STRING(insh_anim_delay)
+  INLIB_CLASS_STRING(insh_anim_time_begin)
+  INLIB_CLASS_STRING(insh_anim_time_end)
+  INLIB_CLASS_STRING(insh_anim_object)
+  INLIB_CLASS_STRING(insh_anim_class)
+public:
+  virtual void begin_anim() {m_group.clear();}
+  virtual bool slice_action(std::ostream&,double a_slice_begin,double a_slice_end) {
+    std::string stime_min;
+    num2s(time_min.value(),stime_min);
+    std::string stime_max;
+    num2s(time_max.value(),stime_max);
+    std::string sdelay;
+    num2s(delay.value(),sdelay);
+
+    std::string stime_beg;
+    num2s(a_slice_begin,stime_beg);
+    std::string stime_end;
+    num2s(a_slice_end,stime_end);
+
+    std::string sthis;
+    if(!inlib::p2s(this,sthis)) {}
+
+    std::vector<std::string> lines;
+  //if(set_v.value()) lines.push_back("set -v");
+  //if(set_x.value()) lines.push_back("set -x");
+    lines.push_back(s_insh_anim_time_min()+"='"+stime_min+"'");
+    lines.push_back(s_insh_anim_time_max()+"='"+stime_max+"'");
+    lines.push_back(s_insh_anim_delay()+"='"+sdelay+"'");
+    lines.push_back(s_insh_anim_time_begin()+"='"+stime_beg+"'");
+    lines.push_back(s_insh_anim_time_end()+"='"+stime_end+"'");
+    lines.push_back(s_insh_anim_object()+"="+sthis);
+    lines.push_back(s_insh_anim_class()+"="+s_cls());
+
+    append(lines,script.values());
+
+/*
+    if(show_console.value()) {
+      std::string stmp;
+      stmp += "time min ";
+      if(!numas<double>(time_min.value(),stmp)) {}
+      stmp += ", max ";
+      if(!numas<double>(time_max.value(),stmp)) {}
+      stmp += ", ";
+      if(!numas<double>(time_beg,stmp)) {}
+      stmp += "/";
+      if(!numas<double>(time_end,stmp)) {}
+      stmp += " (";
+      if(!numas<double>(tp,stmp)) {}
+      stmp += "/";
+      if(!numas<double>(t,stmp)) {}
+      stmp += ")";
+      lines.push_back("gui_show_console "+stmp);
+    }
+*/
+    m_insh.exec_lines_reset_to_stop(lines);
+
+    m_insh.remove_variable(s_insh_anim_time_min());
+    m_insh.remove_variable(s_insh_anim_time_max());
+    m_insh.remove_variable(s_insh_anim_delay());
+    m_insh.remove_variable(s_insh_anim_time_begin());
+    m_insh.remove_variable(s_insh_anim_time_end());
+    m_insh.remove_variable(s_insh_anim_object());
+    m_insh.remove_variable(s_insh_anim_class());
+
+    return true;
+  }
+public:
+  mf_string script;
+//sf<bool> show_console;
+//sf<bool> set_v;
+//sf<bool> set_x;
+public:
+  virtual const desc_fields& node_desc_fields() const {
+    INLIB_FIELD_DESC_NODE_CLASS(insh_anim)
+    static const desc_fields s_v(parent::node_desc_fields(),1, //WARNING : take care of count.
+      INLIB_ARG_FIELD_DESC(script)
+//    INLIB_ARG_FIELD_DESC(show_console),
+//    INLIB_ARG_FIELD_DESC(set_v),
+//    INLIB_ARG_FIELD_DESC(set_x)
+    );
+    return s_v;
+  }
+protected:
+  void add_fields(){
+    add_field(&script);
+  //add_field(&show_console);
+  //add_field(&set_v);
+  //add_field(&set_x);
+  }
+public:
+  insh_anim(ishell& a_insh)
+  :parent()
+  ,m_insh(a_insh)
+
+  ,script()
+//,show_console(false)
+//,set_v(false)
+//,set_x(false)
+  {
+    add_fields();
+  }
+  virtual ~insh_anim() {}
+protected:
+  insh_anim(const insh_anim& a_from)
+  :parent(a_from)
+  ,m_insh(a_from.m_insh)
+
+  ,script(a_from.script)
+//,show_console(a_from.show_console)
+//,set_v(a_from.set_v)
+//,set_x(a_from.set_x)
+  {
+    add_fields();
+  }
+  insh_anim& operator=(const insh_anim& a_from){
+    parent::operator=(a_from);
+    script = a_from.script;
+  //show_console = a_from.show_console;
+  //set_v = a_from.set_v;
+  //set_x = a_from.set_x;
+    return *this;
+  }
+public:
+  void add(node* a_node) {m_group.add(a_node);}
+protected:
+  ishell& m_insh;
+};
+
+}}
+
+#endif

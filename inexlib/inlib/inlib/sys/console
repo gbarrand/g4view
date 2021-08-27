@@ -1,0 +1,80 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sys_console
+#define inlib_sys_console
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/ioctl.h>
+#include <unistd.h>
+#endif
+
+namespace inlib {
+
+
+/*
+inline bool is_console() { // Getline/gl_init() logic.
+#ifdef _WIN32
+  if (isatty(0) == 0 || isatty(1) == 0) { // stdin not a tty. We assume that we run from a CYGWIN or WSL prompt.
+    return false;
+  } else { // We assume that we run from a DOS prompt.
+    return true;
+  }
+#else
+  return true;
+#endif
+}
+*/
+
+inline bool is_console() {
+#ifdef _WIN32
+  // if compiled with VisualC++ (that raises _WIN32) :
+  // - running from a CYGWIN prompt : it will return false.
+  // - running from a DOS prompt : it will return true.
+  // if compiled with CYGWIN/g++ (that does not raise _WIN32) :
+  // - running from a CYGWIN prompt : it will return true.
+  // - running from a DOS prompt (having C:\cygwin64\bin in your PATH) : it will return true.
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+  if(!::GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) return false;
+#else
+  struct winsize w;
+  if(::ioctl(STDOUT_FILENO,TIOCGWINSZ,&w)==(-1)) return false;
+#endif
+  return true;
+}
+
+inline bool console_size(unsigned int& a_cols,unsigned int& a_rows) {
+#ifdef _WIN32
+  // if compiled with VisualC++ (that raises _WIN32) :
+  // - running from a CYGWIN prompt : it does not work.
+  // - running from a DOS prompt : it should be ok.
+  // if compiled with CYGWIN/g++ (that does not raise _WIN32) :
+  // - running from a CYGWIN prompt : it should be ok.
+  // - running from a DOS prompt (having C:\cygwin64\bin in your PATH) : it should be ok.
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+  if(!::GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+    a_cols = 0;
+    a_rows = 0;
+    return false;
+  }
+  //srWindow.Right,Left,Bottom,Top are short.
+  a_cols = csbi.srWindow.Right  - csbi.srWindow.Left + 1;
+  a_rows = csbi.srWindow.Bottom - csbi.srWindow.Top  + 1;
+#else
+  struct winsize w;
+  if(::ioctl(STDOUT_FILENO,TIOCGWINSZ,&w)==(-1)) {
+    a_cols = 0;
+    a_rows = 0;
+    return false;
+  }
+  a_cols = w.ws_col;  //ushort
+  a_rows = w.ws_row;  //ushort
+#endif
+  return true;
+}
+
+}
+
+#endif

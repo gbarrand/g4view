@@ -1,0 +1,80 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_add_stars
+#define inlib_sg_add_stars
+
+#include "separator"
+#include "rgba"
+#include "matrix"
+#include "ring"
+#include "base_freetype"
+
+#include "../mathd"
+#include "../astro/radec2xyz"
+
+namespace inlib {
+namespace sg {
+
+template <class STAR>
+inline void add_stars(separator& a_parent,const std::vector<STAR>& a_stars,
+                      const base_freetype& a_ttf /*template ttf node*/,
+                      const vec3f& a_center,double a_stars_radius,float a_ring_min,float a_ring_max) {
+  double d2r = deg2rad();
+  vec3f vz(0,0,1);
+
+  inlib_typename_vforcit(STAR,a_stars,it) {
+    double ra,dec;
+    (*it).radec(ra,dec);
+
+    //::printf("debug : ra dec : %g %g : %s, %s\n",ra,dec,(*it).name().c_str(),(*it).type().c_str());
+
+    separator* sep = new separator;
+    a_parent.add(sep);
+
+    double _ra  = ra*d2r;
+    double _dec = dec*d2r;
+
+    double x,y,z;
+    radec2xyz(_ra,_dec,a_stars_radius,x,y,z);
+
+    matrix* tsf = new matrix();
+    tsf->set_translate(float(x)-a_center.x(),float(y)-a_center.y(),float(z)-a_center.z());
+    tsf->mul_rotate(vz,vec3f(-float(x),-float(y),-float(z)));
+    sep->add(tsf);
+
+    if((*it).name().size()) {
+      rgba* mat = new rgba();
+      mat->color = colorf_black();
+      //mat->color = colorf_white();
+      sep->add(mat);
+
+      base_freetype* text = base_freetype::create(a_ttf);
+      text->strings.add((*it).name());
+      text->height = 20; //pixels, if text_freetype_marker.
+      //text->height = a_ring_min; //wc, if text_freetype.
+      sep->add(text);
+    }
+
+   {rgba* mat = new rgba();
+    mat->color = colorf_red();
+    sep->add(mat);}
+
+/*
+   {float dz = 0.05f;
+    sg::polyhedron* node = new sg::polyhedron;
+    node->ph = hep::polyhedron_tubs(rmin,rmax,dz,0,two_pi());
+    sep->add(node);}
+*/
+
+   {ring* node = new ring;
+    node->rmin = a_ring_min;
+    node->rmax = a_ring_max;
+    sep->add(node);}
+
+  }
+}
+
+}}
+
+#endif

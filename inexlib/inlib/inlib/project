@@ -1,0 +1,70 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_project
+#define inlib_project
+
+#include "sout"
+
+#include <ostream>
+
+namespace inlib {
+
+template <class NTUPLE,class EVALUATOR,class T>
+inline bool project(std::ostream& a_out,NTUPLE& a_tuple,T& a_fillable,EVALUATOR& a_x,EVALUATOR& a_filter) {
+  if(!a_x.is_valid()) {
+    a_out << "project : evaluator initialization failed for tuple " << sout(a_tuple.title()) << "." << std::endl;
+    return false;
+  }
+  if(!a_filter.is_valid()) {
+    a_out << "project : filter initialization failed for tuple " << sout(a_tuple.title()) << "." << std::endl;
+    return false;
+  }
+
+  bool ok;
+  double value;
+
+  a_tuple.start();
+  while(a_tuple.next()) {
+    if(!a_filter.accept(ok)) return false;
+    if(!ok) continue;
+    if(!a_x.evaluate_double(value)) return false;    
+    a_fillable.fill(value,1);
+  }
+
+  return true;
+}
+
+template <class NTUPLE,class EVALUATOR,class T>
+inline bool project(std::ostream& a_out,NTUPLE& a_tuple,T& a_fillable,EVALUATOR& a_x,EVALUATOR& a_y,EVALUATOR& a_filter) {
+  if(!a_x.is_valid()) {
+    a_out << "project : evaluator initialization failed for tuple " << sout(a_tuple.title()) << "." << std::endl;
+    return false;
+  }
+  if(!a_y.is_valid()) {
+    a_out << "project : evaluator initialization failed for tuple " << sout(a_tuple.title()) << "." << std::endl;
+    return false;
+  }
+  if(!a_filter.is_valid()) {
+    a_out << "project : filter initialization failed for tuple " << sout(a_tuple.title()) << "." << std::endl;
+    return false;
+  }
+
+  bool ok;
+  double vx,vy;
+
+  a_tuple.start();
+  while(a_tuple.next()) {
+    if(!a_filter.accept(ok)) return false;
+    if(!ok) continue;
+    if(!a_x.evaluate_double(vx)) return false;    
+    if(!a_y.evaluate_double(vy)) return false;    
+    a_fillable.fill(vx,vy,1);
+  }
+
+  return true;
+}
+
+}
+
+#endif

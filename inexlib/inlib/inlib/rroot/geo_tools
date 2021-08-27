@@ -1,0 +1,83 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_rroot_geo_tools
+#define inlib_rroot_geo_tools
+
+#include "geo_volume"
+#include "geo_node_matrix"
+#include "geo_node_offset"
+
+namespace inlib {
+namespace rroot {
+
+inline void volume_tree(std::ostream& a_out,const geo_volume& a_vol,const std::string& a_indent = "") {
+  a_out << a_indent << "volume " << a_vol.name() << " :" << std::endl;
+
+  const geo_shape* shape = a_vol.shape();
+  if(!shape) {
+    a_out << a_indent << "no shape" << std::endl;
+  } else {
+    a_out << a_indent << "shape class " << sout(shape->s_cls()) << std::endl;
+    shape->dump(a_out,a_indent);
+  }
+
+  const std::vector<geo_node*>* nodes = a_vol.nodes();
+  if(!nodes) {
+    a_out << a_indent << "nodes no" << std::endl;
+  } else {
+    a_out << a_indent << "nodes " << nodes->size() << std::endl;
+  }
+
+  if(nodes) {
+    inlib_vforcit(geo_node*,*nodes,it) {
+      a_out << a_indent << "node of class " << (*it)->s_cls() << std::endl;
+      if(const geo_node_matrix* nmatrix = id_cast<geo_node,geo_node_matrix>(*(*it))){
+        const geo_matrix* gmtx = nmatrix->matrix();
+        a_out << a_indent << "geo_matrix of class " << gmtx->s_cls() << std::endl;
+        gmtx->dump(a_out,a_indent);
+      } else if(const geo_node_offset* noffset = id_cast<geo_node,geo_node_offset>(*(*it))){
+        a_out << a_indent << "node_offset : offset " << noffset->offset() << ", index " << noffset->index() << std::endl;
+      }
+
+      volume_tree(a_out,*(*it)->volume(),a_indent+" ");
+    }
+  }
+}
+
+}}
+
+#include "mul_mtx"
+
+namespace inlib {
+namespace rroot {
+
+template <class MATRIX>
+inline bool volume_get_matrix(std::ostream& a_out,const geo_volume& a_vol,const std::string& a_name,
+                              MATRIX& a_matrix,bool& a_found) {
+  if(a_vol.name()==a_name) {a_found=true;return true;}
+  const std::vector<geo_node*>* nodes = a_vol.nodes();
+  if(nodes) {
+    inlib_vforcit(geo_node*,*nodes,it) {
+      if(const geo_node_matrix* nmatrix = id_cast<geo_node,geo_node_matrix>(*(*it))){
+        const geo_matrix* gmtx = nmatrix->matrix();
+        if(!mul_mtx(a_out,*gmtx,a_matrix)) {a_found=false;return false;}
+      } else if(const geo_node_offset* noffset = id_cast<geo_node,geo_node_offset>(*(*it))){
+        a_out << "volume_get_matrix : geo_node_offset not yet handles." << std::endl;
+        // look to rroot::geo if doing an implementation.
+        a_found = false;
+        return false;
+      }
+      MATRIX save_matrix = a_matrix;
+      if(!volume_get_matrix(a_out,*(*it)->volume(),a_name,a_matrix,a_found)) {a_found=false;return false;}
+      if(a_found) return true;
+      a_matrix = save_matrix;
+    }
+  }
+  return true;
+}
+
+}}
+
+#endif
+

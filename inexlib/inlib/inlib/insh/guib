@@ -1,0 +1,52 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_guib
+#define inlib_insh_guib
+
+#include "ishell"
+#include "../sg/guib"
+#include "../args"
+
+namespace inlib {
+
+inline bool insh_args_file(ishell& a_insh,const sg::guib& a_guib,
+                           args& a_args,const std::string& a_cmd,
+                           std::string& a_path) {
+  std::string fnh;
+  if(!a_args.first_not_hyphen(fnh)) {
+    a_insh.warn(a_cmd+": no output file given.");
+    a_path.clear();
+    return false;
+  }
+  a_args.remove(fnh);
+  if(a_args.is_arg("-doc_res")) {
+    if(!a_guib.find_doc_res_file(fnh,a_path)) {
+      a_insh.warn(a_cmd+": file "+inlib::sout(fnh)+" not found in doc and res dirs.");
+      a_path.clear();
+      return false;
+    }
+    a_args.remove("-doc_res");
+  } else if(a_args.is_arg("-doc")) {
+    if(!a_guib.find_doc_file(fnh,a_path)) {
+      a_insh.warn(a_cmd+": file "+inlib::sout(fnh)+" not found in doc dir.");
+      a_path.clear();
+      return false;
+    }
+    a_args.remove("-doc");
+  } else if(a_args.is_arg("-res")) {
+    if(!a_guib.find_res_file(fnh,a_path)) {
+      a_insh.warn(a_cmd+": file "+inlib::sout(fnh)+" not found in res dir.");
+      a_path.clear();
+      return false;
+    }
+    a_args.remove("-res");
+  } else {
+    a_path = fnh;
+  }
+  return true;
+}
+
+}
+
+#endif

@@ -1,0 +1,43 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_console
+#define inlib_insh_console
+
+#include "ishell"
+
+#include "../sys/console" //windows.h
+#include "../sout"
+
+namespace inlib {
+
+inline void insh_tput(ishell& a_insh,const std::vector<std::string>& a_args) {
+  if(a_args.size()!=1) {
+    a_insh.warn("tput : one argument expected.");
+    return;
+  }
+  const std::string& _arg = a_args[0];
+  unsigned int cols,rows;
+  if(!console_size(cols,rows)) {
+    a_insh.warn("tput : inlibs::console_size() failed.");
+    return;
+  }
+  if(_arg=="cols") {a_insh.out_num(cols);return;}
+  if(_arg=="lines") {a_insh.out_num(rows);return;}
+  a_insh.warn("tput : unknown argument "+sout(_arg)+".");
+}
+
+inline const std::string& insh_tput_help() {
+  static const std::string s_help(
+"tput: tput [cols,lines]\n\
+  Print terminal width or height.\n\
+  Example:\n\
+    tput cols\n\
+    tput lines\n\
+");
+  return s_help;
+}
+
+}
+
+#endif

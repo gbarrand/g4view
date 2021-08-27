@@ -1,0 +1,26 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef backcomp_inlib_sconc
+#define backcomp_inlib_sconc
+
+#include <vector>
+#include <string>
+
+namespace inlib {
+
+inline void conc(const std::vector<std::string>& a_strings,const std::string& a_sep,std::string& a_result) {
+  a_result.clear();
+  size_t number = a_strings.size();
+  if(number<=0) return;
+  number--;
+  for(size_t index=0;index<number;index++) {
+    a_result += a_strings[index];
+    a_result += a_sep;
+  }
+  a_result += a_strings[number];
+}
+
+}
+
+#endif

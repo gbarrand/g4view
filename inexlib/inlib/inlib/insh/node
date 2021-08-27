@@ -1,0 +1,495 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_node
+#define inlib_insh_node
+
+#include "ishell"
+#include "../args"
+#include "../svar"
+#include "../sort"
+
+#include "../omanager"
+
+#include "../sg/group"
+#include "../sg/separator"
+#include "../sg/_switch"
+
+#include "../sg/matrix"
+#include "../sg/ring"
+#include "../sg/cube"
+#include "../sg/sphere"
+
+#include "../sg/args2fields"
+#include "../sg/search"
+
+#include "../parse"
+
+//#include "dummy_freetype"
+//#include "text"
+
+namespace inlib {
+
+inline bool is_cube(const std::string& a_s) {
+  if(a_s==sg::cube::s_class()) return true;
+  if(a_s=="cube") return true;
+  return false;
+}
+inline bool is_sphere(const std::string& a_s) {
+  if(a_s==sg::sphere::s_class()) return true;
+  if(a_s=="sphere") return true;
+  return false;
+}
+
+inline void insh_node_create(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("node_create");
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  if(_args.is_arg("-classes")) {
+    a_insh.out_begin();
+    a_insh.out("inlib::sg::group",true);
+    a_insh.out("inlib::sg::separator",true);
+    a_insh.out("inlib::sg::_switch",true);
+    a_insh.out("inlib::sg::ring",true);
+    a_insh.out("inlib::sg::matrix",true);
+    a_insh.out("inlib::sg::cube",true);
+    a_insh.out("inlib::sg::sphere",true);
+    return;
+  }
+
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  _args.remove(fnh);
+
+  std::string sclass = "inlib::sg::cube";
+  INLIB_ISHELL_GET_ARG_STRING(class)
+
+  bool no_warn;
+  INLIB_ISHELL_IS_ARG(no_warn)
+  bool warn = no_warn?false:true;
+
+  sg::node* _node = 0;
+  
+  if(sclass==sg::group::s_class()) {
+    _node = new sg::group;
+  } else if(sclass==sg::separator::s_class()) {
+    _node = new sg::separator;
+  } else if(sclass==sg::_switch::s_class()) {
+    _node = new sg::_switch;
+    
+  } else if(sclass==sg::matrix::s_class()) {
+    _node = new sg::matrix;
+  } else if(sclass==sg::ring::s_class()) {
+    _node = new sg::ring;
+  } else if(is_cube(sclass)) {
+    _node = new sg::cube;
+  } else if(is_sphere(sclass)) {
+    _node = new sg::sphere;
+  } else {
+    a_insh.warn(s_cmd+": unknown class "+sout(sclass)+".");
+    return;
+  }
+  
+ {std::string serr;
+  if(!sg::args2fields(_args,*_node,serr)) {
+    delete _node;
+    a_insh.warn(s_cmd+": "+serr);
+    return;
+  }}
+  
+  INLIB_ISHELL_ARGS_UNEXPECTED_DELETE(_node)
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  
+  a_mgr.manage_object<sg::node>(_node,fnh,true,true,warn);
+}
+
+inline void insh_node_ls(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  std::vector<std::string> vs;
+  inlib_vforcit(base_oholder*,a_mgr.bohs(),it) {
+    if(cast_oholder<sg::node>(*(*it))) vs.push_back((*it)->name());
+  }
+  sort::sort(vs);
+  if(a_insh.in_backquote()) {
+    a_insh.out_begin();
+    inlib_vforcit(std::string,vs,it) a_insh.out(*it,true);
+  } else {
+    a_insh.unix_print(vs);
+  }
+}
+
+inline const std::string& insh_node_ls_help() {
+  static const std::string s_help("\
+node_ls: node_ls\n\
+  List managed nodes.\n\
+  Example:\n\
+    node_ls\n\
+");
+  return s_help;
+}
+
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+inline sg::node* search_node(const std::string& a_cmd,ishell& a_insh,omanager& a_mgr,args& a_args) {
+  std::string fnh;
+  if(!a_args.first_not_hyphen(fnh)) {
+    a_insh.warn(a_cmd+": no managed name given.");
+    return 0;
+  }
+  a_args.remove(fnh);
+  sg::node* _node = a_mgr.find_object<sg::node>(fnh);
+  if(!_node) {
+    a_insh.warn(a_cmd+": object "+sout(fnh)+" not found.");
+    return 0;
+  }
+  return _node;
+}
+
+inline void insh_node_set_field(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("node_set_field");
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  sg::node* _node = search_node(s_cmd,a_insh,a_mgr,_args);
+  if(!_node) return;
+  if(_args.is_arg("-fields")) {
+    _node->dump_field_descs(a_insh.out());
+    return;
+  }
+  std::string sfield;
+  INLIB_ISHELL_GET_ARG_STRING(field)  
+  if(sfield.empty()) {
+    a_insh.warn(s_cmd+": -field not found.");
+    return;
+  }
+  std::string svalue;
+  INLIB_ISHELL_GET_ARG_STRING(value)  
+  if(svalue.empty()) {
+    a_insh.warn(s_cmd+": -value not found.");
+    return;
+  }
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  sg::field* fd = _node->find_field_by_name(sfield);
+  if(!fd) fd = _node->find_field_by_name(_node->s_cls()+"."+sfield);
+  if(!fd) {
+    a_insh.warn(s_cmd+": field "+sout(sfield)+" not found on node of class "+sout(_node->s_cls())+".");
+    return;
+  }
+  if(!fd->s2value(svalue)) {
+    a_insh.warn(s_cmd+": can't set value "+sout(svalue)+" for field "+sfield+" for node of class "+sout(_node->s_cls())+".");
+    return;
+  }
+}
+
+inline void insh_node_matrix_set(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("node_matrix_set");
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  sg::node* _node = search_node(s_cmd,a_insh,a_mgr,_args);
+  if(!_node) return;
+  INLIB_ISHELL_GET_ARGS_MATRIX
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  sg::matrix* _matrix = safe_cast<sg::node,sg::matrix>(*_node);
+  if(!_matrix) {
+    a_insh.warn(s_cmd+": object is not a inlib::sg::matrix.");
+    return;
+  }
+  _matrix->mul_translate(translate);                                      //applied third.
+  _matrix->mul_rotate(rotate.v0(),rotate.v1(),rotate.v2(),rotate.v3());   //applied second.
+  _matrix->mul_scale(scale);                                              //applied first.
+}
+
+inline void insh_node_get_field(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("node_get_field");
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  sg::node* _node = search_node(s_cmd,a_insh,a_mgr,_args);
+  if(!_node) return;
+  if(_args.is_arg("-fields")) {
+    _node->dump_field_descs(a_insh.out());
+    return;
+  }
+  std::string sfield;
+  INLIB_ISHELL_GET_ARG_STRING(field)  
+  if(sfield.empty()) {
+    a_insh.warn(s_cmd+": -field not found.");
+    return;
+  }
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  sg::field* fd = _node->find_field_by_name(sfield);
+  if(!fd) fd = _node->find_field_by_name(_node->s_cls()+"."+sfield);
+  if(!fd) {
+    a_insh.warn(s_cmd+": field "+sout(sfield)+" not found on node of class "+sout(_node->s_cls())+".");
+    return;
+  }
+  std::string s;
+  if(!fd->s_value(s)) {
+    a_insh.warn(s_cmd+": can't get value for field "+sout(sfield)+" for node of class "+sout(_node->s_cls())+".");
+    return;
+  }
+  a_insh.out(s);
+}
+
+inline void insh_node_add_in(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("node_add_in");
+  
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  _args.remove(fnh);
+  base_oholder* _boh = a_mgr.find_base_oholder(fnh);
+  if(!_boh) {
+    a_insh.warn(s_cmd+": "+sout(fnh)+" not found.");
+    return;
+  }
+  sg::node* _node = cast_oholder_object<sg::node>(*_boh);
+  if(!_node) {
+    a_insh.warn(s_cmd+": object "+sout(fnh)+" not a inlib::sg::node.");
+    return;
+  }
+
+  std::string sparent;
+  INLIB_ISHELL_GET_ARG_STRING(parent)  
+  if(sparent.empty()) {
+    a_insh.warn(s_cmd+": -parent not found.");
+    return;
+  }
+  bool do_copy;
+  INLIB_ISHELL_IS_ARG_VARIABLE(copy,do_copy);
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  sg::node* _parent = a_mgr.find_object<sg::node>(sparent);
+  if(!_node) {
+    a_insh.warn(s_cmd+": object "+sout(sparent)+" not found.");
+    return;
+  }
+  sg::group* _group = safe_cast<sg::node,sg::group>(*_parent);
+  if(!_group) {
+    a_insh.warn(s_cmd+": object "+sout(sparent)+" is not a inlib::sg::group.");
+    return;
+  }
+  if(do_copy) {
+    _group->add(_node->copy());
+  } else {
+    _boh->disown();
+    a_mgr.remove_base_oholder(_boh,true);
+    _group->add(_node);
+  }
+}
+
+}
+
+#include "../paper_format"
+#include "../file_format"
+#include "../sg/write_paper"
+
+#ifdef INLIB_HISTO_PLOT_OFFSCREEN_HAVE_PNG
+#include <exlib/png>
+#endif
+#ifdef INLIB_HISTO_PLOT_OFFSCREEN_HAVE_JPEG
+#include <exlib/jpeg>
+#endif
+
+namespace inlib {
+
+inline void insh_node_write_to_paper(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("node_write_to_paper");
+  
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  sg::node* _node = search_node(s_cmd,a_insh,a_mgr,_args);
+  if(!_node) return;
+
+  std::string path = "out.ps";
+  INLIB_ISHELL_GET_ARG_STRING_VARIABLE(out,path)
+  
+  std::string sformat = "guessed";
+  INLIB_ISHELL_GET_ARG_STRING(format)
+  if(sformat=="guessed") {
+    if(!file::extension_paper_format(path,sformat)) {
+      a_insh.warn(s_cmd+": can't guess format from extension of "+sout(path)+".");
+      return;
+    }
+  } else {
+    if(!file::is_paper_format(sformat)) {
+      a_insh.warn(s_cmd+": unknown format "+sout(sformat)+".");
+      return;
+    }
+  }
+  unsigned int scale = 1;
+  INLIB_ISHELL_GET_ARG_UINT(scale)
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+
+  unsigned int _ww = 400;
+  unsigned int _wh = 200;
+
+  sg::zb_manager zb_mgr;
+  sg::gl2ps_manager gl2ps_mgr;
+  
+#ifdef INLIB_HISTO_PLOT_OFFSCREEN_HAVE_PNG
+  sg::png_writer _png_writer = exlib::png::write;
+#else
+  sg::png_writer _png_writer = 0;
+#endif
+
+#ifdef INLIB_HISTO_PLOT_OFFSCREEN_HAVE_JPEG
+  sg::jpeg_writer _jpeg_writer = exlib::jpeg::write;
+#else
+  sg::jpeg_writer _jpeg_writer = 0;
+#endif
+
+  colorf bg = colorf_white();
+
+  if(!write_paper(a_insh.out(),gl2ps_mgr,zb_mgr,_png_writer,_jpeg_writer,
+                  bg.r(),bg.g(),bg.b(),bg.a(),*_node,scale*_ww,scale*_wh,path,sformat)) {}
+
+  _node->clear_gstos();  //important because zb_mgr,gl2ps_mgr are local.
+
+}
+
+}
+
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+#include "ishell_args_omanager_cmd"
+
+#define INLIB_INSH_NODE_ADDS(a__insh,a__omanager)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,node_create,\
+    inlib::insh_node_create,\
+"node_create: node_create [-classes,-no_warn,-class,-field=value] managed_name\n\
+  Create a named and managed inlib::sg::node.\n\
+  Note that the node is not put under a viewer scene graph.\n\
+  It is deposited under the 'object manager' which is intended to\n\
+  keep track of various objects not necessarily visualisable by themsleves\n\
+  as random generators or histograms.\n\
+  If an object with same managed name already exist it is deleted.\n\
+  -no_warn to not warn in case of overwriting an existing object.\n\
+  -class=string class of the node to create (default is inlib::sg::cube).\n\
+  -classes print the available classes.\n\
+  -field=value set the value of a field of the created node.\n\
+  See scene_add_managed_object to visualize the created node.\n\
+  Example:\n\
+    node_create -classes\n\
+    node_create  my_cube # create a cube named my_cube.\n\
+    node_create -class=inlib::sg::sphere -radius=2 my_sphere\n\
+")\
+\
+/*INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,node_remove,\
+    inlib::insh_node_remove,inlib::insh_node_remove_help())*/\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,node_ls,\
+    inlib::insh_node_ls,inlib::insh_node_ls_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,node_set_field,\
+    inlib::insh_node_set_field,\
+"node_set_field: node_set_field [-fields,-field,-value] name\n\
+  Set value of a field of a named managed node.\n\
+  -fields to print description of node fields.\n\
+  -field=string field to set.\n\
+  -value=[string,number] value to set.\n\
+  Example:\n\
+    node_create -class=inlib::sg::cube my_cube\n\
+    node_set_field -fields my_cube\n\
+    node_set_field -field=inlib::sg::cube.width -value=100 my_cube\n\
+    node_set_field -field=width -value=100 my_cube\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,node_get_field,\
+    inlib::insh_node_get_field,\
+"node_get_field: node_get_field [-field,-fields] name\n\
+  Get value of a field of a named managed node.\n\
+  -fields to print the list of fields.\n\
+  -field=string field to get.\n\
+  Example:\n\
+    node_create -class=inlib::sg::cube my_cube\n\
+    node_get_field -fields my_cube\n\
+    node_get_field -field=inlib::sg::cube.width my_cube\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,node_matrix_set,\
+    inlib::insh_node_matrix_set,\
+"node_matrix_set: node_matrix_set [-translate,-rotate,-scale] name\n\
+  Set a named managed inlib::sg::matrix node.\n\
+  -scale=real overall scale (default 1).\n\
+  -rotate='real real real real' overall rotation (default '0 0 1 0'). First\n\
+  three numbers specify the axis, the last one the angle in radians.\n\
+  -translate='real real real' overall translation (default '0 0 0').\n\
+  Scale, rotation, translation are applied in this order.\n\
+  Example:\n\
+    node_create -class=inlib::sg::matrix my_matrix\n\
+    node_matrix_set -translate='0 -300 0' -rotate='1 0 0 1.570796' -scale=2 my_matrix\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,node_add_in,\
+    inlib::insh_node_add_in,\
+"node_add_in: node_add_in [-parent,-copy] name\n\
+  Add a named managed node in a managed parent node.\n\
+  The parent node is assumed to derived from inlib::sg::group.\n\
+  -copy a copy is done. Else the sg::node is transfered into the parent and is no more managed.\n\
+  Example:\n\
+    node_create -class=inlib::sg::cube my_cube\n\
+    node_create -class=inlib::sg::separator my_sep\n\
+    node_add_in -parent=my_sep my_cube\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,node_write_to_paper,\
+    inlib::insh_node_write_to_paper,\
+"node_write_to_paper: node_write_to_paper [-out,-scale,-format] name\n\
+  Produce an output file for a named managed node.\n\
+  -out=string output file (default is out.ps).\n\
+  -scale permits to scale the viewport; it allows to have a better rendering for freetype fonts.\n\
+  -format permits to choose the output format and the tool to produce the file.\n\
+  If 'guessed', which is the default, the format is choosen/deduced from the file extension.\n\
+  For example for out.png, the format will be inzb_png.\n\
+  The known formats are:\n\
+    inzb_[ps,png,jpeg] : pixmap of the scene is put in a PostScript, png or jpeg file\n\
+  by using the inlib::sg::zb_action.\n\
+    gl2ps_[eps,ps,pdf,svg,tex,pdg] : primitives of the scene (vector graphices) is put in an\n\
+  encapsulated PostScript, PostScript, PDF, SVG, LaTeX or PDG file by using gl2ps.\n\
+  If 'guessed' is used as format, then according to the file extension, the tool used is:\n\
+    .ps, .eps: inzb_ps\n\
+    .png : inzb_png\n\
+    .jpg, .jpeg: inzb_jpeg\n\
+    .pdf, .svg, .pgf, .tex: gl2ps_[pdf,svg,pgf,tex]\n\
+  Example:\n\
+    node_create -class=inlib::sg::sphere my_sphere\n\
+    node_write_to_paper my_sphere  # produce a out.ps PostScript file in current directory.\n\
+    node_write_to_paper -out=out.png -format=inzb_png -scale=2 my_sphere\n\
+  See also:\n\
+    app_out_dir\n\
+")
+
+#endif

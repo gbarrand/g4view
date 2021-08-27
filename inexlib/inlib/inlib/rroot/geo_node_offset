@@ -1,0 +1,120 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_rroot_geo_node_offset
+#define inlib_rroot_geo_node_offset
+
+#include "geo_node"
+
+#include "geo_pattern_finder"
+
+namespace inlib {
+namespace rroot {
+
+class geo_node_offset : public geo_node {
+  typedef geo_node parent;
+private:
+  static const std::string& s_store_class() {
+    static const std::string s_v("TGeoNodeOffset");
+    return s_v;
+  }
+public:
+  static const std::string& s_class() {
+    static const std::string s_v("inlib::rroot::geo_node_offset");
+    return s_v;
+  }
+public: //iro
+  virtual void* cast(const std::string& a_class) const {
+    if(void* p = cmp_cast<geo_node_offset>(this,a_class)) return p;
+    return parent::cast(a_class);
+  }
+  virtual const std::string& s_cls() const {return s_class();}
+  virtual iro* copy() const {return new geo_node_offset(*this);}
+  virtual bool stream(buffer& a_buffer) {
+    _clear();
+
+    unsigned int s, c;
+    short v;
+    if(!a_buffer.read_version(v,s,c)) return false;
+
+    if(!parent::stream(a_buffer)) return false;
+
+    if(!a_buffer.read(m_offset)) return false;
+    if(!a_buffer.read(m_index)) return false;
+
+    //TGeoPatternFinder* fFinder; // finder for this node
+    ifac::args args;
+    if(!pointer_stream(a_buffer,m_fac,args,m_finder,m_finder_created)) {
+      a_buffer.out() << "inlib::rroot::geo_node_offset::stream : "
+                     << "can't read fFinder."
+                     << std::endl;
+      return false;
+    }
+
+    if(!a_buffer.check_byte_count(s,c,s_store_class())) {_clear();return false;}
+    return true;
+  }
+
+public:
+  static cid id_class() {return geo_node_offset_cid();}
+  virtual void* cast(cid a_class) const {
+    if(void* p = cmp_cast<geo_node_offset>(this,a_class)) return p;
+    return parent::cast(a_class);
+  }
+  virtual cid id_cls() const {return id_class();}
+
+public:
+  geo_node_offset(ifac& a_fac)
+  :parent(a_fac)
+  ,m_offset(0)
+  ,m_index(0)
+  ,m_finder(0) //not owner
+  ,m_finder_created(false)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~geo_node_offset(){
+    _clear();
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+protected:
+  geo_node_offset(const geo_node_offset& a_from)
+  :iro(a_from)
+  ,parent(a_from)
+  ,m_offset(a_from.m_offset)
+  ,m_index(a_from.m_index)
+  ,m_finder(a_from.m_finder)
+  ,m_finder_created(a_from.m_finder_created)
+  {}
+  geo_node_offset& operator=(const geo_node_offset& a_from){
+    parent::operator=(a_from);
+    m_offset = a_from.m_offset;
+    m_index = a_from.m_index;
+    m_finder = a_from.m_finder;
+    m_finder_created = a_from.m_finder_created;
+    return *this;
+  }
+public:
+  const geo_pattern_finder* finder() const {return m_finder;}
+  geo_pattern_finder* finder() {return m_finder;}
+
+  double offset() const {return m_offset;}
+  int index() const {return m_index;}
+protected:
+  void _clear() {
+    if(m_finder_created) {delete m_finder;m_finder = 0;m_finder_created = false;}
+  }
+protected:
+  double m_offset; // X offset for this node with respect to its mother
+  int m_index;     // index of this node in the division
+  geo_pattern_finder* m_finder;
+  bool m_finder_created;
+};
+
+}}
+
+#endif

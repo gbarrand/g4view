@@ -1,0 +1,256 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_fit
+#define inlib_insh_fit
+
+#include "find_val_funcs"
+
+#include "ishell"
+#include "../args"
+#include "../histo/h1d"
+#include "../f2cmn"
+#include "../val_func_scripted"
+#include "../sg/fit2plot"
+
+namespace inlib {
+
+class fit_scripted : public virtual fit_func {
+  typedef fit_func parent;
+  static const std::string& s_class() {
+    static const std::string s_v("inlib::fit_scripted");
+    return s_v;
+  }
+public:
+  virtual bool value(const fit_func::point& a_pt,double& a_value) const {
+    if(m_scripted.dimension()!=1) {a_value = 0;return false;}
+    fit_scripted& self = const_cast<fit_scripted&>(*this);
+    self.m_xs[0] = a_pt[0];
+    if(!m_scripted.set_parameters(m_params)) {
+      a_value = 0;
+      return false;
+    }
+    return m_scripted.value(m_xs,a_value,self.m_serr);
+  }
+  virtual bool set(const double a_params[])  {
+    size_t index = 0;
+    inlib_vforit(double,m_params,it) {
+      *it = a_params[index];
+      index++;
+    }
+    return true;
+  }
+public:
+  fit_scripted(scripted& a_func)
+  :m_scripted(a_func)
+  ,m_params(a_func.param_names().size())
+  ,m_xs(1)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~fit_scripted(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+protected:
+  fit_scripted(const fit_scripted& a_from)
+  :parent(a_from)
+  ,m_scripted(a_from.m_scripted)
+  ,m_params(a_from.m_params)
+  ,m_xs(a_from.m_xs)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  fit_scripted& operator=(const fit_scripted& a_from){
+    m_params = a_from.m_params;
+    m_xs = a_from.m_xs;
+    return *this;
+  }
+private:  
+  scripted& m_scripted;
+  std::vector<double> m_params;
+private: //opt:
+  std::vector<double> m_xs;
+  std::string m_serr;
+};
+
+inline void insh_histo_fit(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_header("histo_fit :");
+  args _args(a_args);
+
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_header+" no name given.");
+    return;
+  }
+  histo::h1d* _h1d = a_mgr.find_object<histo::h1d>(fnh);
+  if(!_h1d) {
+    a_insh.warn(s_header+" histo h1d object "+sout(fnh)+" not found.");
+    return;
+  }
+
+  std::string sfunc;
+  if(!_args.find("-function",sfunc)) {
+    a_insh.warn(s_header+" no -sfunc given.");
+    return;
+  }
+  val_funcs* funcs = find_val_funcs(a_mgr);
+  if(!funcs) {
+    a_insh.warn(s_header+" can't find "+sout(s_functions())+" in object managers.");
+    return;
+  }
+  ival_func* func = funcs->find(sfunc);
+  if(!func) {
+    a_insh.warn(s_header+" function "+sout(sfunc)+" not found.");
+    return;
+  }
+
+  val_func_scripted* _scripted = safe_cast<ival_func,val_func_scripted>(*func);
+  if(!_scripted) {
+    a_insh.warn(s_header+" function "+sout(sfunc)+" is not a scripted function.");
+    return;
+  }
+
+  std::vector< f2cmn::parameter > params;
+ {std::string sparams;
+  if(!_args.find("-parameters",sparams)) {
+    a_insh.warn(s_header+" no -parameters given.");
+    return;
+  }
+  std::vector<std::string> ws;
+  words(sparams,";",false,ws);
+ {inlib_vforcit(std::string,ws,it) {
+    const std::string& sparam = *it;
+    std::vector<std::string> vs;
+    words(sparam,":",false,vs);
+    if(vs.size()!=5) {
+      a_insh.warn(s_header+" parameter "+sout(sparam)+" does not have five fields (name,start,step,min,max).");
+      return;
+    }
+    f2cmn::parameter param;
+    param.m_name = vs[0];
+    if(!to<double>(vs[1],param.m_start)) {
+      a_insh.warn(s_header+" parameter start field "+sout(vs[1])+" is not a double.");
+      return;
+    }
+    if(!to<double>(vs[2],param.m_step)) {
+      a_insh.warn(s_header+" parameter step field "+sout(vs[2])+" is not a double.");
+      return;
+    }
+    if(!to<double>(vs[3],param.m_min)) {
+      a_insh.warn(s_header+" parameter min field "+sout(vs[3])+" is not a double.");
+      return;
+    }
+    if(!to<double>(vs[4],param.m_max)) {
+      a_insh.warn(s_header+" parameter max field "+sout(vs[4])+" is not a double.");
+      return;
+    }
+    params.push_back(param);
+  }}}
+
+  if(_args.is_arg("-verbose"))
+ {inlib_vforcit(f2cmn::parameter,params,it) {
+    const f2cmn::parameter& _param = *it;
+    std::string _s = _param.m_name;
+    _s += " ";
+    numas(_param.m_start,_s);
+    _s += " ";
+    numas(_param.m_step,_s);
+    _s += " ";
+    numas(_param.m_min,_s);
+    _s += " ";
+    numas(_param.m_max,_s);
+    _s += " ";
+    a_insh.out(_s);
+  }}
+  if(params.size()!=_scripted->param_names().size()) {
+    a_insh.warn(s_header+" parameters number mismatch.");
+    return;
+  }
+
+  fit_scripted ff(*_scripted);
+
+  std::vector<double> output;
+  if(!f2cmn::fit_1D<histo::h1d>(a_insh.out(),*_h1d,params,ff,output)) {
+    a_insh.warn(s_header+" fit failed.");
+    return;
+  }
+
+  if(output.size()!=(2+params.size()*4)){
+    a_insh.warn(s_header+" bad number of output parameters.");
+    return;
+  }
+
+ {std::string sv;
+  num2s(output[0],sv);
+  a_insh.out("chi2 "+sv);}
+ {std::string sv;
+  num2s(output[1],sv);
+  a_insh.out("dof "+sv);}  //dof=degrees of freedom.
+ {size_t index=0;
+  inlib_vforcit(f2cmn::parameter,params,it) {
+    std::string sv;
+    num2s(output[1+1+4*index],sv);
+    a_insh.out((*it).m_name+" "+sv);
+    index++;
+  }}
+
+ {std::string fit_result_name;
+  if(_args.find("-fit_result_name",fit_result_name)) {
+    std::vector<std::string> names;
+    inlib_vforcit(f2cmn::parameter,params,it) names.push_back((*it).m_name);
+    bool warn = _args.is_arg("-no_warn")?false:true;
+    sg::fit2plot* _fit_result = new sg::fit2plot(names,output);
+    a_mgr.manage_object<sg::fit2plot>(_fit_result,fit_result_name,true,true,warn);
+  }}
+
+}
+
+inline const std::string& insh_histo_fit_help() {
+  static const std::string s_help("\
+histo_fit: histo_fit [-function,-parameters,-fit_result_name,-verbose] managed_name\n\
+  Fit a named histogram with a managed scripted function.\n\
+  -function=string name of the scripted function used to do the fit.\n\
+  -parameters=string fuction parameters to fit from the histogram data.\n\
+  A parameter is 'name:start:step:min:max' and -parameters is a dot-colon list of them.\n\
+  See below for an example on a gaussian function.\n\
+  -fit_result_name=string if given, the result of the fit is deposited on a managed fit result object.\n\
+  A named fit result can be shown in the infos box of the current plotter with the fit_result_plot command.\n\
+  -verbose to have verbosity for this command.\n\
+  Example:\n\
+    histo_create -no_warn -class=h1d -title='gaussian distribution' -xbins=100 -xmin=-5 -xmax=5 h_rg\n\
+    random_create -no_warn -class=rgaussd -mean=0.5 -std_dev=1 rg\n\
+    histo_fill -x=rg -entries=10000 h_rg\n\
+    function_create -script='gauss(x,g_scale,g_mean,g_sigma)' ff\n\
+    #function_print ff\n\
+    # one param = name:start:step:min:max\n\
+    # params = param_1;param_2;...\n\
+    params='g_scale:300:0.01:0:0'\n\
+    params=\"${params};g_mean:0:0.01:0:0\"\n\
+    params=\"${params};g_sigma:2:0.01:0:0\"\n\
+    opts=\n\
+    #opts=\"${opts} -verbose\"\n\
+    opts=\"${opts} -fit_result_name=fr\"\n\
+    histo_fit ${opts} -function=ff -parameters=${params} h_rg\n\
+    # plotting:\n\
+    plots_create\n\
+    plots_show\n\
+    function_print ff\n\
+    histo_plot h_rg\n\
+    function_plot ff\n\
+    fit_result_plot fr\n\
+    plotter_set_field x_axis_automated false\n\
+    plotter_set_field x_axis_min -5\n\
+    plotter_set_field x_axis_max  5\n\
+");
+  return s_help;
+}
+
+}
+
+#endif

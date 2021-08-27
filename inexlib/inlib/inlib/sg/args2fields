@@ -1,0 +1,44 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_args2fields
+#define inlib_sg_args2fields
+
+#include "../args"
+#include "node"
+
+#include "../sout"
+#include "../forit"
+
+namespace inlib {
+namespace sg {
+
+inline bool args2fields(args& a_args,node& a_node,std::string& a_err) {
+  std::vector<std::string> to_rm;
+  a_err.clear();
+  bool status = true;
+  inlib_vforcit(args::arg,a_args.get_args(),it) {
+    const std::string& skey = (*it).first;
+    const std::string& svalue = (*it).second;
+    if(skey.size()&&(skey[0]=='-')) {
+      std::string sfield = skey.substr(1,skey.size()-1);
+      field* fd = a_node.find_field_by_name(sfield);                      //for exa, if key is -inlib::sg::cube.width
+      if(!fd) fd = a_node.find_field_by_name(a_node.s_cls()+"."+sfield);  //for exa, if key is -width only.
+      if(fd) {
+        to_rm.push_back(skey);
+        if(!fd->s2value(svalue)) {
+          a_err = "can't set value "+sout(svalue)+" for field "+sfield+" for node of class "+a_node.s_cls()+".";
+          status = false;
+	  break;
+        }
+      }
+    }   
+  }
+  a_args.remove(to_rm);
+  return status;
+}
+
+}}
+
+#endif
+

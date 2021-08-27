@@ -1,0 +1,54 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_wcsv_cloud
+#define inlib_wcsv_cloud
+
+#include <ostream>
+#include <vector>
+#include <string>
+
+namespace inlib {
+namespace wcsv {
+
+template <class CLOUD>
+inline void c_header(std::ostream& a_writer,const std::string& a_class,const CLOUD& a_c,char a_hc = '#') {
+  a_writer << a_hc << "class " << a_class << std::endl;
+  a_writer << a_hc << "title " << a_c.title() << std::endl;
+  a_writer << a_hc << "dimension " << a_c.dimension() << std::endl;
+  a_writer << a_hc << "entries " << a_c.entries() << std::endl;
+}
+
+template <class CLOUD>
+inline bool cto(std::ostream& a_writer,const std::string& a_class,const CLOUD& a_c,
+                char a_sep = ',',char a_hc = '#',bool a_header = true) {
+  if(a_header) c_header(a_writer,a_class,a_c,a_hc);
+  
+ {a_writer << "w";
+  for(unsigned int iaxis=0;iaxis<a_c.dimension();iaxis++) {
+         if(iaxis==0) {a_writer << a_sep << "x";}
+    else if(iaxis==1) {a_writer << a_sep << "y";}
+    else if(iaxis==2) {a_writer << a_sep << "z";}
+    else {
+      return false;
+    }
+  }
+  a_writer << std::endl;}
+
+  unsigned int _entries = a_c.entries();
+  unsigned int _dim = a_c.dimension();
+  double value;
+  for(unsigned int i=0;i<_entries;i++) {
+    a_writer << a_c.weight(i);
+    for(unsigned int iaxis=0;iaxis<_dim;iaxis++) {
+      if(!a_c.value(i,iaxis,value)) return false;
+      a_writer << a_sep << value;
+    }
+    a_writer << std::endl;
+  }
+  return true;
+}
+
+}}
+
+#endif

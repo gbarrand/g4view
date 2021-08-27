@@ -1,0 +1,142 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_hep_arrow
+#define inlib_sg_hep_arrow
+
+#include "separator"
+#include "matrix"
+#include "base_freetype"
+#include "atb_vertices"
+#include "cone_hat"
+#include "tube"
+#include "rgba"
+#include "draw_style"
+#include "infos"
+#include "text_hershey_marker"
+#include "hep_strings"
+
+namespace inlib {
+namespace sg {
+
+inline void add_marker_text(group& a_sep,
+                            float a_x,float a_y,float a_z,
+                            const colorf& a_color,
+                            float a_scale,
+                            const std::string& a_s,
+                            const base_freetype& a_ttf) {
+  separator* sep = new separator;
+  a_sep.add(sep);
+
+  rgba* color = new rgba();
+  color->color = a_color;
+  sep->add(color);
+
+  matrix* mtx = new matrix;
+  mtx->set_translate(a_x,a_y,a_z);
+  sep->add(mtx);
+
+  if(false) {
+    text_hershey_marker* text = new text_hershey_marker;
+    std::string _s = a_s;
+    text->encoding = cvt2paw(_s);
+    text->strings.add(_s);
+    text->height = text->height.value()*a_scale;
+    sep->add(text);
+  } else {
+    //sg::text_freetype_marker* text = new sg::text_freetype_marker;
+    base_freetype* text = base_freetype::create(a_ttf);
+    text->font = font_stixgeneral_otf();
+    std::vector<sg::base_freetype::unichar> line;
+    if(!cvt2stix(a_s,line)) {}
+    text->unitext.add(line);
+    text->height = text->height.value()*a_scale;
+    sep->add(text);
+  }
+
+}
+
+inline separator* create_arrow(const vec3f& a_pos,const vec3f& a_dir,float a_length,float a_radius,bool a_base_tube,
+                               const std::string& a_name,
+                               float a_text_scale,float a_text_pos,const base_freetype& a_ttf,
+                               const colorf& a_color,infos* a_infos) {
+  separator* sep = new separator;
+
+  if(a_infos) sep->add(a_infos); //under sep, so that picking of the arrow or text give infos.
+
+ {separator* _sep = new separator;
+  sep->add(_sep);
+  if(false) {
+    draw_style* ds = new draw_style;
+    ds->style = draw_lines;
+    ds->line_width = 1;
+    _sep->add(ds);
+
+    atb_vertices* vtcs = new atb_vertices;
+    vtcs->mode = gl::lines();
+    vtcs->add(a_pos);
+    vtcs->add_color(a_color);
+    vtcs->add(a_pos+a_length*a_dir);
+    vtcs->add_color(a_color);
+
+    _sep->add(vtcs);
+
+  } else {
+    rgba* _rgba = new rgba;
+    _rgba->color = a_color;
+    _sep->add(_rgba);
+
+    float length_base = a_length*0.8f;
+    float length_head = a_length-length_base;
+
+   {matrix* mtx = new matrix;
+    mtx->set_translate(a_pos);
+    mtx->mul_rotate(vec3f(0,0,1),a_dir); //first
+    mtx->mul_translate(0,0,length_base*0.5f);
+    _sep->add(mtx);}
+
+    if(a_base_tube) {
+      tube* _base = new tube;
+      _base->height = length_base;
+      _base->rmin = 0;
+      _base->rmax = a_radius;
+      //_base->rmin = a_radius*0.5f;
+      //_base->angle = fhalf_pi();
+      _sep->add(_base);
+    } else {
+      separator* _sep_base = new separator;
+      _sep->add(_sep_base);
+      matrix* mtx = new matrix;
+      mtx->set_rotate(0,1,0,fpi()); //first
+      _sep_base->add(mtx);
+      cone_hat* _base = new cone_hat;
+      _base->height = length_base;
+      _base->rmin = 0;
+      _base->rmax = a_radius;
+      _sep_base->add(_base);
+    }
+
+   {matrix* mtx = new matrix;
+    mtx->set_translate(0,0,length_base*0.5f+length_head*0.5f);
+    _sep->add(mtx);}
+
+    cone_hat* cone = new cone_hat;
+    cone->height = length_head;
+    cone->rmin = 0;
+    cone->rmax = 2*a_radius;
+    //cone->rmin = a_radius;
+    //cone->angle = fhalf_pi();
+    _sep->add(cone);
+  }}
+
+  if(a_name.size()) {
+    vec3f pos = a_pos+a_dir*a_length*a_text_pos;
+    add_marker_text(*sep,pos.x(),pos.y(),pos.z(),a_color,a_text_scale,a_name,a_ttf);
+  }
+
+  return sep;
+}
+
+}}
+
+#endif

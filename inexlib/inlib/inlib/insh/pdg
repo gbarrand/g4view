@@ -1,0 +1,199 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_pdg
+#define inlib_insh_pdg
+
+#include "ishell"
+#include "../args"
+
+#include "../sort"
+#include "../sto"
+#include "../num2s"
+
+#include "../hep/pdgs"
+
+namespace inlib {
+
+inline void insh_pdg(ishell& a_insh,const std::vector<std::string>& a_args,hep::pdgs& a_pdgs) {
+  if(a_args.empty()) {
+    a_pdgs.print_as_root(a_insh.out());
+    return;
+  }
+  args _args(a_args);
+  if(_args.is_arg("-names")) {
+    const std::vector<hep::particle>& _particles = a_pdgs.particles();
+    a_insh.out_begin();
+    inlib_vforcit(hep::particle,_particles,it) a_insh.out((*it).name(),true);
+    return;
+  }
+  if(_args.is_arg("-version")) {
+    a_insh.out(a_pdgs.version());
+    return;
+  }
+
+  if(_args.is_arg("-pids")) {
+    const std::vector<hep::particle>& _particles = a_pdgs.particles();
+    a_insh.out_begin();
+    std::string spid;
+    inlib_vforcit(hep::particle,_particles,it) {
+      num2s((*it).pdg_code(),spid);
+      a_insh.out(spid,true);
+    }
+    return;
+  }
+
+  if(_args.is_arg("-ls")) {
+    const std::vector<hep::particle>& _particles = a_pdgs.particles();
+    std::vector<std::string> vs;
+    inlib_vforcit(hep::particle,_particles,it) vs.push_back((*it).name());
+    sort::sort(vs);
+    if(a_insh.in_backquote()) {
+      a_insh.out_begin();
+      inlib_vforcit(std::string,vs,it) a_insh.out(*it,true);
+    } else {
+      a_insh.unix_print(vs);
+    }
+    return;
+  }
+
+  if(_args.is_arg("-pids_ls")) {
+    const std::vector<hep::particle>& _particles = a_pdgs.particles();
+    std::vector<std::string> vs;
+    std::string spid;
+    inlib_vforcit(hep::particle,_particles,it) {
+      num2s((*it).pdg_code(),spid);
+      vs.push_back(spid);
+    }
+    sort::sort(vs);
+    if(a_insh.in_backquote()) {
+      a_insh.out_begin();
+      inlib_vforcit(std::string,vs,it) a_insh.out(*it,true);
+    } else {
+      a_insh.unix_print(vs);
+    }
+    return;
+  }
+
+  std::vector<std::string> rargs;
+  _args.to_vector(rargs);
+  inlib_vforcit(std::string,rargs,it) {
+    int pid;
+    if(to<int>(*it,pid)) {
+      const hep::particle* _particle = a_pdgs.find_particle(pid);
+      if(!_particle) {
+        a_insh.warn("pdg : particle with pid "+*it+" not found.");
+	return;
+      }
+      a_pdgs.print_particle(a_insh.out(),*_particle);
+    } else {
+      const hep::particle* _particle = a_pdgs.find_particle(*it);
+      if(!_particle) {
+        a_insh.warn("pdg : particle with name "+*it+" not found.");
+	return;
+      }
+      a_pdgs.print_particle(a_insh.out(),*_particle);
+    }
+  }
+}
+
+inline const std::string& insh_pdg_help() {
+  static const std::string s_help("\
+pdg: pdg [-version, -names, -pids, -ls, -pids_ls] [pids] [names]\n\
+  If no argument given, list all pdg (particle data group) table.\n\
+  If a list of integers or strings are given, particles with pdg_code (pid)\n\
+  or name are searched and printed.\n\
+  -names print particle names on one column.\n\
+  -pids print pdg_codes on one column.\n\
+  -ls print particle names by using a unix ls like format.\n\
+  -pids_ls print particle pdg_codes by using a a unix ls like format.\n\
+  -version print the pdg file used to get data.\n\
+  Example:\n\
+    pdg -ls\n\
+    pdg e+\n\
+    pdg 12 nu_e_bar\n\
+");
+  return s_help;
+}
+
+}
+
+#include "../hep/evaluators"
+
+namespace inlib {
+
+inline void insh_particle_print(ishell& a_insh,const std::vector<std::string>& a_args,hep::pdgs& a_pdgs) {
+
+  const std::vector<hep::particle>& _particles = a_pdgs.particles();
+
+  //////////////////////////////////////
+  //// get style : /////////////////////
+  //////////////////////////////////////
+  args _args(a_args);
+
+  std::string scut;
+  _args.find("-cut",scut);
+
+  std::vector<std::string> names;
+  _args.not_hyphens(names);
+
+  //////////////////////////////////////
+  //////////////////////////////////////
+  //////////////////////////////////////
+  hep::pdg_evaluator _eval_cut(a_pdgs.out(),scut);
+  if(!_eval_cut.is_valid()) {
+    a_insh.warn("particle_print : bad script "+sout(scut)+" for cut evaluator.");
+    return;
+  }
+
+  std::vector<hep::particle> cut_particles;
+  if(scut.empty()) {
+    cut_particles = _particles;
+  } else {
+    bool ok;
+    inlib_vforcit(hep::particle,_particles,it) {
+      if(!_eval_cut.accept(*it,ok)) {cut_particles.clear();break;}
+      if(ok) cut_particles.push_back(*it);
+    }
+  }
+
+  std::string sheader = "pdg particles (";
+  size_tas(cut_particles.size(),sheader);
+  sheader += ") with cut ";
+  sheader += sout(scut)+" : ";
+
+ {std::vector<std::string> vout;
+  if(a_insh.in_backquote()) {
+    _eval_cut.dump(a_pdgs.out(),cut_particles,names,sheader,true,vout);
+    a_insh.out_begin();
+    a_insh.out(vout,true);
+  } else {
+    _eval_cut.dump(a_pdgs.out(),cut_particles,names,sheader,false,vout);
+  }}
+}
+
+inline const std::string& insh_particle_print_help() {
+  static const std::string s_help("\
+particle_print: particle_print [-cut] fields\n\
+  If no fields are given, list all them.\n\
+  -cut permit to do selection in particles.\n\
+  Example:\n\
+    particle_print\n\
+    particle_print -cut=code==11 name mass charge  # print name, mass and charge of electron.\n\
+    particle_print -cut=name==\"'~mu_L+'\" code mass charge  # print pid, mass and charge of ~mu_L+.\n\
+");
+  return s_help;
+}
+
+}
+
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+#include "ishell_args_pdgs_cmd"
+
+#define INLIB_INSH_PDGS_ADDS(a__insh,a__pdgs)\
+  INLIB_INSH_ADD_ISHELL_ARGS_PDGS_CMD(a__insh,a__pdgs,pdg,inlib::insh_pdg,inlib::insh_pdg_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_PDGS_CMD(a__insh,a__pdgs,particle_print,inlib::insh_particle_print,inlib::insh_particle_print_help())
+
+#endif

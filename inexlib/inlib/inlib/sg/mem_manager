@@ -1,0 +1,55 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_mem_manager
+#define inlib_sg_mem_manager
+
+#include "render_manager"
+
+namespace inlib {
+namespace sg {
+
+class mem_manager : public virtual render_manager {
+public:
+  INLIB_SCLASS(inlib::sg::mem_manager)
+  virtual void* cast(const std::string& a_class) const {
+    if(void* p = cmp_cast<mem_manager>(this,a_class)) {return p;}
+    else return 0;
+  }
+public:
+  virtual bool begin_render(int,int,unsigned int,unsigned int,float,float,float,float,bool = true) {return true;}
+  virtual void end_render() {}
+
+  virtual unsigned int create_texture(const img_byte&,bool /*a_NEAREST*/) {return 0;}
+  virtual unsigned int create_gsto_from_data(size_t,const float*){return 0;}
+
+  virtual bool is_gsto_id_valid(unsigned int) const {return false;}
+  virtual void delete_gsto(unsigned int) {}
+
+  //
+  virtual gsto_mode get_gsto_mode() const {
+    return gsto_memory;
+  }
+  virtual void set_gsto_mode(gsto_mode) {}
+  virtual void available_gsto_modes(std::vector<std::string>& a_v) {
+    a_v.clear();
+  }
+  virtual void available_not_memory_gsto_mode(std::string& a_s) const {
+    a_s.clear();
+  }
+  virtual size_t used_texture_memory() const {return 0;}
+  virtual size_t gstos_size() const {return 0;}
+public:
+  mem_manager(){}
+  virtual ~mem_manager(){}
+public:
+  mem_manager(const mem_manager& a_from):render_manager(a_from){}
+  mem_manager& operator=(const mem_manager& a_from){
+    if(&a_from==this) return *this;
+    return *this;
+  }
+};
+
+}}
+
+#endif

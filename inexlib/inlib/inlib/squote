@@ -1,0 +1,69 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_squote
+#define inlib_squote
+
+#include <string>
+
+namespace inlib {
+
+inline bool rm_quotes(std::string& a_string) {
+  if(a_string.size()<2) return false;
+  if((a_string[0]=='\'')&&(a_string[a_string.size()-1]=='\'')) {
+    a_string = a_string.substr(1,a_string.size()-1); //rm first '
+    a_string = a_string.substr(0,a_string.size()-1); //rm last '
+    return true;
+  }
+  return false;
+}
+
+inline bool rm_double_quotes(std::string& a_string) {
+  if(a_string.size()<2) return false;
+  if((a_string[0]=='"')&&(a_string[a_string.size()-1]=='"')) {
+    a_string = a_string.substr(1,a_string.size()-1); //rm first "
+    a_string = a_string.substr(0,a_string.size()-1); //rm last "
+    return true;
+  }
+  return false;
+}
+
+inline bool rm_back_quotes(std::string& a_string) {
+  if(a_string.size()<2) return false;
+  if((a_string[0]=='`')&&(a_string[a_string.size()-1]=='`')) {
+    a_string = a_string.substr(1,a_string.size()-1); //rm first `
+    a_string = a_string.substr(0,a_string.size()-1); //rm last `
+    return true;
+  }
+  return false;
+}
+
+inline bool rm_dollar_braces(std::string& a_string) {
+  if(a_string.size()<3) return false;
+  if((a_string.substr(0,2)=="${")&&(a_string[a_string.size()-1]=='}')) {
+    a_string = a_string.substr(2,a_string.size()-2);
+    a_string = a_string.substr(0,a_string.size()-1);
+    return true;
+  }
+  return false;
+}
+
+//inline bool is_eval_parenthesis(const std::string& a_string) {
+//  if(a_string.size()<6) return false;
+//  if((a_string.substr(0,5)=="eval(")&&(a_string[a_string.size()-1]==')')) return true;
+//  return false;
+//}
+
+inline bool rm_eval_parenthesis(std::string& a_string) {
+  if(a_string.size()<6) return false;
+  if((a_string.substr(0,5)=="eval(")&&(a_string[a_string.size()-1]==')')) {
+    a_string = a_string.substr(5,a_string.size()-5);
+    a_string = a_string.substr(0,a_string.size()-1);
+    return true;
+  }
+  return false;
+}
+
+}
+
+#endif

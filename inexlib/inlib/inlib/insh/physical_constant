@@ -1,0 +1,190 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_physical_constant
+#define inlib_insh_physical_constant
+
+#include <vector>
+#include <string>
+
+namespace inlib {
+
+inline void physical_constant_names(std::vector<std::string>& a_names) {
+  a_names.clear();
+  a_names.push_back("pi");
+  a_names.push_back("twopi");
+  a_names.push_back("halfpi");
+  a_names.push_back("pi2");
+  a_names.push_back("avogadro");
+  a_names.push_back("c_light");
+  a_names.push_back("c_squared");
+  a_names.push_back("h_Planck");
+  a_names.push_back("hbar_Planck");
+  a_names.push_back("hbarc");
+  a_names.push_back("hbarc_squared");
+  a_names.push_back("electron_charge");
+  a_names.push_back("e_squared");
+  a_names.push_back("eplus_coulomb");
+  a_names.push_back("electron_mass_c2");
+  a_names.push_back("proton_mass_c2");
+  a_names.push_back("neutron_mass_c2");
+  a_names.push_back("muon_mass_c2");
+  a_names.push_back("tau_mass_c2");
+  a_names.push_back("amu_c2");
+  a_names.push_back("amu");
+  a_names.push_back("mu0");
+  a_names.push_back("epsilon0");
+  a_names.push_back("elm_coupling");
+  a_names.push_back("fine_structure_const");
+  a_names.push_back("classic_electr_radius");
+  a_names.push_back("electron_Compton_length");
+  a_names.push_back("Bohr_radius");
+  a_names.push_back("em_coupling");
+  a_names.push_back("Bohr_magneton");
+  a_names.push_back("alpha_rcl2");
+  a_names.push_back("twopi_mc2_rcl2");
+  a_names.push_back("k_Boltzmann");
+  a_names.push_back("STP_temperature");
+  a_names.push_back("STP_pressure");
+  a_names.push_back("gas_threshold");
+  a_names.push_back("universe_mean_density");
+  a_names.push_back("grav_coupling");
+  a_names.push_back("electron_mass");
+  a_names.push_back("coulomb_CGS");
+  a_names.push_back("eplus_CGS");
+  a_names.push_back("hbar_Planck_CGS");
+  a_names.push_back("c_light_CGS");
+  a_names.push_back("grav_coupling_CGS");
+  a_names.push_back("electron_mass_CGS");
+  a_names.push_back("em_coupling_CGS");
+  a_names.push_back("h_Planck_SI");
+  a_names.push_back("electron_mass_SI");
+  a_names.push_back("c_light_SI");
+}
+
+}
+
+#include "ishell"
+#include "../args"
+
+#include "../edep/physical_constants"
+
+namespace inlib {
+
+inline void insh_physical_constant(ishell& a_insh,const std::vector<std::string>& a_args) {
+  static const std::string s_cmd("physical_constant");
+  args _args(a_args);
+  std::string fnh;
+  _args.first_not_hyphen(fnh);
+  if(fnh.empty()) {
+    std::vector<std::string> names;
+    physical_constant_names(names);
+    a_insh.out_begin();
+    a_insh.out(names,true);
+    return;
+  }
+
+  if(fnh=="pi")  {a_insh.out_num<double>(edep::pi);return;}
+  if(fnh=="twopi")  {a_insh.out_num<double>(edep::twopi);return;}
+  if(fnh=="halfpi")  {a_insh.out_num<double>(edep::halfpi);return;}
+  if(fnh=="pi2")  {a_insh.out_num<double>(edep::pi2);return;}
+  if(fnh=="avogadro")  {a_insh.out_num<double>(edep::avogadro);return;}
+  if(fnh=="c_light")  {a_insh.out_num<double>(edep::c_light);return;}
+  if(fnh=="c_squared")  {a_insh.out_num<double>(edep::c_squared);return;}
+  if(fnh=="h_Planck")  {a_insh.out_num<double>(edep::h_Planck);return;}
+  if(fnh=="hbar_Planck")  {a_insh.out_num<double>(edep::hbar_Planck);return;}
+  if(fnh=="hbarc")  {a_insh.out_num<double>(edep::hbarc);return;}
+  if(fnh=="hbarc_squared")  {a_insh.out_num<double>(edep::hbarc_squared);return;}
+  if(fnh=="electron_charge")  {a_insh.out_num<double>(edep::electron_charge);return;}
+  if(fnh=="e_squared")  {a_insh.out_num<double>(edep::e_squared);return;}
+  if(fnh=="eplus_coulomb")  {a_insh.out_num<double>(edep::eplus_coulomb);return;}
+  if(fnh=="electron_mass_c2")  {a_insh.out_num<double>(edep::electron_mass_c2);return;}
+  if(fnh=="proton_mass_c2")  {a_insh.out_num<double>(edep::proton_mass_c2);return;}
+  if(fnh=="neutron_mass_c2")  {a_insh.out_num<double>(edep::neutron_mass_c2);return;}
+  if(fnh=="muon_mass_c2")  {a_insh.out_num<double>(edep::muon_mass_c2);return;}
+  if(fnh=="tau_mass_c2")  {a_insh.out_num<double>(edep::tau_mass_c2);return;}
+  if(fnh=="amu_c2")  {a_insh.out_num<double>(edep::amu_c2);return;}
+  if(fnh=="amu")  {a_insh.out_num<double>(edep::amu);return;}
+  if(fnh=="mu0")  {a_insh.out_num<double>(edep::mu0);return;}
+  if(fnh=="epsilon0")  {a_insh.out_num<double>(edep::epsilon0);return;}
+  if(fnh=="elm_coupling")  {a_insh.out_num<double>(edep::elm_coupling);return;}
+  if(fnh=="fine_structure_const")  {a_insh.out_num<double>(edep::fine_structure_const);return;}
+  if(fnh=="classic_electr_radius")  {a_insh.out_num<double>(edep::classic_electr_radius);return;}
+  if(fnh=="electron_Compton_length")  {a_insh.out_num<double>(edep::electron_Compton_length);return;}
+  if(fnh=="Bohr_radius")  {a_insh.out_num<double>(edep::Bohr_radius);return;}
+  if(fnh=="em_coupling")  {a_insh.out_num<double>(edep::em_coupling);return;}
+  if(fnh=="Bohr_magneton")  {a_insh.out_num<double>(edep::Bohr_magneton);return;}
+  if(fnh=="alpha_rcl2")  {a_insh.out_num<double>(edep::alpha_rcl2);return;}
+  if(fnh=="twopi_mc2_rcl2")  {a_insh.out_num<double>(edep::twopi_mc2_rcl2);return;}
+  if(fnh=="k_Boltzmann")  {a_insh.out_num<double>(edep::k_Boltzmann);return;}
+  if(fnh=="STP_temperature")  {a_insh.out_num<double>(edep::STP_temperature);return;}
+  if(fnh=="STP_pressure")  {a_insh.out_num<double>(edep::STP_pressure);return;}
+  if(fnh=="gas_threshold")  {a_insh.out_num<double>(edep::gas_threshold);return;}
+  if(fnh=="universe_mean_density")  {a_insh.out_num<double>(edep::universe_mean_density);return;}
+  if(fnh=="grav_coupling")  {a_insh.out_num<double>(edep::grav_coupling);return;}
+  if(fnh=="electron_mass")  {a_insh.out_num<double>(edep::electron_mass);return;}
+  if(fnh=="coulomb_CGS")  {a_insh.out_num<double>(edep::coulomb_CGS);return;}
+  if(fnh=="eplus_CGS")  {a_insh.out_num<double>(edep::eplus_CGS);return;}
+  if(fnh=="hbar_Planck_CGS")  {a_insh.out_num<double>(edep::hbar_Planck_CGS);return;}
+  if(fnh=="c_light_CGS")  {a_insh.out_num<double>(edep::c_light_CGS);return;}
+  if(fnh=="grav_coupling_CGS")  {a_insh.out_num<double>(edep::grav_coupling_CGS);return;}
+  if(fnh=="electron_mass_CGS")  {a_insh.out_num<double>(edep::electron_mass_CGS);return;}
+  if(fnh=="em_coupling_CGS")  {a_insh.out_num<double>(edep::em_coupling_CGS);return;}
+  if(fnh=="h_Planck_SI")  {a_insh.out_num<double>(edep::h_Planck_SI);return;}
+  if(fnh=="electron_mass_SI")  {a_insh.out_num<double>(edep::electron_mass_SI);return;}
+  if(fnh=="c_light_SI")  {a_insh.out_num<double>(edep::c_light_SI);return;}
+  
+  a_insh.warn(s_cmd+": "+inlib::sout(fnh)+" unknow keyword.");
+}
+
+inline const std::string& insh_physical_constant_help() {
+  static const std::string s_help(
+"physical_constant: physical_constant [what]\n\
+  Print value of 'what' as defined in inlib::edep::physical_constants.\n\
+  If no arguments given, print known physical_constants.\n\
+  Most of them are extracted from the Particle Data Book :\n\
+    Phys. Rev. D  volume 50 3-1 (1994) page 1233\n\
+  HEP coherent Physical Constants; the basic units are :\n\
+    millimeter              (millimeter)\n\
+    nanosecond              (nanosecond)\n\
+    Mega electron Volt      (MeV)\n\
+    positron charge         (eplus)\n\
+    degree Kelvin           (kelvin)\n\
+    the amount of substance (mole)\n\
+    luminous intensity      (candela)\n\
+    radian                  (radian)\n\
+    steradian               (steradian)\n\
+  Example:\n\
+    physical_constant\n\
+    physical_constant c_light\n\
+  See also:\n\
+    unit\n\
+");
+  return s_help;
+}
+
+}
+
+#include "../sbeg"
+#include "../sort"
+
+namespace inlib {
+
+inline void physical_constant_complete(const std::string& a_begin,std::vector<std::string>& a_names) {
+  if(a_begin.empty()) {
+    physical_constant_names(a_names);
+  } else {
+    a_names.clear();
+    std::vector<std::string> ls;
+    physical_constant_names(ls);
+    inlib_vforcit(std::string,ls,it) {
+      if(is_beg(*it,a_begin)) a_names.push_back(*it);
+    }
+  }
+  sort::sort(a_names);
+}
+
+}
+
+#endif
+

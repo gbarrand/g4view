@@ -1,0 +1,53 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_ishell_fundata_cbk
+#define inlib_sg_ishell_fundata_cbk
+
+#include "bcbk"
+
+#include "../insh/ishell"
+
+namespace inlib {
+namespace sg {
+
+template <class DATA,class PARENT = bcbk>
+class ishell_fundata_cbk : public PARENT {
+  INLIB_T_CBK(DATA,ishell_fundata_cbk,inlib::sg::ishell_fundata_cbk,PARENT)
+public:
+  typedef return_action (*cbk_shell_data_func)(ishell&,const DATA&);
+public:
+  virtual return_action action() {
+    if(m_shell_data_func) return m_shell_data_func(m_shell,m_data);
+    return return_none;
+  }
+public:
+  ishell_fundata_cbk(ishell& a_insh,cbk_shell_data_func a_func,const DATA& a_data)
+  :parent()
+  ,m_shell(a_insh)
+  ,m_shell_data_func(a_func)
+  ,m_data(a_data)
+  {}
+  virtual ~ishell_fundata_cbk(){}
+public:
+  ishell_fundata_cbk(const ishell_fundata_cbk& a_from)
+  :parent(a_from)
+  ,m_shell(a_from.m_shell)
+  ,m_shell_data_func(a_from.m_shell_data_func)
+  ,m_data(a_from.m_data)
+  {}
+  ishell_fundata_cbk& operator=(const ishell_fundata_cbk& a_from){
+    parent::operator=(a_from);
+    m_shell_data_func = a_from.m_shell_data_func;
+    m_data=a_from.m_data;
+    return *this;
+  }
+protected:
+  ishell& m_shell;
+  cbk_shell_data_func m_shell_data_func;
+  DATA m_data;
+};
+
+}}
+
+#endif

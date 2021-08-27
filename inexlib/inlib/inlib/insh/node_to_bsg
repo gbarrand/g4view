@@ -1,0 +1,56 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_node_to_bsg
+#define inlib_insh_node_to_bsg
+
+#include "../sg/gui_viewer"
+#include "ishell"
+
+namespace inlib {
+
+inline void insh_node_to_bsg(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv,sg::node& a_node) {
+  static const std::string s_header("node_to_bsg :");
+  inlib::args _args(a_args);
+  std::string path;
+  if(_args.is_arg("-out_dir")) {
+    if(a_gv.out_dir().empty()) {
+      a_insh.warn(s_header+" out_dir() is empty.");
+      return;
+    }
+    if(!check_dir(a_gv.out(),a_gv.out_dir())) {
+      a_insh.warn(s_header+" can't get out_dir.");
+      return;
+    }
+    path = a_gv.out_dir()+sep();
+  }
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_header+" no output file given.");
+    return;
+  }
+  path += fnh;
+//if(_args.is_arg("-exsg")) write_exsg _action(a_gv.out());
+  sg::write_bsg _action(a_gv.out());
+  if(!_action.open_buffer()) {
+    a_insh.warn(s_header+" open_buffer() failed.");
+    return;
+  }
+  if(!a_node.write(_action)) {
+    a_insh.warn(s_header+" write() failed.");
+    return;
+  }
+  if(!_action.close_buffer()) {
+    a_insh.warn(s_header+" close_buffer() failed.");
+    return;
+  }
+  if(!_action.write_file(path)) {
+    a_insh.warn(s_header+" write_file() failed.");
+    return;
+  }
+  a_gv.show_console(path+" produced.");
+}
+
+}
+
+#endif

@@ -1,0 +1,104 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_val_func_scripted
+#define inlib_val_func_scripted
+
+#include "val_func"
+#include "yacc/scripted"
+
+namespace inlib {
+
+class val_func_scripted : public val_func, public scripted {
+  typedef val_func parent_val_func;
+  typedef scripted parent_scripted;
+public:
+  INLIB_SCLASS(inlib::val_func_scripted)
+public: //ival_func.
+  virtual void* cast(const std::string& a_class) const {
+    if(void* p = cmp_cast<val_func_scripted>(this,a_class)) return p;
+    return parent_val_func::cast(a_class);
+  }
+  virtual bool eval(const args& a_args,inlib::value& a_return,std::string& a_error) {
+    if(parent_scripted::dimension()==1) {
+      if(a_args.size()<1) {
+        m_out << "val_func_scripted::eval : one arg expected." << std::endl;
+        a_return.set(0.0);
+        return false;
+      }
+      if(!a_args[0].to_double(m_xs[0])) {
+        m_out << "val_func_scripted::eval : can't convert inlib::value to double." << std::endl;
+        a_return.set(0.0);
+        return false;
+      }
+    } else if(parent_scripted::dimension()==2) {
+      if(a_args.size()<2) {
+        m_out << "val_func_scripted::eval : two args expected." << std::endl;
+        a_return.set(0.0);
+        return false;
+      }
+      if(!a_args[0].to_double(m_xs[0])) {
+        m_out << "val_func_scripted::eval : can't convert inlib::value to double." << std::endl;
+        a_return.set(0.0);
+        return false;
+      }
+      if(!a_args[1].to_double(m_xs[1])) {
+        m_out << "val_func_scripted::eval : can't convert inlib::value to double." << std::endl;
+        a_return.set(0.0);
+        return false;
+      }
+    } else {
+      m_out << "val_func_scripted::eval :"
+            << " function with dimension " << parent_scripted::dimension()
+            << " not yet handled." << std::endl;
+      a_return.set(0.0);
+      return false;
+    }
+  //if(!parent_scripted::set_parameters()) {
+  //}
+    if(!parent_scripted::value(m_xs,m_dr,m_serr)) {
+      m_out << "val_func_scripted::eval : parent_scripted::value() failed. Error " << sout(m_serr) << "."
+            << " x was " << m_xs[0] << "."
+            << std::endl;
+      a_return.set(0.0);
+      return false;
+    }
+    a_return.set(m_dr);
+    return true;
+  }
+  virtual ival_func* copy() const { return new val_func_scripted(*this);}
+public:
+  val_func_scripted(std::ostream& a_out,const std::string& a_name,const std::string& a_script)
+  :parent_val_func(a_name,0)  //m_num_args set below.
+  ,parent_scripted(a_out,a_script)
+  {
+    if(!parent_scripted::is_valid()) {
+      m_out << "val_func_scripted::cstor : bad script." << std::endl;
+    }
+    parent_val_func::m_num_args = parent_scripted::dimension()+parent_scripted::param_names().size();
+    m_xs.resize(parent_scripted::dimension());
+  }
+  virtual ~val_func_scripted(){}
+public:
+  val_func_scripted(const val_func_scripted& a_from)
+  :ival_func(a_from),parent_val_func(a_from),parent_scripted(a_from)
+  {
+    parent_val_func::m_num_args = parent_scripted::dimension()+parent_scripted::param_names().size();
+    m_xs.resize(parent_scripted::dimension());
+  }
+  val_func_scripted& operator=(const val_func_scripted& a_from){
+    parent_val_func::operator=(a_from);
+    parent_scripted::operator=(a_from);
+    parent_val_func::m_num_args = parent_scripted::dimension()+parent_scripted::param_names().size();
+    m_xs.resize(parent_scripted::dimension());
+    return *this;
+  }
+private:
+  std::string m_serr;
+  std::vector<double> m_xs;
+  double m_dr;
+};
+
+}
+
+#endif

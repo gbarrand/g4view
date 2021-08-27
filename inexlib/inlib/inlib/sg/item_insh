@@ -1,0 +1,98 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_item_insh
+#define inlib_sg_item_insh
+
+#include "ishell_fundata_cbk"
+#include "../get_lines"
+#include "ilist"
+
+namespace inlib {
+namespace sg {
+
+inline return_action action_insh_source_script(ishell& a_insh,const std::string& a_script) {
+  std::vector<std::string> lines;
+  get_lines(a_script,lines);
+  a_insh.exec_lines_reset_to_stop(lines);
+  return return_to_render;
+}
+
+inline void add_item_insh(ilist& a_widget,const std::string& a_label,ishell& a_insh,const std::string& a_script) {
+  a_widget.add(a_label,new ishell_fundata_cbk<std::string>(a_insh,action_insh_source_script,a_script));
+}
+
+}}
+
+#include "gui_viewer"
+
+namespace inlib {
+namespace sg {
+
+inline void add_image_item_insh(gui_viewer& a_gv,list& a_widget,const std::string& a_label,const std::string& a_img_file,ishell& a_insh,const std::string& a_script) {
+  if(a_gv.m_params.m_image_buttons) {
+    img_byte img;
+    if(a_gv.set_img_from_res_file(a_img_file,img)) {
+      a_widget.add(a_label,img,new ishell_fundata_cbk<std::string>(a_insh,action_insh_source_script,a_script));
+    } else {
+      a_widget.add(a_label,new ishell_fundata_cbk<std::string>(a_insh,action_insh_source_script,a_script));
+    }
+  } else {
+    a_widget.add(a_label,new ishell_fundata_cbk<std::string>(a_insh,action_insh_source_script,a_script));
+  }
+}
+
+inline void add_image_item_insh_after(gui_viewer& a_gv,list& a_widget,const std::string& a_after,const std::string& a_label,const std::string& a_img_file,ishell& a_insh,const std::string& a_script) {
+  if(a_gv.m_params.m_image_buttons) {
+    img_byte img;
+    if(a_gv.set_img_from_res_file(a_img_file,img)) {
+      a_widget.add_after(a_after,a_label,img,new ishell_fundata_cbk<std::string>(a_insh,action_insh_source_script,a_script));
+    } else {
+      a_widget.add_after(a_after,a_label,new ishell_fundata_cbk<std::string>(a_insh,action_insh_source_script,a_script));
+    }
+  } else {
+    a_widget.add_after(a_after,a_label,new ishell_fundata_cbk<std::string>(a_insh,action_insh_source_script,a_script));
+  }
+}
+
+inline void add_white_item_insh(gui_viewer& a_gv,list& a_widget,const std::string& a_label,ishell& a_insh,const std::string& a_script) {
+  add_image_item_insh(a_gv,a_widget,a_label,s_white_jpg(),a_insh,a_script);
+}
+
+inline void create_main_button_insh(gui_viewer& a_gv,
+                                    float a_wcw,float a_wch,float a_wb,float a_hb,float a_roffset,
+                                    unsigned int a_col,unsigned int a_row,
+                                    const std::string& a_label,const std::string& a_img_label,const std::string& a_img,
+                                    ishell& a_insh,const std::string& a_script) {
+  create_main_button(a_gv.out(),a_gv.res_dir(),a_gv.m_params,a_gv.image_readers(),a_gv.ttf(),
+                     a_gv.camenu_sep(),a_wcw,a_wch,a_wb,a_hb,a_roffset,a_col,a_row,
+                     a_label,a_img_label,a_img,
+                     new ishell_fundata_cbk<std::string>(a_insh,action_insh_source_script,a_script));
+}
+
+inline void create_main_button_insh(gui_viewer& a_gv,
+                                    float a_wcw,float a_wch,float a_wb,float a_hb,float a_roffset,
+                                    unsigned int a_col,unsigned int a_row,
+                                    image_button& a_img_button,text_button& a_button,
+                                    const std::string& a_label,const std::string& a_img,
+                                    ishell& a_insh,const std::string& a_script) {
+  create_main_button(a_gv.out(),a_gv.res_dir(),a_gv.m_params,a_gv.image_readers(),
+                     a_gv.camenu_sep(),a_wcw,a_wch,a_wb,a_hb,a_roffset,a_col,a_row,
+                     a_img_button,a_button,a_label,a_img,
+                     new ishell_fundata_cbk<std::string>(a_insh,action_insh_source_script,a_script));
+}
+
+inline void create_main_button_insh(gui_viewer& a_gv,
+                                    float a_wcw,float a_wch,float a_wb,float a_hb,float a_roffset,
+                                    unsigned int a_col,unsigned int a_row,
+                                    const std::string& a_label,
+				    text_button& a_button,
+				    ishell& a_insh,const std::string& a_script) {
+  create_main_button(a_gv.m_params,a_gv.camenu_sep(),a_wcw,a_wch,a_wb,a_hb,a_roffset,a_col,a_row,
+                     a_label,a_button,
+                     new ishell_fundata_cbk<std::string>(a_insh,action_insh_source_script,a_script));
+}
+
+}}
+
+#endif

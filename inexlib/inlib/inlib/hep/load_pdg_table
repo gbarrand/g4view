@@ -1,0 +1,72 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_hep_load_pdg_table
+#define inlib_hep_load_pdg_table
+
+#include "wrap_pdg_table_root_6_16_00_txt"
+
+#include "../srep"
+
+namespace inlib {
+namespace hep {
+
+inline void load_pdg_table(std::vector<std::string>& a_table,const char** (*a_pdg_table)(unsigned int&)){
+  a_table.clear();
+  unsigned int linen;
+  const char** lines = a_pdg_table(linen);
+  for(unsigned int index=0;index<linen;index++) {
+    std::string s = lines[index];
+    replace(s,"@@double_quote@@","\"");
+    replace(s,"@@back_slash@@","\\");
+    a_table.push_back(s);
+  }
+}
+
+}}
+
+#include "pdgs"
+
+namespace inlib {
+namespace hep {
+
+/*
+inline bool load_default_pdg_table(const std::string& a_tmpdir,pdgs& a_pdgs) {
+  std::string stmp;
+  if(!tmpname(a_tmpdir,"inlib_hep_","",stmp)) {
+    a_pdgs.out() << "inlib::hep::load_default_pdg_table : can't create tmp name file." << std::endl;
+    return false;
+  }
+  a_pdgs.set_version("pdg_table_root_6_16_00");
+  std::vector<std::string> txt;
+  load_pdg_table(txt,pdg_table_root_6_16_00_txt);
+  file::write(stmp,txt);
+  bool status = a_pdgs.load_table_file(stmp);
+  if(!file::std_remove(stmp.c_str())) {
+    a_pdgs.out() << "inlib::hep::create_pdgs : can't remove tmp file " << stmp << "." << std::endl;
+  }
+  return status;
+}
+*/
+
+inline bool load_default_pdg_table(pdgs& a_pdgs) {
+  std::vector<std::string> txt;
+  load_pdg_table(txt,pdg_table_root_6_16_00_txt);
+  a_pdgs.set_version("pdg_table_root_6_16_00");
+  size_t _size = 0;
+ {inlib_vforcit(std::string,txt,it) _size += (*it).size()+1;}
+  if(!_size) return false;
+  char* buffer = new char[_size];
+  char* pos = buffer;
+ {inlib_vforcit(std::string,txt,it) {
+    ::memcpy(pos,(*it).c_str(),(*it).size());pos += (*it).size();
+    *pos = '\n';pos++;
+  }}
+  bool status = a_pdgs.load_table_buffer(buffer,_size-1);
+  delete [] buffer;
+  return status;
+}
+
+}}
+
+#endif

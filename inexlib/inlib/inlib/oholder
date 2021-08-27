@@ -1,0 +1,229 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_oholder
+#define inlib_oholder
+
+// class to manage an object.
+// Only one holder owns the object. In case
+// of holder copy(), the new holder receives a null object.
+
+#ifdef INLIB_MEM
+#include "mem"
+#endif
+#include "S_STRING"
+#include "scast"
+
+namespace inlib {
+
+class base_oholder {
+public:
+  INLIB_SCLASS(inlib::base_oholder)
+public:
+  virtual void* cast(const std::string& a_class) const {
+    if(void* p = cmp_cast<base_oholder>(this,a_class)) return p;
+    return 0;
+  }
+  virtual const std::string& s_cls() const = 0;
+public:
+  base_oholder(const std::string& a_name,bool a_own)
+  :m_name(a_name)
+  ,m_own(a_own)
+  {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~base_oholder(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  base_oholder(const base_oholder& a_from):m_name(a_from.m_name),m_own(false) {
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  base_oholder& operator=(const base_oholder& a_from){
+    m_name = a_from.m_name;
+    m_own = false;
+    return *this;
+  }
+public:
+  const std::string& name() const {return m_name;}
+  void disown() {m_own = false;}
+protected:
+  std::string m_name;
+  bool m_own;
+};
+
+template <class T>
+class oholder : public base_oholder {
+  typedef base_oholder parent;
+public:
+  //WARNING : we do not put the T class name in the name of this class.
+  //          We put it in the class_name field.
+  //          We do that because of the bsg file format in order to be able
+  //          to read back the object without having the T class around.
+  INLIB_T_SCLASS(T,inlib::oholder)
+public:
+  virtual void* cast(const std::string& a_class) const {
+    if(void* p = cmp_cast< oholder<T> >(this,a_class)) {return p;}
+    return parent::cast(a_class);
+  }
+//virtual node* copy() const {return new oholder(*this);}
+  virtual const std::string& s_cls() const {return s_class();}
+public:
+  const std::string& class_name() const {return m_class_name;}
+  std::string& class_name() {return m_class_name;}
+public:
+  oholder(T* a_obj = 0,const std::string& a_name = "",bool a_own=true)
+  :parent(a_name,a_own)
+  ,m_class_name(T::s_class())
+  ,m_obj(a_obj) //it takes a_obj ownership.
+  {}
+
+  oholder(T* a_obj,const std::string& a_class,const std::string& a_name = "",bool a_own=true)
+  :parent(a_name,a_own)
+  ,m_class_name(a_class)
+  ,m_obj(a_obj) //it takes a_obj ownership.
+  {}
+
+  virtual ~oholder(){if(m_own) delete m_obj;}
+public:
+  //any copy of a holder does NOT own any object (and we empty the name).
+  oholder(const oholder& a_from)
+  :parent(a_from)
+  ,m_class_name(std::string())
+  ,m_obj(0)
+  {
+    parent::m_name.clear();
+  }
+  oholder& operator=(const oholder& a_from){
+    parent::operator=(a_from);
+    m_class_name.clear();
+    m_obj = 0;
+    parent::m_name.clear();
+    return *this;
+  }
+public:
+  const T* object() const {return m_obj;}
+  T* object() {return m_obj;}
+protected:
+  T* m_obj;
+  std::string m_class_name;
+};
+
+template <class T>
+inline oholder<T>* cast_oholder(base_oholder& a_boh) {
+  typedef oholder<T> h_t;
+  h_t* _h = (h_t*)a_boh.cast(h_t::s_class());
+  if(!_h) return 0;
+  return (_h->class_name()==T::s_class()?_h:0);
+}
+template <class T>
+inline const oholder<T>* cast_oholder(const base_oholder& a_boh) {
+  typedef oholder<T> h_t;
+  h_t* _h = (h_t*)a_boh.cast(h_t::s_class());
+  if(!_h) return 0;
+  return (_h->class_name()==T::s_class()?_h:0);
+}
+
+template <class T>
+inline const T* cast_oholder_object(const base_oholder& a_boh) {
+  typedef oholder<T> h_t;
+  h_t* _h = (h_t*)a_boh.cast(h_t::s_class());
+  if(!_h) return 0;
+  return (_h->class_name()==T::s_class()?_h->object():0);
+}
+template <class T>
+inline T* cast_oholder_object(base_oholder& a_boh) {
+  typedef oholder<T> h_t;
+  h_t* _h = (h_t*)a_boh.cast(h_t::s_class());
+  if(!_h) return 0;
+  return (_h->class_name()==T::s_class()?_h->object():0);
+}
+
+template <class T>
+inline const T* dynamic_cast_oholder_object(const base_oholder& a_boh) {
+  typedef oholder<T> h_t;
+  h_t* _h = (h_t*)a_boh.cast(h_t::s_class());
+  if(!_h) return 0;
+  return dynamic_cast< const T* >(_h->object());
+}
+template <class T>
+inline T* dynamic_cast_oholder_object(base_oholder& a_boh) {
+  typedef oholder<T> h_t;
+  h_t* _h = (h_t*)a_boh.cast(h_t::s_class());
+  if(!_h) return 0;
+  return dynamic_cast<T*>(_h->object());
+}
+
+/*
+template <class T>
+inline void remove_holders(std::vector<node*>& a_vec){
+  typedef holder<T> h_t;
+
+  std::vector<node*>::iterator it;
+  for(it=a_vec.begin();it!=a_vec.end();) {
+    if(h_t* h = cast_holder<T>(*(*it))){
+      it = a_vec.erase(it);
+      delete h;
+      continue;
+    }
+
+    ++it;
+  }
+}
+
+template <class T>
+inline void remove_holders(std::vector<node*>& a_vec,const std::string& a_name){
+  typedef holder<T> h_t;
+
+  std::vector<node*>::iterator it;
+  for(it=a_vec.begin();it!=a_vec.end();) {
+    if(h_t* h = cast_holder<T>(*(*it))){
+      if(h->name()==a_name) {
+        it = a_vec.erase(it);
+        delete h;
+        continue;
+      }
+    }
+
+    ++it;
+  }
+}
+
+template <class T>
+inline T* find_holder(std::vector<node*>& a_vec,const std::string& a_name) {
+  //return the first named found.
+
+  typedef holder<T> h_t;
+  std::vector<node*>::iterator it;
+  for(it=a_vec.begin();it!=a_vec.end();++it) {
+    if(h_t* h = cast_holder<T>(*(*it))){
+      if(h->name()==a_name) return h->object();
+    }
+  }
+  return 0;
+}
+
+template <class T>
+inline T* find_first_holder(std::vector<node*>& a_vec){
+  //return the first T found.
+
+  typedef holder<T> h_t;
+  std::vector<node*>::iterator it;
+  for(it=a_vec.begin();it!=a_vec.end();++it) {
+    if(h_t* h = cast_holder<T>(*(*it))) return h->object();
+  }
+
+
+  return 0;
+}
+*/
+
+}
+
+#endif

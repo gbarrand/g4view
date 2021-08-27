@@ -1,0 +1,95 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_ishell_args_pdgs_cmd
+#define inlib_insh_ishell_args_pdgs_cmd
+
+#include "base_cmd"
+#include "ishell"
+
+#include "../hep/pdgs"
+
+namespace inlib {
+
+class ishell_args_pdgs_cmd : public base_cmd {
+  typedef base_cmd parent;
+protected:
+  typedef void(*exec_func)(ishell&,const std::vector<std::string>&,hep::pdgs&);
+  typedef void(*complete_func)(const std::string&,std::vector<std::string>&);
+  typedef void(*pdgs_complete_func)(hep::pdgs&,const std::string&,std::vector<std::string>&);
+public:
+  virtual base_cmd* copy() const {return new ishell_args_pdgs_cmd(*this);}
+  virtual void execute(const std::vector<std::string>& a_args) {m_exec(m_insh,a_args,m_pdgs);}
+  virtual const std::string& help() {return m_help_text;}
+  virtual void complete_command(const std::string& a_begin,std::vector<std::string>& a_names) const {
+    if(m_complete) {m_complete(a_begin,a_names);return;}
+    if(m_pdgs_complete) {m_pdgs_complete(m_pdgs,a_begin,a_names);return;}
+    a_names.clear();
+  }
+public:
+  ishell_args_pdgs_cmd(ishell& a_insh,hep::pdgs& a_pdgs,
+                           exec_func a_exec,const std::string& a_help_text)
+  :m_insh(a_insh)
+  ,m_pdgs(a_pdgs)
+  ,m_exec(a_exec)
+  ,m_help_text(a_help_text)
+  ,m_complete(0)
+  ,m_pdgs_complete(0)
+  {}
+  ishell_args_pdgs_cmd(ishell& a_insh,hep::pdgs& a_pdgs,
+                           exec_func a_exec,const std::string& a_help_text,
+			   complete_func a_complete)
+  :m_insh(a_insh)
+  ,m_pdgs(a_pdgs)
+  ,m_exec(a_exec)
+  ,m_help_text(a_help_text)
+  ,m_complete(a_complete)
+  ,m_pdgs_complete(0)
+  {}
+  ishell_args_pdgs_cmd(ishell& a_insh,hep::pdgs& a_pdgs,
+                           exec_func a_exec,const std::string& a_help_text,
+			   pdgs_complete_func a_pdgs_complete)
+  :m_insh(a_insh)
+  ,m_pdgs(a_pdgs)
+  ,m_exec(a_exec)
+  ,m_help_text(a_help_text)
+  ,m_complete(0)
+  ,m_pdgs_complete(a_pdgs_complete)
+  {}
+  virtual ~ishell_args_pdgs_cmd() {}
+public:
+  ishell_args_pdgs_cmd(const ishell_args_pdgs_cmd& a_from)
+  :parent(a_from)
+  ,m_insh(a_from.m_insh)
+  ,m_pdgs(a_from.m_pdgs)
+  ,m_exec(a_from.m_exec)
+  ,m_help_text(a_from.m_help_text)
+  ,m_complete(a_from.m_complete)
+  ,m_pdgs_complete(a_from.m_pdgs_complete)
+  {}
+  ishell_args_pdgs_cmd& operator=(const ishell_args_pdgs_cmd& a_from) {
+    parent::operator=(a_from);
+    m_exec = a_from.m_exec;
+    m_help_text = a_from.m_help_text;
+    m_complete = a_from.m_complete;
+    m_pdgs_complete = a_from.m_pdgs_complete;
+    return *this;
+  }
+protected:
+  ishell& m_insh;
+  hep::pdgs& m_pdgs;
+  exec_func m_exec;
+  std::string m_help_text;
+  complete_func m_complete;
+  pdgs_complete_func m_pdgs_complete;
+};
+
+}
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_PDGS_CMD(a__insh,a__pdgs,a__name,a__func,a__help)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_pdgs_cmd(a__insh,a__pdgs,a__func,a__help));
+
+#define INLIB_INSH_ADD_ISHELL_ARGS_PDGS_CMD_COMPLETE(a__insh,a__pdgs,a__name,a__func,a__help,a__complete)\
+  a__insh.add_command(#a__name,new inlib::ishell_args_pdgs_cmd(a__insh,a__pdgs,a__func,a__help,a__complete));
+
+#endif

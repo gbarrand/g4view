@@ -1,0 +1,44 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_ref_data
+#define inlib_sg_ref_data
+
+#ifdef INLIB_MEM
+#include "../mem"
+#include "../S_STRING"
+#endif
+
+namespace inlib {
+namespace sg {
+
+template <class T>
+class ref_data {
+#ifdef INLIB_MEM
+  INLIB_T_SCLASS(T,inlib::sg::ref_data)
+#endif
+public:
+  ref_data(T& a_data):m_data(a_data){ 
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  virtual ~ref_data(){
+#ifdef INLIB_MEM
+    mem::decrement(s_class().c_str());
+#endif
+  }
+public:
+  ref_data(const ref_data& a_from):m_data(a_from.m_data){
+#ifdef INLIB_MEM
+    mem::increment(s_class().c_str());
+#endif
+  }
+  ref_data& operator=(const ref_data&){return *this;}
+public:
+  T& m_data;
+};
+
+}}
+
+#endif

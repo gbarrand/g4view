@@ -1,0 +1,67 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_rroot_mul_mtx
+#define inlib_rroot_mul_mtx
+
+#include "geo_matrices"
+
+namespace inlib {
+namespace rroot {
+
+template <class MATRIX>
+inline bool mul_mtx(std::ostream& a_out,const geo_matrix& a_gmtx,MATRIX& a_matrix) {
+  typedef typename MATRIX::elem_t T;
+
+  if(cast_matrix<geo_identity>(a_gmtx)) {
+
+  } else if(const geo_rotation* grot = cast_matrix<geo_rotation>(a_gmtx)) {
+
+    const double* vec = grot->matrix();
+    a_matrix.mul_mtx_rot_root(
+                     T(vec[0]),T(vec[1]),T(vec[2]),
+                     T(vec[3]),T(vec[4]),T(vec[5]),
+                     T(vec[6]),T(vec[7]),T(vec[8]));
+
+  } else if(const geo_translation* gtrans = cast_matrix<geo_translation>(a_gmtx)) {
+
+    const double* tr = gtrans->trans();
+    a_matrix.mul_translate(T(tr[0]),T(tr[1]),T(tr[2]));
+
+  } else if(const geo_scale* gscale = cast_matrix<geo_scale>(a_gmtx)) {
+
+    const double* sc = gscale->scale();
+    a_matrix.mul_scale(T(sc[0]),T(sc[1]),T(sc[2]));
+
+  } else if(const geo_combi_trans* gctrans = cast_matrix<geo_combi_trans>(a_gmtx)) {
+    //rotated then placed.
+
+    const double* tr = gctrans->trans();
+    a_matrix.mul_translate(T(tr[0]),T(tr[1]),T(tr[2]));
+
+    if(gctrans->rot()) {
+      const double* vec = gctrans->rot()->matrix();
+      a_matrix.mul_mtx_rot_root(
+                     T(vec[0]),T(vec[1]),T(vec[2]),
+                     T(vec[3]),T(vec[4]),T(vec[5]),
+                     T(vec[6]),T(vec[7]),T(vec[8]));
+    }
+
+  } else if(//const geo_hmatrix* ghmatrix =
+              cast_matrix<geo_hmatrix>(a_gmtx)) {
+    a_out << "inlib::rroot::mul_mtx :"
+              << " geo_hmatrix not handled here."
+              << std::endl;
+    return false;
+  } else {
+    a_out << "inlib::rroot::mul_mtx :"
+              << " unknown matrix class " << a_gmtx.s_cls()
+              << std::endl;
+    return false;
+  }
+  return true;
+}
+
+}}
+
+#endif

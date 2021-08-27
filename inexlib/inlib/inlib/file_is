@@ -1,0 +1,199 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_file_is
+#define inlib_file_is
+
+#include "signature"
+#include "path"
+#include "file_read"
+#include "words"
+
+#include <cstdlib>  //for strtod.
+
+namespace inlib {
+namespace file {
+
+inline bool num_csv_doubles(const std::string& a_string,char& a_sep,unsigned int& a_number){
+  if(a_string.empty()) {a_sep=0;a_number=0;return true;} //it is ok.
+
+  //guess sep :
+  char sep = 0;
+ {const char* buffer = a_string.c_str();
+  //::printf("debug : |%s|\n",buffer);
+  const char* pos = buffer;
+  const char* mx = buffer+a_string.size();
+  char* end;
+ {double d = ::strtod(pos,&end);(void)d;}
+  //::printf("debug : d first %g\n",d);
+  if(end==pos) {a_sep=0;a_number=0;return false;} //not starting with a number.
+  if(end==mx) {a_sep=0;a_number=1;return true;} //is ok, one number only.
+  sep = *end;}
+
+  //::printf("debug : %d\n",sep);
+
+  unsigned int number = 0;
+
+  const char* buffer = a_string.c_str();
+  //::printf("debug : |%s|\n",buffer);
+  const char* pos = buffer;
+  const char* mx = buffer+a_string.size();
+  while(true) {
+    char* end;
+   {double d = ::strtod(pos,&end);(void)d;}
+    if(end==pos) {
+      if(end>=mx) break;
+      a_sep = sep;
+      a_number = number;
+      return false; //since a number expected.
+    }
+    //::printf("debug : d %g\n",d);
+    number++;
+    if(*end!=sep) {
+      if(end>=mx) break;
+      a_sep = sep;
+      a_number = number;
+      return false; //since a sep is expected.
+    }
+    pos = end+1;
+    if(pos>mx) break;
+  }
+
+  a_sep = sep;
+  a_number = number;
+  return true;
+}
+
+inline bool is_hippo(const std::string& a_file,bool& a_is){
+  //if((suffix(a_file)=="hiptxt")||(suffix(a_file)=="tnt")) {
+  //  a_is = true;
+  //  return true;
+  //}
+  // An hippo file as :
+  //  one line for title.
+  //  one line with n labels separated by \t
+  //  data lines with n numbers separated by a char sep (not necessary \t) (at least one data line expected).
+  std::vector<std::string> txt;
+  if(!file::read_num(a_file,3,txt)) {a_is=false;return false;}
+  if(txt.size()<3) {a_is=false;return true;}
+  char csep;
+  unsigned int number;
+  if(!num_csv_doubles(txt[2],csep,number)) {a_is=false;return true;}
+  std::vector<std::string> ws;
+  words(txt[1],"\t",false,ws);
+  if(ws.size()!=number) {a_is=false;return true;}
+  bool all_doubles = true;
+  inlib_vforcit(std::string,ws,it) {
+    const char* pos = (*it).c_str();
+    char* end;
+    double d = ::strtod(pos,&end);(void)d;
+    if(end==pos) {all_doubles=false;break;}
+  }
+  a_is = all_doubles?false:true; //all_double=false then we assume the second line is labels of columns.
+  return true;
+}
+
+// NOTE : the below is_csv() does not take into account a column with strings.
+
+inline bool is_csv(const std::vector<std::string>& a_txt,bool& a_is){
+  //a_sep = 0;
+  a_is = false;
+  if(a_txt.empty()) return true;
+
+  //guess sep from first data line :
+  char sep = 0;
+ {const char* buffer = a_txt[0].c_str();
+  //::printf("debug : |%s|\n",buffer);
+  const char* pos = buffer;
+  char* end;
+ {double d = ::strtod(pos,&end);(void)d;}
+  //::printf("debug : d first %g\n",d);
+  if(end==pos) return true; //not starting with a number.
+  //end==mx is ok, one column only.
+  sep = *end;}
+
+  //::printf("debug : %d\n",sep);
+
+  unsigned int first_coln = 0;
+
+  inlib_vforcit(std::string,a_txt,it) {
+    const char* buffer = (*it).c_str();
+    //::printf("debug : |%s|\n",buffer);
+    const char* pos = buffer;
+    const char* mx = buffer+(*it).size();
+    unsigned int coln = 0;
+    while(true) {
+      char* end;
+     {double d = ::strtod(pos,&end);(void)d;}
+      if(end==pos) break;
+      //::printf("debug : d %g\n",d);
+      if(*end!=sep) return true;
+      coln++;
+      pos = end+1;
+      if(pos>mx) break;
+    }
+    //::printf("debug : coln %d\n",coln);
+    if(it==a_txt.begin()) {
+      first_coln = coln;
+    } else {
+      if(coln!=first_coln) return true;
+    }
+  }
+
+  //a_sep = sep;
+  a_is = true;
+  return true;
+}
+
+inline bool is_csv(const std::string& a_file,bool& a_is){
+  // look at suffix. Some file can't be guessed.
+  if(suffix(a_file)=="csv") {a_is = true;return true;}
+  //try to guess :
+  std::vector<std::string> txt;
+  if(!file::read_num(a_file,3,txt,"#")) {a_is=false;return false;}
+  return is_csv(txt,a_is);
+}
+
+inline bool is_lua(const std::string& a_file,bool& a_is){
+  // look at suffix. Some file can't be guessed.
+  if(suffix(a_file)=="lua") {a_is = true;return true;}
+  //try to guess ?
+  a_is = false;
+  return true;
+}
+
+inline bool is_py(const std::string& a_file,bool& a_is){
+  // look at suffix. Some file can't be guessed.
+  if(suffix(a_file)=="py") {a_is = true;return true;}
+  //try to guess ?
+  a_is = false;
+  return true;
+}
+
+inline bool is_kumac(const std::string& a_file,bool& a_is){
+  // look at suffix. Some file can't be guessed.
+  if(suffix(a_file)=="kumac") {a_is = true;return true;}
+  //try to guess ?
+  a_is = false;
+  return true;
+}
+
+inline bool is_insh(const std::string& a_file,bool& a_is){
+  if(suffix(a_file)=="insh") {a_is = true;return true;}
+  unsigned char head[6];
+ {unsigned int num = 6;
+  if(!signature(a_file,head,num)) {a_is = false;return false;}
+  if(num!=6) {a_is = false;return true;}}
+  if(head[0]!='#') {a_is = false;return true;}
+  if(head[1]!='!') {a_is = false;return true;}
+  if(head[2]!='i') {a_is = false;return true;}
+  if(head[3]!='n') {a_is = false;return true;}
+  if(head[4]!='s') {a_is = false;return true;}
+  if(head[5]!='h') {a_is = false;return true;}
+  a_is = true;
+  return true;
+}
+
+}}
+
+#endif

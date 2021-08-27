@@ -1,0 +1,43 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_file_std
+#define inlib_file_std
+
+#include "forit"
+
+#include <cstdio>
+#include <string>
+#include <vector>
+
+namespace inlib {
+namespace file {
+
+inline bool std_remove(const std::string& a_file) {
+  if(a_file.empty()) return true;
+  return (::remove(a_file.c_str()) ==0 ? true : false);
+}
+
+inline bool std_remove(std::vector<std::string>& a_files) {
+  bool status = true;
+  inlib_vforit(std::string,a_files,it) {
+    if(!std_remove(*it)) status = false;
+  }
+  a_files.clear();
+  return status;
+}
+
+inline bool std_rename(const std::string& a_from,const std::string& a_to) {
+  //NOTE : a_from must not be a path !
+  //       Darwin is ok with a path but not Linux !
+  //       For example :
+  //         ::rename("/tmp/tmp01","x");
+  //       return -1 on Linux.
+  //       To do the upper then someone must use move.
+  //       But there is no move in the standard lib C !
+  return (::rename(a_from.c_str(),a_to.c_str()) == 0 ? true : false);
+}
+
+}}
+
+#endif

@@ -1,0 +1,207 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_function
+#define inlib_insh_function
+
+#include "ishell"
+#include "../args"
+
+#include "find_val_funcs"
+#include "../val_func_scripted"
+
+namespace inlib {
+
+inline void insh_function_create(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("function_create");
+  val_funcs* funcs = find_val_funcs(a_mgr);
+  if(!funcs) {
+    a_insh.warn(s_cmd+": can't find "+sout(s_functions())+" in object managers.");
+    return;
+  }
+  if(a_args.empty()) {
+    std::vector<std::string> vs;
+    inlib_vforcit(ival_func*,funcs->funcs(),it) vs.push_back((*it)->name());
+    sort::sort(vs);
+    if(a_insh.in_backquote()) {
+      a_insh.out_begin();
+      inlib_vforcit(std::string,vs,it) a_insh.out(*it,true);
+    } else {
+      a_insh.unix_print(vs);
+    }
+    return;
+  }
+
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+
+  std::string sscript;
+  INLIB_ISHELL_GET_ARG_STRING(script)
+  if(sscript.empty()) {
+    a_insh.warn(s_cmd+": no -script given.");
+    return;
+  }
+
+  ival_func* func = funcs->find(fnh);
+
+  if(!func) {
+    val_func_scripted* _scripted = new val_func_scripted(a_insh.out(),fnh,sscript);
+    if(!_scripted->is_valid()) {
+      a_insh.warn(s_cmd+": bad script "+sout(sscript)+".");
+      delete _scripted;
+      return;
+    }
+    funcs->add(_scripted);
+  } else {
+    val_func_scripted* _scripted = safe_cast<ival_func,val_func_scripted>(*func);
+    if(!_scripted) {
+      a_insh.warn(s_cmd+": existing function "+sout(fnh)+" not a scripted function.");
+      return;
+    }
+    if(!_scripted->initialize(sscript)) {
+      a_insh.warn(s_cmd+": bad script "+sout(sscript)+".");
+      //if(funcs->remove(func)) delete func; //we can't delete, since it may be plotted.
+      return;
+    }
+  }
+}
+
+inline const std::string& insh_function_create_help() {
+  static const std::string s_help("\
+function_create: function_create [-script] [managed_name]\n\
+  Create a scripted managed function. The function is added in the 'functions' object\n\
+  of the current object manager.\n\
+  If no name is given, the known functions (scripted or not) are listed.\n\
+  -script=string the script of the scripted function.\n\
+  If the named function already exists, its script is updated.\n\
+  A scripted function uses a simple C instruction interpreter to evaluate a value.\n\
+  Example:\n\
+    function_create -script='exp(cos(10*x))' my_func\n\
+");
+  return s_help;
+}
+
+inline void insh_function_print(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("function_print");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  val_funcs* funcs = find_val_funcs(a_mgr);
+  if(!funcs) {
+    a_insh.warn(s_cmd+": can't find "+sout(s_functions())+" in object managers.");
+    return;
+  }
+  ival_func* func = funcs->find(fnh);
+  if(!func) {
+    a_insh.warn(s_cmd+": function "+sout(fnh)+" not found.");
+    return;
+  }
+
+  a_insh.out("ival_func.name "+func->name());
+  std::string _s;
+  
+  size_t2s(func->number_of_arguments(),_s);
+  a_insh.out("ival_func.number_of_arguments "+_s);
+  
+  val_func_scripted* _scripted = safe_cast<ival_func,val_func_scripted>(*func);
+  if(_scripted) {
+    num2s(_scripted->dimension(),_s);
+    a_insh.out("scripted.dimension "+_s);
+    size_t2s(_scripted->param_names().size(),_s);
+    a_insh.out("scripted.parameters "+_s);
+   {std::vector<double>::const_iterator itv = _scripted->param_values().begin();
+    std::string sv;
+    inlib_vforcit(std::string,_scripted->param_names(),it){
+      num2s(*itv,sv);
+      a_insh.out("scripted.parameter "+(*it)+" "+sv);
+      itv++;
+    }}
+  }
+}
+
+inline const std::string& insh_function_print_help() {
+  static const std::string s_help("\
+function_print: function_print managed_name\n\
+  Print informations about a named function.\n\
+  Example:\n\
+    function_create -script='exp(cos(10*x))' my_func\n\
+    function_print my_func\n\
+");
+  return s_help;
+}
+
+inline void insh_function_value(ishell& a_insh,const std::vector<std::string>& a_args,omanager& a_mgr) {
+  static const std::string s_cmd("function_value");
+  args _args(a_args);
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  val_funcs* funcs = find_val_funcs(a_mgr);
+  if(!funcs) {
+    a_insh.warn(s_cmd+": can't find "+sout(s_functions())+" in object managers.");
+    return;
+  }
+  ival_func* func = funcs->find(fnh);
+  if(!func) {
+    a_insh.warn(s_cmd+": function "+sout(fnh)+" not found.");
+    return;
+  }
+  if(func->number_of_arguments()!=1) {
+    a_insh.warn(s_cmd+": function not of one dimension.");
+    return;
+  }
+  
+  double x = 0;
+  INLIB_ISHELL_GET_ARG_DOUBLE(x)
+
+  ival_func_1d f1d(*func);
+  double value;
+  if(!f1d.value(x,value)) {
+    std::string sx;
+    num2s(x,sx);
+    a_insh.warn(s_cmd+": function value() fails for x "+sx+".");
+    return;
+  }
+  a_insh.out_num(value);
+}
+
+inline const std::string& insh_function_value_help() {
+  static const std::string s_help("\
+function_value: function_value [-x] managed_name\n\
+  Print the value of a one dimensional named function.\n\
+  -x=real the x input value to the function.\n\
+  Example:\n\
+    function_create -script='exp(cos(10*x))' my_func\n\
+    function_value -x=0 my_func  # should print 2.71828\n\
+");
+  return s_help;
+}
+
+}
+
+#include "histo_fill_random"
+#include "fit"
+
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+
+#include "ishell_args_omanager_cmd"
+
+#define INLIB_INSH_FUNCTION_ADDS(a__insh,a__omanager)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,function_create,inlib::insh_function_create,inlib::insh_function_create_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD_COMPLETE(a__insh,a__omanager,function_value,inlib::insh_function_value,inlib::insh_function_value_help(),inlib::val_funcs_complete)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD_COMPLETE(a__insh,a__omanager,function_print,inlib::insh_function_print,inlib::insh_function_print_help(),inlib::val_funcs_complete)\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,histo_fill_random,inlib::insh_histo_fill_random,inlib::insh_histo_fill_random_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_OMANAGER_CMD(a__insh,a__omanager,histo_fit,inlib::insh_histo_fit,inlib::insh_histo_fit_help())
+
+#endif

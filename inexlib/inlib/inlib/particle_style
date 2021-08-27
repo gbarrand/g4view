@@ -1,0 +1,73 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_particle_style
+#define inlib_insh_particle_style
+
+#include "xml/styles"
+#include "sep"
+
+namespace inlib {
+
+typedef std::map<std::string,xml::styles::style_t> map_sty_t;
+
+inline bool get_particles_styles(const xml::styles& a_styles,const std::string& a_what,map_sty_t& a_map,xml::styles::style_t& a_def){
+  a_map.clear();
+  a_def.clear();
+
+  a_def.push_back(xml::styles::style_item_t("color","red"));
+  a_def.push_back(xml::styles::style_item_t("show_name","false"));
+  a_def.push_back(xml::styles::style_item_t("text_scale","1"));
+  a_def.push_back(xml::styles::style_item_t("at_end","true"));
+
+  bool found = false;
+ {std::string sbeg = a_what+res_sep();
+  inlib_vforcit(xml::styles::named_style_t,a_styles.named_styles(),it) {
+    const std::string& name = (*it).first;
+    if(is_beg(name,sbeg)) {
+      std::string key = name.substr(sbeg.size(),name.size()-sbeg.size());
+      if(key=="default") {
+        a_def = (*it).second;
+      } else {
+        a_map[key] = (*it).second;
+      }
+      found = true;
+    }
+  }}
+  return found;
+}
+
+inline void find_particle_style(const xml::styles& a_styles,
+                                const map_sty_t& a_map,
+                                const xml::styles::style_t& a_def,
+                                const std::string& a_part,
+                                colorf& a_col,
+                                bool& a_show_name,
+                                float& a_text_scale,
+                                bool& a_at_end){
+  a_col = colorf_default();
+  a_show_name = false;
+  a_text_scale = 1;
+  a_at_end = true;
+
+  map_sty_t::const_iterator it = a_map.find(a_part);
+  if(it==a_map.end()) {
+    if(!a_styles.res_color(a_def,"color",a_col,""))             a_col = colorf_default();
+    if(!a_styles.res_bool(a_def,"show_name",a_show_name,""))    a_show_name = false;
+    if(!a_styles.res_value(a_def,"text_scale",a_text_scale,"")) a_text_scale = 1;
+    if(!a_styles.res_bool(a_def,"at_end",a_at_end,""))          a_at_end = true;
+    return;
+  }
+
+  if(!a_styles.res_color((*it).second,"color",a_col,a_part)) {
+    if(!a_styles.res_color(a_def,"color",a_col,"")) a_col = colorf_default();
+  }
+  if(!a_styles.res_bool((*it).second,"show_name",a_show_name,""))    a_show_name = false;
+  if(!a_styles.res_value((*it).second,"text_scale",a_text_scale,"")) a_text_scale = 1;
+  if(!a_styles.res_bool((*it).second,"at_end",a_at_end,""))          a_at_end = true;
+}
+
+}
+
+#endif
+

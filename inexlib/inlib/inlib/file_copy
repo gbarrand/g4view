@@ -1,0 +1,28 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_file_copy
+#define inlib_file_copy
+
+#include "file_read"
+#include "file_write"
+
+namespace inlib {
+namespace file {
+
+inline bool copy_bytes(const std::string& a_from,const std::string& a_to) {
+  if(a_to==a_from) return true;
+  char* buffer;
+  long length;
+  if(!read_bytes(a_from,buffer,length)) return false;
+  bool status = write_bytes(a_to,buffer,(size_t)length);
+  delete [] buffer;
+#ifdef INLIB_MEM
+  mem::decrement(s_new().c_str());
+#endif
+  return status;
+}
+
+}}
+
+#endif

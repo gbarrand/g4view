@@ -1,0 +1,131 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_mime
+#define inlib_mime
+
+#include "file_is"
+#include "gzip"
+#include "fileis"
+
+namespace inlib {
+namespace file {
+
+inline bool mime_type(const std::string& a_file,std::string& a_mime){
+  ////////////////
+  // binaries :
+  ////////////////
+ {bool is;
+  if(is_jpeg(a_file,is)&&is) {
+    a_mime = "image/jpeg";
+    return true;
+  }}
+
+ {bool is;
+  if(is_png(a_file,is)&&is) {
+    a_mime = "image/png";
+    return true;
+  }}
+
+ {bool is;
+  if(is_ico(a_file,is)&&is) {
+    a_mime = "image/vnd.microsoft.icon";
+    return true;
+  }}
+
+ {bool is;
+  if(is_fits(a_file,is)&&is) {
+    a_mime = "image/fits";
+    return true;
+  }}
+
+ {bool is;
+  if(is_gzip(a_file,is)&&is) {
+    a_mime = "application/gzip";
+    return true;
+  }}
+
+ {bool is;
+  if(is_zip(a_file,is)&&is) {
+    a_mime = "application/zip";
+    return true;
+  }}
+
+ {bool is;
+  if(is_root(a_file,is)&&is) {
+    a_mime = "application/octet-stream";
+    return true;
+  }}
+
+  ////////////////
+  // text :
+  ////////////////
+ {bool is;
+  if(is_aida(a_file,is)&&is) {
+    a_mime = "text/xml";
+    return true;
+  }}
+ {bool is;
+  if(is_exsg(a_file,is)&&is) {
+    a_mime = "text/xml";
+    return true;
+  }}
+ {bool is;
+  if(is_scenarios(a_file,is)&&is) {
+    a_mime = "text/xml";
+    return true;
+  }}
+ {bool is;
+  if(is_slides(a_file,is)&&is) {
+    a_mime = "text/xml";
+    return true;
+  }}
+ {bool is;
+  if(is_gdml(a_file,is)&&is) {
+    a_mime = "text/xml";
+    return true;
+  }}
+
+ {bool is;
+  if(is_ps(a_file,is)&&is) {
+    a_mime = "application/postscript";
+    return true;
+  }}
+
+ {bool is;
+  if(is_fog(a_file,is)&&is) {
+    a_mime = "text/plain";
+    return true;
+  }}
+
+ {bool is;
+  if(is_csv(a_file,is)&&is) {
+    a_mime = "text/csv";
+    return true;
+  }}
+
+ {bool is;
+  if(is_hippo(a_file,is)&&is) {
+    a_mime = "text/plain";
+    return true;
+  }}
+
+ {bool is;
+  if(is_dot(a_file,is)&&is) {
+    a_mime = "text/plain";
+    return true;
+  }}
+
+ {bool is;
+  if(is_iv(a_file,is)&&is) {
+    a_mime = "application/octet-stream";
+    return true;
+  }}
+
+  a_mime = "application/octet-stream";
+  return false;
+}
+
+}}
+
+#endif

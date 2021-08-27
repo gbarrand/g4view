@@ -1,0 +1,76 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_sg_astro_fac_args
+#define inlib_sg_astro_fac_args
+
+#include "fac_args"
+#include "gui_viewer"
+#include "view_astro"
+#include "../astro/sastro"
+
+namespace inlib {
+namespace sg {
+
+class astro_fac_args : public virtual fac_args {
+  typedef fac_args parent;
+public:
+  virtual sg::ui& ui() {return m_gv;}
+  virtual std::ostream& out() const {return m_gv.out();}
+
+  virtual bool get_time_now(atime& a_time) const {return m_gv.get_time_now(a_time);}
+  virtual const base_freetype& ttf() const {return m_gv.ttf();}
+  virtual const base_freetype& ttf_marker() const {return m_ttf_marker;}
+
+  virtual const wget* get_simbad_wget() const {
+    view_astro* _vastro = cast_view_astro(m_gv);
+    if(!_vastro) return 0;
+    return &_vastro->wget();
+  }
+
+  virtual const wget* get_stars_wget() const {
+    view_astro* _vastro = cast_view_astro(m_gv);
+    if(!_vastro) return 0;
+    return &_vastro->wget();
+  }
+  virtual bool get_stars_local() const {
+    view_astro* _vastro = cast_view_astro(m_gv);
+    if(!_vastro) return true;
+    const std::string& stars_host = _vastro->host();
+    //unsigned int stars_port = _vastro->port();
+    return (stars_host.empty()||(stars_host==s_local())?true:false);
+  }
+  virtual void get_stars_host(std::string& a_host) const {
+    view_astro* _vastro = cast_view_astro(m_gv);
+    if(!_vastro) {a_host.clear();return;}
+    a_host = _vastro->host();
+  }
+  virtual unsigned int get_stars_port() const {
+    view_astro* _vastro = cast_view_astro(m_gv);
+    if(!_vastro) return 0;
+    return _vastro->port();
+  }
+  virtual void get_stars_dir(std::string& a_dir) const {
+    a_dir = m_gv.doc_dir();
+  }
+
+  virtual SDSS::catalog* get_stars_catalog() const {
+    view_astro* _vastro = cast_view_astro(m_gv);
+    if(!_vastro) return 0;
+    return &_vastro->SDSS_catalog();
+  }
+public:
+  astro_fac_args(gui_viewer& a_gv,const base_freetype& a_ttf_marker):m_gv(a_gv),m_ttf_marker(a_ttf_marker){}
+  virtual ~astro_fac_args(){}
+public:
+  astro_fac_args(const astro_fac_args& a_from):parent(a_from),m_gv(a_from.m_gv),m_ttf_marker(a_from.m_ttf_marker){}
+  astro_fac_args& operator=(const astro_fac_args&) {return *this;}
+protected:
+  gui_viewer& m_gv;
+  const base_freetype& m_ttf_marker;
+};
+
+
+}}
+
+#endif

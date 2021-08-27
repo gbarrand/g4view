@@ -1,0 +1,214 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_net_sg_serv
+#define inlib_net_sg_serv
+
+#include "../net/inet_socket"
+#include "../press_func"
+#include "../S_STRING"
+
+namespace inlib {
+namespace net {
+
+class sg_serv {
+public:
+  INLIB_SCLASS(inlib::net::sg_serv)
+public:
+  virtual void stop_sg_client() {}
+  virtual void finalize() {}
+public:
+  sg_serv(std::ostream& a_out)
+  :m_out(a_out)
+  ,m_data_server_sock(a_out,false)
+  ,m_sg_client_sock(a_out,false)
+  {}
+  virtual ~sg_serv() {}
+protected:
+  sg_serv(const sg_serv& a_from)
+  :m_out(a_from.m_out)
+  ,m_data_server_sock(a_from.m_out,false)
+  ,m_sg_client_sock(a_from.m_out,false)
+  {}
+  sg_serv& operator=(const sg_serv& a_from){
+    return *this;
+  }
+public:
+  std::ostream& out() const {return m_out;}
+  net::inet_socket& data_server_sock() {return m_data_server_sock;}
+  net::inet_socket& sg_client_sock() {return m_sg_client_sock;}
+
+  bool receive_zdoc(decompress_func a_decompress_func,char*& a_uc_buffer,uint64& a_uc_length) {
+    // The sender pending code is in inlib/net/sg_client::send_buffer_doc().
+    a_uc_buffer = 0;
+    a_uc_length = 0; //uncompressed.
+
+    std::string options;
+    if(!m_sg_client_sock.fetch_string(options)) {
+      m_out << "inlib::net::sg_serv::receive_zdoc :"
+            << " fetch_string failed."
+            << std::endl;
+      stop_sg_client();
+      return false;
+    }
+    size_t lopt = options.size()+1; //include trailing null char.
+
+    if(!m_sg_client_sock.fetch<uint64>(a_uc_length)) {
+      m_out << "inlib::net::sg_serv::receive_zdoc :"
+            << " fetch uc_length failed."
+            << std::endl;
+      a_uc_length = 0;
+      stop_sg_client();
+      return false;
+    }
+
+    uint64 cp_length; //compressed.
+    if(!m_sg_client_sock.fetch<uint64>(cp_length)) {
+      m_out << "inlib::net::sg_serv::receive_zdoc :"
+            << " fetch cp_length failed."
+            << std::endl;
+      a_uc_length = 0;
+      stop_sg_client();
+      return false;
+    }
+
+    char* cp_buffer = new char[lopt+(size_t)cp_length];
+    if(!cp_buffer) {
+      m_out << "inlib::net::sg_serv::receive_zdoc :"
+            << " can't allocate " << cp_length << " bytes."
+            << std::endl;
+      a_uc_length = 0;
+      stop_sg_client();
+      return false;
+    }
+
+    char* cp_pos = cp_buffer+lopt;
+    if(!m_sg_client_sock.fetch_buffer(cp_pos,cp_length)) { //cp_length=0 is ok.
+      m_out << "inlib::net::sg_serv::receive_zdoc :"
+            << " fetch_buffer failed."
+            << std::endl;
+      delete [] cp_buffer;
+      a_uc_length = 0;
+      stop_sg_client();
+      return false;
+    }
+
+    if(a_uc_length) {
+      if(cp_length!=a_uc_length) { //decompress.
+        if(!a_decompress_func) {
+          m_out << "inlib::net::sg_serv::receive_zdoc :"
+                << " can't decompress, no uncompress func given."
+                << std::endl;
+          delete [] cp_buffer;
+          a_uc_length = 0;
+          return true; //not fatal.
+        } else {
+          a_uc_buffer = new char[lopt+a_uc_length];
+          char* uc_pos = a_uc_buffer+lopt;
+          unsigned int rsz;
+          if(!a_decompress_func(m_out,cp_length,cp_pos,a_uc_length,uc_pos,rsz)){
+            m_out << "inlib::net::sg_serv::receive_zdoc :"
+                  << " unzip failed."
+                  << std::endl;
+            delete [] cp_buffer;
+            delete [] a_uc_buffer;a_uc_buffer = 0;
+            return true; //not fatal
+          }
+          if(rsz!=a_uc_length) {
+            m_out << "inlib::net::sg_serv::receive_zdoc :"
+                  << " unzip size mismatch."
+                  << std::endl;
+            delete [] cp_buffer;
+            delete [] a_uc_buffer;a_uc_buffer = 0;
+            return true; //not fatal
+          }
+        }
+      } else { //do not decompress.
+        a_uc_buffer = cp_buffer;
+        cp_buffer = 0;
+      }
+    } else {
+      //a_uc_length=0 is ok.
+      a_uc_buffer = new char[lopt];
+    }
+
+    ::memcpy(a_uc_buffer,options.c_str(),lopt); //include trailing null char.
+
+    a_uc_length += lopt;
+
+    delete [] cp_buffer;
+    return true;
+  }
+
+  bool receive_zdoc_proxy(std::string& a_opts,uint64& a_uc_length,uint64& a_cp_length,char*& a_cp_buffer) {
+    // The sender pending code is in inlib/net/sg_client::send_buffer_doc().
+    a_opts.clear();
+    a_uc_length = 0;
+    a_cp_length = 0;
+    a_cp_buffer = 0;
+
+    if(!m_sg_client_sock.fetch_string(a_opts)) {
+      m_out << "inlib::net::sg_serv::receive_zdoc_proxy :"
+            << " fetch_string failed."
+            << std::endl;
+      stop_sg_client();
+      return false;
+    }
+
+    if(!m_sg_client_sock.fetch<uint64>(a_uc_length)) {
+      m_out << "inlib::net::sg_serv::receive_zdoc :"
+            << " fetch uc_length failed."
+            << std::endl;
+      a_opts.clear();
+      a_uc_length = 0;
+      stop_sg_client();
+      return false;
+    }
+
+    if(!m_sg_client_sock.fetch<uint64>(a_cp_length)) {
+      m_out << "inlib::net::sg_serv::receive_zdoc :"
+            << " fetch cp_length failed."
+            << std::endl;
+      a_opts.clear();
+      a_uc_length = 0;
+      stop_sg_client();
+      return false;
+    }
+
+    a_cp_buffer = new char[(size_t)a_cp_length+1]; //+1 in case a_cp_length=0
+    if(!a_cp_buffer) {
+      m_out << "inlib::net::sg_serv::receive_zdoc :"
+            << " can't allocate " << a_cp_length << " bytes."
+            << std::endl;
+      a_opts.clear();
+      a_uc_length = 0;
+      a_cp_length = 0;
+      stop_sg_client();
+      return false;
+    }
+
+    if(!m_sg_client_sock.fetch_buffer(a_cp_buffer,a_cp_length)) { //a_cp_length=0 is ok.
+      m_out << "inlib::net::sg_serv::receive_zdoc :"
+            << " fetch_buffer failed."
+            << std::endl;
+      a_opts.clear();
+      a_uc_length = 0;
+      a_cp_length = 0;
+      delete [] a_cp_buffer;
+      a_cp_buffer = 0;
+      stop_sg_client();
+      return false;
+    }
+
+    return true;
+  }
+
+protected:
+  std::ostream& m_out;
+  net::inet_socket m_data_server_sock;
+  net::inet_socket m_sg_client_sock;
+};
+
+}}
+
+#endif

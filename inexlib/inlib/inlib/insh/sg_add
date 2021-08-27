@@ -1,0 +1,1049 @@
+// Copyright (C) 2010, Guy Barrand. All rights reserved.
+// See the file inlib.license for terms.
+
+#ifndef inlib_insh_sg_add
+#define inlib_insh_sg_add
+
+#include "../sg/view_evd"
+#include "../sg/view_sg_client"
+#include "../sg/xy_grid"
+#include "../sg/cone_hat"
+#include "../sg/markers"
+#include "../sg/show_time_anim"
+#include "../sg/insh_anim"
+#include "../sg/facet"
+#include "../sg/args2fields"
+#include "../parse"
+
+namespace inlib {
+
+inline void insh_scene_add_managed_object(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_managed_object");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  //_args.remove_string_delimiters_in_values();
+
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no name given.");
+    return;
+  }
+  _args.remove(fnh);
+
+  bool do_copy;
+  INLIB_ISHELL_IS_ARG_VARIABLE(copy,do_copy);
+  bool do_infos;
+  INLIB_ISHELL_IS_ARG_VARIABLE(infos,do_infos);
+  
+  std::string sinfos;
+  INLIB_ISHELL_GET_ARG_STRING(infos)
+  
+  bool do_color = _args.is_arg("-color");
+  colorf color = colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+
+  INLIB_ISHELL_GET_ARGS_MATRIX
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+  
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  base_oholder* _boh = a_gv.get_omanager().find_base_oholder(fnh);
+  if(!_boh) {
+    a_insh.warn(s_cmd+": "+sout(fnh)+" not found.");
+    return;
+  }
+  sg::node* _node = cast_oholder_object<sg::node>(*_boh);
+  if(!_node) {
+    a_insh.warn(s_cmd+": object "+sout(fnh)+" not a sg::node.");
+    return;
+  }
+
+  if(do_infos||do_mtx||do_color) {
+    sg::separator* sep = new sg::separator;
+
+    if(do_infos) {
+      sg::infos* infos = new sg::infos;
+      infos->add_title(sinfos);
+      sep->add(infos);
+    }
+
+    INLIB_ISHELL_SEP_ADD_MATRIX
+
+  //sg::draw_style* ds = new sg::draw_style;
+  //ds->style = sg::draw_lines;
+  //ds->line_width = line_width;
+  //sep->add(ds);
+
+    if(do_color) {
+      sg::rgba* mat = new sg::rgba();
+      mat->color = color;
+      sep->add(mat);
+    }
+
+    if(do_copy) {
+      sep->add(_node->copy());
+    } else {
+      _boh->disown();
+      a_gv.get_omanager().remove_base_oholder(_boh,true);
+      sep->add(_node);
+    }
+    
+    INLIB_ISHELL_SEP_PLACEMENT
+  } else {
+    if(do_copy) {
+      sg::node* sep = _node->copy();
+      INLIB_ISHELL_SEP_PLACEMENT
+    } else {
+      _boh->disown();
+      a_gv.get_omanager().remove_base_oholder(_boh,true);
+      sg::node* sep = _node;
+      INLIB_ISHELL_SEP_PLACEMENT
+    }
+    
+  }
+}
+
+inline void insh_scene_add_xy_grid(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_xy_grid");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+  //_args.remove_string_delimiters_in_values();
+
+  colorf color = colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+  float line_width = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(line_width)
+  float sx = 0.1f;
+  INLIB_ISHELL_GET_ARG_FLOAT(sx)
+  unsigned int nx = 10;
+  INLIB_ISHELL_GET_ARG_UINT(nx)
+  float sy = 0.1f;
+  INLIB_ISHELL_GET_ARG_FLOAT(sy)
+  unsigned int ny = 10;
+  INLIB_ISHELL_GET_ARG_UINT(ny)
+
+  INLIB_ISHELL_GET_ARGS_MATRIX
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+  
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+
+  sg::separator* sep = new sg::separator;
+
+  INLIB_ISHELL_SEP_ADD_MATRIX
+
+  sg::draw_style* ds = new sg::draw_style;
+  ds->style = sg::draw_lines;
+  ds->line_width = line_width;
+  sep->add(ds);
+
+  sg::rgba* mat = new sg::rgba();
+  mat->color = color;
+  sep->add(mat);
+
+  sg::xy_grid* _grid = new sg::xy_grid;
+  _grid->sx = sx;
+  _grid->nx = nx;
+  _grid->sy = sy;
+  _grid->ny = ny;
+  sep->add(_grid);
+
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+inline const std::string& insh_scene_add_xy_grid_help() {
+  static const std::string s_help("\
+scene_add_xy_grid: scene_add_xy_grid [options]\n\
+  Add a wire-frame grid in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  -color=string color of the grid (default lightgrey).\n\
+  -line_width=real line width (default 1).\n\
+  -sx=real x size of each cell (default 0.1).\n\
+  -sy=real y size of each cell (default 0.1).\n\
+  -nx=uint x number of cells (default 10).\n\
+  -ny=uint y number of cells (default 10).\n\
+  -scale=real overall scale (default 1).\n\
+  -rotate='real real real real' overall rotation (default '0 0 1 0'). First\n\
+  three numbers specify the axis, the last one the angle in radians.\n\
+  -translate='real real real' overall translation (default '0 0 0').\n\
+  Scale, rotation, translation are applied in this order.\n\
+  Example:\n\
+    scene_add_xy_grid -color=red -line_width=1 -translate='0 -300 0' -rotate='1 0 0 1.570796' -sx=100 -nx=10 -sy=100 -ny=10\n\
+");
+  return s_help;
+}
+
+inline void set_ROOT_style(sg::text_style& a_style) {
+  a_style.font = sg::font_arialbd_ttf();
+//a_style.font_modeling = ?;
+  a_style.front_face = sg::winding_cw;
+  a_style.smoothing = true;
+}
+
+inline void insh_scene_add_axis(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_axis");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+
+  bool do_infos = _args.is_arg("-infos");
+  std::string sinfos;
+  INLIB_ISHELL_GET_ARG_STRING(infos)
+  
+  colorf color = colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+
+  INLIB_ISHELL_GET_ARGS_MATRIX
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  sg::separator* sep = new sg::separator;
+
+  if(do_infos) {
+    sg::infos* infos = new sg::infos;
+    infos->add_title(sinfos);
+    sep->add(infos);
+  }
+
+  INLIB_ISHELL_SEP_ADD_MATRIX
+
+ {sg::axis* axis = new sg::axis(a_gv.ttf());
+  sep->add(axis);
+  axis->set_color(color);
+ {std::string serr;
+  if(!sg::args2fields(_args,*axis,serr)) {
+    delete sep;
+    a_insh.warn(s_cmd+": "+serr);
+    return;
+  }}
+ {std::vector<std::string> to_rm;
+  inlib_vforcit(args::arg,_args.get_args(),it) {
+    const std::string& skey = (*it).first;
+    const std::string& svalue = (*it).second;
+    if(skey.size()&&(skey[0]=='-')) {
+      std::string sfield = skey.substr(1,skey.size()-1);
+      if(!axis->set_from_string(a_insh.out(),a_gv.styles().cmaps(),sfield,svalue)) {
+        delete sep;
+        a_insh.warn(s_cmd+": set field failed for field "+sout(sfield)+", and value "+sout(svalue)+".");
+        return;
+      }
+      to_rm.push_back(skey);
+    }
+  }
+  _args.remove(to_rm);}}
+
+  INLIB_ISHELL_ARGS_UNEXPECTED_DELETE(sep)
+  
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+inline void insh_scene_add_axes(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_axes");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+
+  colorf color = colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+
+  INLIB_ISHELL_GET_ARGS_MATRIX
+
+  std::string sx_title("x");
+  INLIB_ISHELL_GET_ARG_STRING(x_title)
+  float x_width = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(x_width)
+  float x_min = 0;
+  INLIB_ISHELL_GET_ARG_FLOAT(x_min)
+  float x_max = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(x_max)
+
+  std::string sy_title("y");
+  INLIB_ISHELL_GET_ARG_STRING(y_title)
+  float y_width = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(y_width)
+  float y_min = 0;
+  INLIB_ISHELL_GET_ARG_FLOAT(y_min)
+  float y_max = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(y_max)
+
+  std::string sz_title("z");
+  INLIB_ISHELL_GET_ARG_STRING(z_title)
+  float z_width = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(z_width)
+  float z_min = 0;
+  INLIB_ISHELL_GET_ARG_FLOAT(z_min)
+  float z_max = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(z_max)
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  sg::separator* sep = new sg::separator;
+
+  INLIB_ISHELL_SEP_ADD_MATRIX
+
+ {sg::separator* _sep = new sg::separator;
+  sep->add(_sep);
+  sg::axis* axis = new sg::axis(a_gv.ttf());
+  axis->title = sx_title;
+  axis->width = x_width;
+  axis->minimum_value = x_min;
+  axis->maximum_value = x_max;
+  axis->tick_up = false;
+  axis->set_color(color);
+  set_ROOT_style(axis->labels_style());
+  set_ROOT_style(axis->title_style());
+  set_ROOT_style(axis->mag_style());
+ {sg::text_style& _style = axis->labels_style();
+  _style.x_orientation = vec3f(1,0,0);
+  _style.y_orientation = vec3f(0,1,0);
+  _style.hjust = sg::center;
+  _style.vjust = sg::top;}
+ {sg::text_style& _style = axis->title_style();
+  _style.x_orientation = vec3f(1,0,0);
+  _style.y_orientation = vec3f(0,1,0);
+  _style.hjust = sg::right;
+  _style.vjust = sg::top;}
+
+  _sep->add(axis);}
+
+ {sg::separator* _sep = new sg::separator;
+  sep->add(_sep);
+
+  sg::matrix* mtx = new sg::matrix;
+  mtx->set_rotate(0,0,1,fhalf_pi());
+  mtx->mul_rotate(1,0,0,fpi()); //applied first.
+  _sep->add(mtx);
+
+  sg::axis* axis = new sg::axis(a_gv.ttf());
+  axis->title = sy_title;
+  axis->width = y_width;
+  axis->minimum_value = y_min;
+  axis->maximum_value = y_max;
+  axis->tick_up = false;
+  axis->set_color(color);
+  set_ROOT_style(axis->labels_style());
+  set_ROOT_style(axis->title_style());
+  set_ROOT_style(axis->mag_style());
+ {sg::text_style& _style = axis->labels_style();
+  _style.x_orientation = vec3f(0,1,0);
+  _style.y_orientation = vec3f(1,0,0);
+  _style.hjust = sg::right;
+  _style.vjust = sg::middle;}
+ {sg::text_style& _style = axis->title_style();
+  _style.x_orientation = vec3f(0,1,0);
+  _style.y_orientation = vec3f(1,0,0);
+  _style.hjust = sg::right;
+  _style.vjust = sg::bottom;}
+
+  _sep->add(axis);}
+
+ {sg::separator* _sep = new sg::separator;
+  sep->add(_sep);
+
+  sg::matrix* mtx = new sg::matrix;
+  mtx->set_rotate(0,1,0,-fhalf_pi());
+  _sep->add(mtx);
+
+  sg::axis* axis = new sg::axis(a_gv.ttf());
+  axis->title = sz_title;
+  axis->width = z_width;
+  axis->minimum_value = z_min;
+  axis->maximum_value = z_max;
+  axis->tick_up = false;
+  axis->set_color(color);
+  set_ROOT_style(axis->labels_style());
+  set_ROOT_style(axis->title_style());
+  set_ROOT_style(axis->mag_style());
+ {sg::text_style& _style = axis->labels_style();
+  if(true) { //in yz plane text:
+    _style.x_orientation = vec3f(-1,0,0);
+    _style.y_orientation = vec3f( 0,1,0);
+    _style.hjust = sg::center;
+    _style.vjust = sg::top;
+  } else { //in xy plane text:
+    _style.x_orientation = vec3f(-1,0,0);
+    _style.y_orientation = vec3f( 0,1,0);
+    _style.hjust = sg::center;
+    _style.vjust = sg::top;
+  }}
+ {sg::text_style& _style = axis->title_style();
+  if(true) { //in yz plane text:
+    _style.x_orientation = vec3f(-1,0,0);
+    _style.y_orientation = vec3f( 0,1,0);
+    _style.hjust = sg::center;
+    _style.vjust = sg::top;
+  } else { //in xy plane text:
+    _style.x_orientation = vec3f(-1,0,0);
+    _style.y_orientation = vec3f( 0,1,0);
+    _style.hjust = sg::center;
+    _style.vjust = sg::top;
+  }}
+
+  _sep->add(axis);}
+
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+inline void insh_scene_add_cone_hat(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_cone_hat");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+
+  colorf color = colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+
+  float angle = fpi()/4.0f;
+  INLIB_ISHELL_GET_ARG_FLOAT(angle)
+  float height = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(height)
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+  
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  float rmax = ftan(angle)*height;
+
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  sg::separator* sep = new sg::separator;
+
+  sep->add(new sg::matrix);
+
+  sg::rgba* mat = new sg::rgba();
+  mat->color = color;
+  sep->add(mat);
+
+  sg::cone_hat* cone = new sg::cone_hat;
+  cone->height = height;
+  cone->rmin = 0;
+  cone->rmax = rmax;
+  sep->add(cone);
+
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+inline const std::string& insh_scene_add_cone_help() {
+  static const std::string s_help("\
+scene_add_cone: scene_add_cone [options]\n\
+  Add a cone in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  -color=string color of the cone (default lightgrey).\n\
+  -height=real height of the cone (default 1).\n\
+  -angle=real angle of the cone (default pi/4).\n\
+  Example:\n\
+    scene_add_cone -angle=0.5235 -height=10  # angle pi/6\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_add_cube(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_cube");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+
+  colorf color = colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+
+  float width = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(width)
+  float height = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(height)
+  float depth = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(depth)
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  sg::separator* sep = new sg::separator;
+
+  sep->add(new sg::matrix);
+
+  sg::rgba* mat = new sg::rgba();
+  mat->color = color;
+  sep->add(mat);
+
+  sg::cube* cube = new sg::cube;
+  cube->width = width;
+  cube->height = height;
+  cube->depth = depth;
+  sep->add(cube);
+
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+inline const std::string& insh_scene_add_cube_help() {
+  static const std::string s_help("\
+scene_add_cube: scene_add_cube [options]\n\
+  Add a cube in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  -color=string color of the cube (default lightgrey).\n\
+  -width=real width of the cube (default 1).\n\
+  -height=real height of the cube (default 1).\n\
+  -depth=real depth of the cube (default 1).\n\
+  Example:\n\
+    scene_add_cube\n\
+    scene_add_cube -width=2\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_add_facet(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_facet");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+
+  colorf color = colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+
+  float width = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(width)
+  float height = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(height)
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+  
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  sg::separator* sep = new sg::separator;
+
+  sep->add(new sg::matrix);
+
+  sg::rgba* mat = new sg::rgba();
+  mat->color = color;
+  sep->add(mat);
+
+  sg::facet* facet = new sg::facet;
+  facet->width = width;
+  facet->height = height;
+  sep->add(facet);
+
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+inline const std::string& insh_scene_add_facet_help() {
+  static const std::string s_help("\
+scene_add_facet: scene_add_facet [options]\n\
+  Add a facet (square) in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  -color=string color of the facet (square) (default lightgrey).\n\
+  -width=real width of the facet (square) (default 1).\n\
+  -height=real height of the facet (square) (default 1).\n\
+  -depth=real depth of the facet (square) (default 1).\n\
+  Example:\n\
+    scene_add_facet\n\
+    scene_add_facet -width=2\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_add_vertices(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_vertices");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+
+  gl::mode_t mode = gl::points();
+  INLIB_ISHELL_GET_ARG_GL_PRIM(mode)
+
+  colorf color = colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+
+  float line_width = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(line_width)
+  float point_size = 1;
+  INLIB_ISHELL_GET_ARG_FLOAT(point_size)
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+  
+  std::vector<std::string> vs;
+  _args.to_vector(vs);
+  _args.clear();
+
+  std::vector<float> fs;
+ {float value;
+  inlib_vforcit(std::string,vs,it) {
+    if(!to<float>(*it,value)) {
+      a_insh.warn(s_cmd+": "+(*it)+" is not a float.");
+      return;
+    }
+    fs.push_back(value);
+  }}
+
+  INLIB_ISHELL_ARGS_UNEXPECTED
+
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  size_t num_points = fs.size()/3;
+ {std::string snum_points;
+  size_t2s(fs.size(),snum_points);
+  if(num_points*3!=fs.size()) {
+    a_insh.warn(s_cmd+": a multiple of three numbers expected. ("+snum_points+") given.");
+    return;
+  }}
+
+  sg::separator* sep = new sg::separator;
+
+  sep->add(new sg::matrix);
+
+  if(mode==gl::points()) {
+    sg::draw_style* ds = new sg::draw_style;
+    ds->style = sg::draw_points;
+    ds->point_size = point_size;
+    sep->add(ds);
+  } if( (mode==gl::lines()) || (mode==gl::line_loop()) || (mode==gl::line_strip()) ){
+    sg::draw_style* ds = new sg::draw_style;
+    ds->style = sg::draw_lines;
+    ds->line_width = line_width;
+    sep->add(ds);
+  }
+
+  sg::rgba* mat = new sg::rgba();
+  mat->color = color;
+  sep->add(mat);
+
+  sg::vertices* vtxs = new sg::vertices;
+  vtxs->mode = mode;
+  vtxs->add(fs);
+  sep->add(vtxs);
+
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+inline const std::string& insh_scene_add_vertices_help() {
+  static const std::string s_help("\
+scene_add_vertices: scene_add_vertices [options] [x y z]\n\
+  Add a primitive in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  -placement=[static,dynamic,static_blend] the scene graph to add into (default dynamic).\n\
+  -mode=[points,lines,line_loop,line_strip,triangles,triangle_strip,triangle_fan] (default points).\n\
+  Note that lines is for segments, and line_strip is for a polyline.\n\
+  -color=string color of the vertices (default lightgrey).\n\
+  -line_width=real line width (default 1) if relevant.\n\
+  -point_size=real point size (default 1) if relevant.\n\
+  Example: add a wire-frame square :\n\
+    scene_add_vertices -mode=line_strip -color=blue 0 0 0 1 0 0 1 1 0 0 1 0 0 0 0\n\
+  Example: add a triangle :\n\
+    scene_add_vertices -mode=triangles -color=blue -1 0 0 1 0 0 0 1 0\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_add_markers(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_markers");
+  if(a_args.empty()) {
+    std::vector<std::string> sv;
+    sg::smarker_styles(sv);
+    a_insh.out_begin();
+    a_insh.out(sv,true);
+    return;
+  }
+
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  ////////////////////////////////////////
+  /// args : /////////////////////////////
+  ////////////////////////////////////////
+  args _args(a_args);
+
+  colorf color = colorf_default();
+  INLIB_ISHELL_GET_ARG_COLOR(color)
+
+  std::string stype;
+  INLIB_ISHELL_GET_ARG_STRING(type)
+  sg::marker_style _style;
+  if(!sg::smarker_style(stype,_style)) _style = sg::marker_cross;
+
+  float size = 10;
+  INLIB_ISHELL_GET_ARG_FLOAT(size)
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+
+  std::vector<std::string> vs;
+  _args.to_vector(vs);
+  _args.clear();
+
+  std::vector<float> fs;
+ {float value;
+  inlib_vforcit(std::string,vs,it) {
+    if(!to<float>(*it,value)) {
+      a_insh.warn(s_cmd+": "+(*it)+" is not a float.");
+      return;
+    }
+    fs.push_back(value);
+  }}
+
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
+  size_t num_points = fs.size()/3;
+ {std::string snum_points;
+  size_t2s(fs.size(),snum_points);
+  if(num_points*3!=fs.size()) {
+    a_insh.warn(s_cmd+": a multiple of three numbers expected. ("+snum_points+") given.");
+    return;
+  }}
+
+  sg::separator* sep = new sg::separator;
+
+  sep->add(new sg::matrix);
+
+  sg::rgba* mat = new sg::rgba();
+  mat->color = color;
+  sep->add(mat);
+
+  sg::markers* _marks = new sg::markers;
+  _marks->size = size;
+  _marks->style = _style;
+  if(!_marks->add(fs)) {}
+  sep->add(_marks);
+
+  INLIB_ISHELL_SEP_PLACEMENT
+}
+
+inline const std::string& insh_scene_add_markers_help() {
+  static const std::string s_help("\
+scene_add_markers: scene_add_markers [options] [x y z]\n\
+  Add markers in the static scene graph.\n\
+  Without argument, it prints the available styles.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  -placement=[static,dynamic,static_blend] the scene graph to add into (default dynamic).\n\
+  -style=string (default cross).\n\
+  -color=string color of the markers (default lightgrey).\n\
+  -size=real size (default 10) of markers.\n\
+  Example:\n\
+    scene_add_markers\n\
+    # add markers on corners of a triangle:\n\
+    scene_add_markers -style=star -size=20 -color=blue -1 0 0 1 0 0 0 1 0\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_add_show_time_anim(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_show_time_anim");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+  sg::show_time_anim* _anim = new sg::show_time_anim(a_gv);
+  args _args(a_args);
+  if(_args.is_arg("-dynamic")) {
+    _evd->dynamic_sg().add(_anim);
+  } else {
+    _evd->static_sg().add(_anim);
+  }
+}
+
+inline const std::string& insh_scene_add_show_time_anim_help() {
+  static const std::string s_help("\
+scene_add_show_time_anim: scene_add_show_time_anim\n\
+  Add a show_time_anim node in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+");
+  return s_help;
+}
+
+inline void insh_scene_add_insh_anim(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_insh_anim");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) return;
+
+  args _args(a_args);
+  std::string sfile;
+  if(!_args.find("-file",sfile)||sfile.empty()) {
+    a_insh.warn(s_cmd+": no -file=<string> argument given.");
+    return;
+  }
+
+  std::vector<std::string> lines;
+  lines.push_back(". "+sfile);
+
+  sg::insh_anim* _anim = new sg::insh_anim(a_insh);
+  _anim->script = lines;
+
+  if(_args.is_arg("-dynamic")) {
+    _evd->dynamic_sg().add(_anim);
+  } else {
+    _evd->static_sg().add(_anim);
+  }
+}
+
+inline void insh_scene_add_event_anim_stopper(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) return;
+  args _args(a_args);
+  if(_args.is_arg("-dynamic")) {
+    _evd->dynamic_sg().add(a_gv.create_to_stop_event_anim_holder());
+  } else {
+    _evd->static_sg().add(a_gv.create_to_stop_event_anim_holder());
+  }
+}
+
+}
+
+#include "../rroot/geo_manager"
+#include "../rroot/geo"
+#include "args_to_style"
+
+namespace inlib {
+
+inline void insh_scene_add_rroot_geo_volume(ishell& a_insh,const std::vector<std::string>& a_args,sg::gui_viewer& a_gv) {
+  static const std::string s_cmd("scene_add_rroot_geo_volume");
+  sg::view_evd* _evd = sg::cast_view_evd(a_gv);
+  if(!_evd) {a_insh.warn(s_cmd+": bad evd cast.");return;}
+
+  //////////////////////////////////////
+  //// args : //////////////////////////
+  //////////////////////////////////////
+  args _args(a_args);
+
+  INLIB_ISHELL_SET_SG_STYLE
+
+  unsigned int min_depth = 0;
+  INLIB_ISHELL_GET_ARG_UINT(min_depth)
+  unsigned int max_depth = 1;
+  INLIB_ISHELL_GET_ARG_UINT(max_depth)
+  int volume_depth = -1;
+  INLIB_ISHELL_GET_ARG_INT(volume_depth)
+
+  INLIB_ISHELL_GET_PLACEMENT_STATIC
+  
+  std::string sgeo;
+  INLIB_ISHELL_GET_ARG_STRING(geo)
+  if(sgeo.empty()) {
+    a_insh.warn(s_cmd+": no -geo given.");
+    return;
+  }
+
+  std::string fnh;
+  if(!_args.first_not_hyphen(fnh)) {
+    a_insh.warn(s_cmd+": no volume name given.");
+    return;
+  }
+  _args.remove(fnh);
+
+  INLIB_ISHELL_ARGS_UNEXPECTED
+  //////////////////////////////////////
+  //////////////////////////////////////
+  //////////////////////////////////////
+  rroot::geo_manager* mgr = a_gv.get_omanager().find_object<rroot::geo_manager>(sgeo);
+  if(!mgr) {
+    a_insh.warn(s_cmd+": geo_manager object "+sout(sgeo)+" not found.");
+    return;
+  }
+  const rroot::geo_volume* master = mgr->master();
+  if(!master) {a_insh.warn(s_cmd+": geo_manager has no master volume.");return;}
+  
+  rroot::geo* geo = new rroot::geo(*master);
+
+  geo->volume = fnh;
+  geo->volume_depth = volume_depth;
+  geo->min_depth = min_depth;
+  geo->max_depth = max_depth;
+
+  if(_style.modeling==sg::modeling_solid()) {
+    geo->solid_depth = 0;
+  } else if(_style.modeling==sg::modeling_wire_frame()) {
+    geo->solid_depth = 10;
+  } else if(_style.modeling.value().empty()) {
+    geo->solid_depth = 10;
+  } else {
+    delete geo;
+    a_insh.warn(s_cmd+": unknown modeling style "+_style.modeling.value()+".");
+    return;
+  }
+
+  geo->color = _style.color.value();
+  geo->atb = sg::atb_single;
+
+  //force an update now :
+  geo->update_sg(a_gv.out());
+  geo->reset_touched(); //avoid another update_sg at first render().
+
+  if(geo->volume_not_found()) {
+    //some_not_found = true;
+    a_insh.warn(s_cmd+": volume "+geo->volume.value()+" not found.");
+    delete geo;
+  } else {
+    sg::separator* sep = new sg::separator;
+    sep->add(new sg::matrix()); //for manip.
+    sep->add(geo);
+
+    INLIB_ISHELL_SEP_PLACEMENT
+  }
+}
+
+inline const std::string& insh_scene_add_rroot_geo_volume_help() {
+  static const std::string s_help("\
+scene_add_rroot_geo_volume: scene_add_rroot_geo_volume [-geo_manager,-min_depth,-max_depth,-modeling] volnam\n\
+  Add a rroot geo_volume representation in the static scene graph.\n\
+  By default the inlib::rroot::geo_volume is searched in the\n\
+  inlib::rroot::geo_manager named 'geo_manager' declared\n\
+  in the gui_viewer object manager.\n\
+  -geo_manager=string name of another geo_manager.\n\
+  -min_depth=uint min depth to search in the geometry tree (default is 0).\n\
+  -max_depth=uint max depth to search in the geometry tree (default is 0).\n\
+  -modeling=string [solid,wire_frame] (default is wire_frame).\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  Example:\n\
+    # if aleph.root is in the res dir of the app:\n\
+    rroot_open -managed_name=_aleph `app_dir -res`/aleph.root\n\
+    rroot_read -file=_aleph aleph  #read the TGeoManager aleph object.\n\
+    scene_add_rroot_geo_volume -geo=aleph -min_depth=0 -max_depth=2 -color=yellow ALEF\n\
+");
+//    # used in the EsbRootView event display:\n\
+//    scene_add_rroot_geo_volume -style=neard_geo -min_depth=0 -max_depth=2 wc\n\
+//
+  return s_help;
+}
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+#include "ishell_args_gui_viewer_cmd"
+
+#define INLIB_INSH_SG_ADD_ADDS(a__insh,a__gv)\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_managed_object,\
+    inlib::insh_scene_add_managed_object,\
+"scene_add_managed_object: scene_add_managed_object [-dynamic,-copy,-color,-scale,-rotate,-translate] name\n\
+  Add a named node found in the object manager in the viewer static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  -copy a copy is done. Else the sg::node is transfered into the scene graph and is no more managed.\n\
+  -color=string color of the object (default lightgrey).\n\
+  -scale=real overall scale (default 1).\n\
+  -rotate='real real real real' overall rotation (default '0 0 1 0'). First\n\
+  three numbers specify the axis, the last one the angle in radians.\n\
+  -translate='real real real' overall translation (default '0 0 0').\n\
+  Scale, rotation, translation are applied in this order.\n\
+  Example:\n\
+    node_create -class=inlib::sg::sphere my_sphere\n\
+    scene_add_managed_object my_sphere\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_xy_grid,inlib::insh_scene_add_xy_grid,inlib::insh_scene_add_xy_grid_help())\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_axis,\
+    inlib::insh_scene_add_axis,\
+"scene_add_axis: scene_add_axis [options]\n\
+  Add an inlib::sg::axis in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  -color=string color of the axes (default lightgrey).\n\
+  -scale=real overall scale (default 1).\n\
+  -rotate='real real real real' overall rotation (default '0 0 1 0'). First\n\
+  three numbers specify the axis, the last one the angle in radians.\n\
+  -translate='real real real' overall translation (default '0 0 0').\n\
+  Scale, rotation, translation are applied in this order.\n\
+  -field=value set the value of a field of the node.\n\
+  Example:\n\
+    fields=\n\
+    fields=\"${fields} -width=2\"\n\
+    fields=\"${fields} -minimum_value=0\"\n\
+    fields=\"${fields} -inlib::sg::axis.maximum_value=60\"\n\
+    scene_add_axis -color=red ${fields}\n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_axes,\
+    inlib::insh_scene_add_axes,\
+"scene_add_axes: scene_add_axes [options]\n\
+  Add x,y,z axes in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  -color=string color of the axes (default lightgrey).\n\
+  -[x,y,z]_title=string title of the [x,y,z] axis (default \"[x,y,z]\").\n\
+  -[x,y,z]_width=real width of the [x,y,z] axis (default 1).\n\
+  -[x,y,z]_min=real minimum value the [x,y,z] axis (default 0).\n\
+  -[x,y,z]_max=real maximum value the [x,y,z] axis (default 1).\n\
+  -scale=real overall scale (default 1).\n\
+  -rotate='real real real real' overall rotation (default '0 0 1 0'). First\n\
+  three numbers specify the axis, the last one the angle in radians.\n\
+  -translate='real real real' overall translation (default '0 0 0').\n\
+  Scale, rotation, translation are applied in this order.\n\
+  Example:\n\
+    scene_add_axes -color=red -translate='-300 -300 0' -rotate='1 0 0 1.570796' -scale=1 -x_width=600 -x_min=0 -x_max=600 -y_width=600 -y_min=0 -y_max=600 -z_width=600 -z_min=0 -z_max=600 \n\
+")\
+\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_cone,inlib::insh_scene_add_cone_hat,inlib::insh_scene_add_cone_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_cube,inlib::insh_scene_add_cube,inlib::insh_scene_add_cube_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_facet,inlib::insh_scene_add_facet,inlib::insh_scene_add_facet_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_vertices,inlib::insh_scene_add_vertices,inlib::insh_scene_add_vertices_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_markers,inlib::insh_scene_add_markers,inlib::insh_scene_add_markers_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_show_time_anim,inlib::insh_scene_add_show_time_anim,inlib::insh_scene_add_show_time_anim_help())\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_insh_anim,\
+    inlib::insh_scene_add_insh_anim,\
+"scene_add_insh_anim: scene_add_insh_anim [-file,-dynamic]\n\
+  Add an insh_anim node in the static scene graph.\n\
+  -file=string insh file sourced during the animation.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+  WARNING, IMPORTANT, ACHTUNG, ATTENZIONE:\n\
+   You must NOT do a scene_clear_[static,dynamic] in an anim script because\n\
+  the insh_anim node is deposited in the [static,dynamic] scene graph.\n\
+  The variables insh_anim_[time_min,time_max,delay,time_begin,time_end] are defined at\n\
+  each time slice execution of the script.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_event_anim_stopper,\
+    inlib::insh_scene_add_event_anim_stopper,\
+"scene_add_event_anim_stopper: scene_add_event_anim_stopper [-dynamic]\n\
+  Add a to_stop_event_anim_holder in the static scene graph.\n\
+  -dynamic to add in the dynamic scene graph.\n\
+")\
+  INLIB_INSH_ADD_ISHELL_ARGS_GUI_VIEWER_CMD(a__insh,a__gv,scene_add_rroot_geo_volume,inlib::insh_scene_add_rroot_geo_volume,inlib::insh_scene_add_rroot_geo_volume_help())
+
+#endif
