@@ -38,10 +38,12 @@ cmd="${cmd} -double='sigma angle (deg):${value_deg}'"
 
 sep=`sys_file_sep`
 if [ `g4_pythia_version` != none ] ; then
+if [ `sys_os` != Windows_NT ] ; then
   default=`app_res_dir`${sep}h_gamma_gamma.cmnd
   exts='.cmnd'
   dirs=`app_res_dir`;`app_doc_dir`
   cmd="${cmd} -file='cmnd:${default}:${exts}:${dirs}'"
+fi
 fi
 
 cmd="${cmd} -script='. gui_set_gun_ok.insh'"
